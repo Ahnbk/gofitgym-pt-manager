@@ -2432,8 +2432,28 @@
         };
 
         if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            const hadServiceWorkerController = !!navigator.serviceWorker.controller;
+            let serviceWorkerRefreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!hadServiceWorkerController || serviceWorkerRefreshing) return;
+                serviceWorkerRefreshing = true;
+                window.location.reload();
+            });
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        registration.update();
+                        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        registration.addEventListener('updatefound', () => {
+                            const worker = registration.installing;
+                            if (!worker) return;
+                            worker.addEventListener('statechange', () => {
+                                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    worker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
                     .catch(err => console.log('Service worker registration skipped.', err));
             });
         }

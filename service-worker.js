@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gofitgym-pt-v4';
+const CACHE_NAME = 'gofitgym-pt-v5';
 const APP_SHELL = [
   './index.html',
   './manage.html',
@@ -27,6 +27,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+function createFreshRequest(request) {
+  try {
+    return new Request(request, { cache: 'no-store' });
+  } catch (err) {
+    return request;
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -35,7 +47,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(createFreshRequest(request))
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put('./manage.html', copy));
