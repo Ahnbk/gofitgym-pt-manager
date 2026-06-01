@@ -446,7 +446,7 @@
                     <i class="fa-solid fa-download mr-1.5 text-stone-500"></i>기기에 파일 다운로드
                 </button>
                 <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
-                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">공유를 선택하면 기기 공유창에서 Google Drive, Gmail, 파일 앱 등을 선택할 수 있습니다.</p>
+                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">공유를 선택하면 기기 공유창에서 Google Drive, Gmail, 파일 앱 등을 선택할 수 있습니다. 지원되지 않는 브라우저에서는 파일 저장으로 대체됩니다.</p>
             </div>
         </div>
     </div>
@@ -1225,22 +1225,44 @@
             modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
         }
 
+        function downloadBackupBlob(blob, fileName, message = '백업 파일을 저장했습니다.') {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            window.closeBackupChoiceModal();
+            showToast(message);
+        }
+
         window.shareBackupFile = async function() {
             try {
                 if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-                const { file } = createBackupFile();
+                const { blob, file, fileName } = createBackupFile();
                 if (!(navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share)) {
-                    showToast('이 기기에서는 공유가 어려워 다운로드로 저장합니다.');
-                    window.downloadBackupFile();
+                    downloadBackupBlob(blob, fileName, '공유 미지원 환경이라 파일로 저장했습니다.');
                     return;
                 }
-                await navigator.share({ files: [file], title: 'GOFITGYM 백업' });
+                await navigator.share({
+                    files: [file],
+                    title: 'GOFITGYM 백업',
+                    text: 'GOFITGYM 백업 파일입니다. Google Drive나 메일에 보관해주세요.'
+                });
                 window.closeBackupChoiceModal();
                 showToast('백업 파일을 공유했습니다.');
             } catch (err) {
                 if (err && err.name === 'AbortError') return;
                 console.error(err);
-                showToast('백업 공유에 실패했습니다.');
+                try {
+                    const { blob, fileName } = createBackupFile();
+                    downloadBackupBlob(blob, fileName, '공유가 안 되어 파일로 저장했습니다.');
+                } catch (fallbackErr) {
+                    console.error(fallbackErr);
+                    showToast('백업 공유에 실패했습니다.');
+                }
             }
         }
 
@@ -1248,16 +1270,7 @@
             try {
                 if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
                 const { blob, fileName } = createBackupFile();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                window.closeBackupChoiceModal();
-                showToast('백업 파일을 저장했습니다.');
+                downloadBackupBlob(blob, fileName);
             } catch (err) {
                 console.error(err);
                 showToast('백업 저장에 실패했습니다.');
