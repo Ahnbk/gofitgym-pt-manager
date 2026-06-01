@@ -1,0 +1,2526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GOFITGYM 트레이너 통합 시스템</title>
+    <meta name="theme-color" content="#1c1917">
+    <meta name="application-name" content="GOFITGYM">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="GOFITGYM">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Signature Pad JS -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js" crossorigin="anonymous"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        
+        :root {
+            --cal-zoom: 1;
+            --cal-base-min-width: 650px;
+            --cal-base-row-height: 45px;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f5f5f4;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 70px;
+        }
+        
+        .active-scale:active {
+            transform: scale(0.96);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        
+        .calendar-scroll::-webkit-scrollbar-track { background: #1c1917; }
+        .calendar-scroll::-webkit-scrollbar-thumb { background: #44403c; border-radius: 4px; }
+
+        /* Hide scrollbar for preview slider */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Calendar Dynamic Grid Styling */
+        .cal-wrapper {
+            min-width: calc(var(--cal-base-min-width) * var(--cal-zoom));
+            transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cal-grid-row {
+            height: calc(var(--cal-base-row-height) * var(--cal-zoom));
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cal-grid-cell {
+            border-right: 1px solid #292524;
+            border-bottom: 1px solid #292524;
+        }
+        .cal-grid-header {
+            border-right: 1px solid #292524;
+        }
+        
+        /* Font scaling based on zoom */
+        .cal-evt-text { font-size: calc(9px * var(--cal-zoom)); }
+        .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
+
+        .lesson-row {
+            cursor: pointer;
+        }
+
+        .lesson-delete-slot {
+            display: inline-flex;
+            width: 0;
+            margin-left: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateX(-8px);
+            transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1),
+                        margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 160ms ease,
+                        transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+            vertical-align: middle;
+            pointer-events: none;
+        }
+
+        .lesson-editing .lesson-row {
+            cursor: default !important;
+        }
+
+        .lesson-editing .lesson-delete-slot {
+            width: 1.25rem;
+            margin-left: 0.5rem;
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="text-stone-800 flex flex-col min-h-screen relative overflow-hidden">
+
+    <!-- 0. LOCAL LOGIN GATE -->
+    <div id="login-overlay" class="fixed inset-0 bg-stone-950 z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-5">
+                <h2 id="auth-title" class="text-lg font-black text-amber-500">트레이너 로그인</h2>
+                <p id="auth-subtitle" class="text-xs text-stone-400 mt-1">내 기기에서 앱 데이터를 보호합니다.</p>
+            </div>
+            <div class="p-5 space-y-3">
+                <div id="auth-trainer-row">
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
+                    <input type="text" id="auth-trainer-name" placeholder="예: 에단" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">아이디</label>
+                    <input type="text" id="auth-login-id" autocomplete="username" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">비밀번호</label>
+                    <input type="password" id="auth-password" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.submitLocalLogin()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <label class="flex items-center justify-between p-3 bg-stone-50 border border-stone-100 rounded-xl">
+                    <span class="text-xs font-bold text-stone-600">이 기기에서 로그인 유지</span>
+                    <input type="checkbox" id="auth-keep-login" class="w-4 h-4 accent-amber-500">
+                </label>
+                <button onclick="window.submitLocalLogin()" id="auth-submit-btn" class="w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
+                    시작하기
+                </button>
+                <button onclick="window.toggleAuthCreateMode()" id="auth-secondary-btn" class="hidden w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                    새 트레이너 등록
+                </button>
+                <button onclick="window.cancelAdditionalLogin()" id="auth-cancel-btn" class="hidden w-full py-3 bg-stone-100 text-stone-500 rounded-xl text-xs font-black active-scale">
+                    취소
+                </button>
+                <button onclick="window.confirmResetLocalLoginInfo()" id="auth-reset-btn" class="hidden w-full py-2 text-[10px] font-bold text-red-500">
+                    로그인 정보 초기화
+                </button>
+                <p class="text-[10px] leading-relaxed text-stone-400">
+                    비밀번호는 이 기기에 해시로 저장됩니다. 백업 파일에는 로그인 비밀번호가 포함되지 않습니다.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. HEADER BANNER -->
+    <header class="bg-stone-900 text-stone-100 shadow-md sticky top-0 z-40 px-4 py-3.5 h-[60px]">
+        <div class="max-w-5xl mx-auto flex justify-between items-center h-full">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-amber-500 p-1.5 rounded-lg text-stone-900 shadow-inner">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M4 11h2v2H4zm14 0h2v2h-2zM2 9h2v6H2zm18 0h2v6h-2zM7 11h10v2H7z"></path>
+                        <circle cx="5" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                        <circle cx="19" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
+                        <!-- CLOUD STATUS BADGE -->
+                        <div id="cloud-status-text" class="text-[8px] font-bold text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded flex items-center border border-stone-700">
+                            <i class="fa-solid fa-server mr-1"></i> 로컬 모드
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
+                </div>
+            </div>
+            
+            <div id="header-action-container" class="flex space-x-2">
+                <button onclick="window.copyAppSource()" class="hidden md:flex bg-stone-800 hover:bg-stone-700 text-stone-300 px-3 py-1.5 rounded-xl text-xs font-bold items-center transition-all active-scale border border-stone-700">
+                    <i class="fa-solid fa-copy mr-1.5 text-amber-500"></i>코드 복사
+                </button>
+                <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all">
+                    <i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. MAIN WORKSPACE -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-4 h-[calc(100vh-130px)] overflow-y-auto" id="main-scroll-area">
+        
+        <!-- ================= VIEW A: CRM DASHBOARD ================= -->
+        <div id="view-dashboard" class="space-y-4 pb-10">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 space-y-3">
+                <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+                    <div>
+                        <h2 class="text-lg font-black text-stone-800">회원 관리 대시보드</h2>
+                        <p class="text-xs text-stone-500">로컬 저장을 기본으로 사용하고 백업 파일로 보관할 수 있습니다.</p>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="member-search" oninput="window.renderMemberList()" placeholder="회원 이름 검색..." class="w-full md:w-64 bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100">
+                    <button onclick="window.openBackupChoiceModal()" class="py-2.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center shadow-sm">
+                        <i class="fa-solid fa-download mr-1.5 text-amber-500"></i>백업 저장
+                    </button>
+                    <button onclick="window.openBackupRestorePicker()" class="py-2.5 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale flex items-center justify-center border border-stone-200">
+                        <i class="fa-solid fa-folder-open mr-1.5 text-stone-500"></i>Drive/파일 복원
+                    </button>
+                    <button onclick="window.installPwaApp()" id="install-app-btn" class="hidden py-2.5 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center shadow-sm">
+                        <i class="fa-solid fa-mobile-screen-button mr-1.5"></i>앱 설치
+                    </button>
+                    <input type="file" id="backup-restore-input" accept=".json,application/json" class="hidden" onchange="window.restoreBackupFile(this)">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
+                    <div class="bg-amber-500/10 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-amber-800 font-bold block">오늘 예약</span>
+                        <span id="stat-today-schedules" class="text-base font-black text-amber-600">0건</span>
+                    </div>
+                    <div class="bg-stone-50 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-stone-400 font-bold block">관리 회원 수</span>
+                        <span id="stat-total-members" class="text-base font-black text-stone-800">0명</span>
+                    </div>
+                    <div class="bg-stone-100 p-3 rounded-xl text-center">
+                        <span class="text-[10px] text-amber-800 font-bold block">완료된 세션</span>
+                        <span id="stat-total-completed" class="text-base font-black text-amber-600">0회</span>
+                    </div>
+                </div>
+
+                <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200">
+                    <button onclick="window.switchMemberStatusTab('active')" id="member-tab-active" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg bg-stone-900 text-white shadow transition-all">
+                        진행중 <span id="member-tab-active-count" class="ml-1 text-amber-400">0</span>
+                    </button>
+                    <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                        완료 <span id="member-tab-completed-count" class="ml-1 text-stone-400">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="member-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Members Injected Here -->
+            </div>
+        </div>
+
+        <!-- ================= VIEW B: SCHEDULE CALENDAR ================= -->
+        <div id="view-schedule" class="h-full flex flex-col hidden">
+            <div class="bg-stone-900 rounded-2xl shadow-xl overflow-hidden border border-stone-700 flex flex-col h-full">
+                
+                <!-- Calendar Toolbar -->
+                <div class="flex items-center justify-between p-3 lg:p-4 bg-stone-950 border-b border-stone-800 shrink-0">
+                    <button onclick="window.changeWeek(-1)" class="w-10 h-10 flex items-center justify-center text-stone-400 hover:text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-colors active-scale">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="text-center flex-grow cursor-pointer" onclick="window.goToToday()">
+                        <h2 id="calendar-month-year" class="text-lg font-black text-stone-100 tracking-wide">2026년 6월</h2>
+                        <p id="calendar-week-range" class="text-[10px] text-stone-500 font-bold"><i class="fa-regular fa-calendar text-amber-500 mr-1"></i>00.00 - 00.00</p>
+                    </div>
+                    <button onclick="window.changeWeek(1)" class="w-10 h-10 flex items-center justify-center text-stone-400 hover:text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-colors active-scale">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <!-- Zoom & Info Controls -->
+                <div class="px-3 py-2 bg-stone-950 flex justify-between items-center border-b border-stone-800 shrink-0">
+                    <span class="text-[10px] text-stone-500"><i class="fa-solid fa-circle-info text-stone-600 mr-1"></i>빈 칸 터치시 예약</span>
+                    
+                    <div class="flex items-center space-x-1 bg-stone-900 p-1 rounded-lg border border-stone-800">
+                        <button onclick="window.zoomCalendar(-0.3)" class="w-7 h-7 flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 rounded active-scale"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
+                        <span id="zoom-level-text" class="text-[10px] font-bold text-stone-500 w-8 text-center">100%</span>
+                        <button onclick="window.zoomCalendar(0.3)" class="w-7 h-7 flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 rounded active-scale"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
+                    </div>
+                </div>
+
+                <!-- Independent Scrollable Grid Wrapper for Sticky Header -->
+                <div class="overflow-auto calendar-scroll bg-stone-900 flex-grow relative" id="calendar-scroll-area">
+                    <div class="cal-wrapper relative min-h-full">
+                        <div class="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] bg-stone-900 border-b border-stone-700 sticky top-0 z-20 shadow-md" id="calendar-header"></div>
+                        <div id="calendar-body" class="relative text-stone-400 pb-10"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW C: CRM MEMBER DETAIL ================= -->
+        <div id="view-member-detail" class="space-y-4 hidden pb-10">
+            <!-- Member Header Nav -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="window.backToDashboard()" class="w-9 h-9 flex items-center justify-center bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl active-scale transition-colors">
+                            <i class="fa-solid fa-arrow-left text-sm"></i>
+                        </button>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h2 id="detail-member-name" class="text-base font-black text-stone-900">회원명</h2>
+                                <span id="detail-member-trainer" class="text-[10px] bg-stone-800 text-amber-500 px-2 py-0.5 rounded-md font-bold">트레이너</span>
+                            </div>
+                            <p class="text-[10px] text-stone-500">등록일: <span id="detail-reg-date">2026-06-01</span> · 총 <span id="detail-total-sessions">30</span>회 세션</p>
+                            <p class="text-[9px] text-amber-600 font-bold mt-0.5" id="detail-member-contacts">이메일: 없음 | 텔레그램: 없음</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="flex items-center space-x-2 justify-end flex-wrap gap-y-2">
+                        <button onclick="window.openAddSessionModal()" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow active-scale flex items-center">
+                            <i class="fa-solid fa-rotate-right mr-1.5"></i>재등록
+                        </button>
+                        <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
+                            <i class="fa-solid fa-share-nodes mr-1"></i>일지 공유
+                        </button>
+                        <button onclick="window.openPdfPreviewModal()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 rounded-xl text-xs font-black shadow active-scale flex items-center">
+                            <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 다운로드
+                        </button>
+                        <button onclick="window.confirmDeleteActiveMember()" class="px-2.5 py-2 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 rounded-xl text-xs font-bold active-scale transition-colors">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-stone-100">
+                    <button onclick="window.toggleDetailProgress()" class="w-full flex items-center justify-between text-left">
+                        <div>
+                            <span class="block text-[10px] text-stone-400 font-black">전체 완료율</span>
+                            <span id="detail-progress-summary" class="text-sm font-black text-stone-900">0%</span>
+                        </div>
+                        <i id="detail-progress-icon" class="fa-solid fa-chevron-down text-stone-400 text-xs transition-transform"></i>
+                    </button>
+                    <div id="detail-progress-panel" class="hidden mt-3">
+                        <div class="flex justify-between items-end mb-2">
+                            <span id="detail-progress-label" class="text-xl font-black text-stone-900">0%</span>
+                            <span id="detail-progress-count" class="text-xs font-black text-amber-600">0 / 0회 완료</span>
+                        </div>
+                        <div class="w-full h-3 bg-stone-100 rounded-full overflow-hidden">
+                            <div id="detail-progress-bar" class="h-full bg-amber-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="flex bg-stone-200 p-1 rounded-xl">
+                <button onclick="window.switchDetailTab('lessons')" id="tab-lessons-btn" class="flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200">
+                    <i class="fa-solid fa-signature mr-1.5 text-amber-500"></i>레슨 체크 서명
+                </button>
+                <button onclick="window.switchDetailTab('workout')" id="tab-workout-btn" class="flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200">
+                    <i class="fa-solid fa-dumbbell mr-1.5 text-stone-400"></i>운동 루틴 일지
+                </button>
+            </div>
+
+            <!-- Tab Content 1 -->
+            <div id="tab-lessons" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
+                <div class="bg-stone-50 px-4 py-3 border-b border-stone-200 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm text-stone-700">레슨 세션 타임라인</span>
+                        <button onclick="window.toggleLessonEditMode()" id="lesson-edit-btn" class="px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale">
+                            <i class="fa-solid fa-pen-to-square mr-1"></i>수정
+                        </button>
+                        <div id="lesson-add-tools" class="hidden items-center gap-1">
+                            <button onclick="window.addLessonSlotsFromEdit()" class="px-2 py-1 rounded-md bg-stone-900 text-white text-[10px] font-black active-scale">
+                                <i class="fa-solid fa-plus mr-1 text-amber-500"></i>추가
+                            </button>
+                            <input type="number" id="lesson-add-count" value="1" min="1" onkeydown="if(event.key === 'Enter') window.addLessonSlotsFromEdit()" aria-label="추가할 수업 횟수" class="w-12 px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[10px] font-black text-stone-800 outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <span id="detail-session-progress" class="text-xs font-black text-amber-600">잔여 수업 0회</span>
+                </div>
+                <div id="lessons-rows-container" class="divide-y divide-stone-100"></div>
+            </div>
+
+            <!-- Tab Content 2 -->
+            <div id="tab-workout" class="space-y-3 hidden">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-stone-800 text-sm">개인 운동 기록지</h3>
+                    </div>
+                    <button onclick="window.addNewWorkoutRow()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 text-xs font-bold rounded-xl shadow-sm active-scale">
+                        <i class="fa-solid fa-plus mr-1 text-amber-500"></i>일지 추가
+                    </button>
+                </div>
+                <div id="workout-rows-container" class="space-y-3"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 3. BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 w-full bg-white border-t border-stone-200 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] h-[70px]">
+        <div class="max-w-md mx-auto flex justify-around p-2 h-full items-center">
+            <button onclick="window.switchMainView('dashboard')" id="nav-dashboard" class="flex-1 flex flex-col items-center py-2 text-amber-600 hover:text-stone-600 transition-colors">
+                <i class="fa-solid fa-users text-lg mb-1"></i>
+                <span class="text-[10px] font-bold">회원 관리 (CRM)</span>
+            </button>
+            <button onclick="window.switchMainView('schedule')" id="nav-schedule" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
+                <i class="fa-regular fa-calendar-days text-lg mb-1"></i>
+                <span class="text-[10px] font-bold">스케줄 예약 관리</span>
+            </button>
+        </div>
+    </nav>
+
+
+    <!-- ============================================== -->
+    <!-- ================= MODAL ASSETS =============== -->
+    <!-- ============================================== -->
+
+    <!-- 0. Trainer Profile Settings Modal -->
+    <div id="modal-profile-settings" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-gear mr-1.5"></i>트레이너 설정</h3>
+                <button onclick="window.closeProfileSettingsModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
+                    <input type="text" id="profile-trainer-name" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">아이디</label>
+                    <input type="text" id="profile-login-id" autocomplete="username" readonly class="w-full text-sm bg-stone-100 border border-stone-200 rounded-xl px-3.5 py-3 outline-none font-medium text-stone-500">
+                </div>
+                <div class="border-t border-stone-100 pt-3 space-y-3">
+                    <input type="password" id="profile-current-password" autocomplete="current-password" placeholder="현재 비밀번호" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                    <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <button onclick="window.saveProfileSettings()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
+                <button onclick="window.openAdditionalLogin()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
+                <button onclick="window.logoutLocalUser()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0-1. Backup Choice Modal -->
+    <div id="modal-backup-choice" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-shield-halved mr-1.5"></i>백업 저장</h3>
+                <button onclick="window.closeBackupChoiceModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-2">
+                <button onclick="window.shareBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                    <i class="fa-solid fa-share-nodes mr-1.5 text-amber-500"></i>구글드라이브/이메일로 공유
+                </button>
+                <button onclick="window.downloadBackupFile()" class="w-full py-3.5 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale flex items-center justify-center border border-stone-200">
+                    <i class="fa-solid fa-download mr-1.5 text-stone-500"></i>기기에 파일 다운로드
+                </button>
+                <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
+                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">공유를 선택하면 기기 공유창에서 Google Drive, Gmail, 파일 앱 등을 선택할 수 있습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- A. New Member Modal -->
+    <div id="modal-member" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-member-box">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
+                <button onclick="window.closeNewMemberModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">회원 이름 *</label>
+                    <input type="text" id="reg-name" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">등록 세션 수 *</label>
+                        <input type="number" id="reg-sessions" placeholder="예: 10" value="10" min="1" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">개시일 *</label>
+                        <input type="date" id="reg-date-input" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </div>
+                <div class="border-t border-stone-100 pt-3 space-y-3">
+                    <h4 class="text-[10px] font-black text-stone-400 uppercase">공유 연동 설정 (선택)</h4>
+                    <input type="email" id="reg-email" placeholder="이메일 주소" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-stone-200 bg-stone-100 text-stone-500 text-sm">@</span>
+                        <input type="text" id="reg-telegram" placeholder="텔레그램 아이디" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-r-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeNewMemberModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs">취소</button>
+                <button onclick="window.submitNewMember()" class="flex-1 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs shadow-md">등록 생성</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- A-1. Add Session Modal -->
+    <div id="modal-add-session" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
+                <button onclick="window.closeAddSessionModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">추가할 세션 횟수 (직접입력 가능)</label>
+                    <input type="number" id="add-sessions-count" placeholder="예: 8" value="10" min="1" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">재등록 날짜</label>
+                    <input type="date" id="add-session-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                </div>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeAddSessionModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.executeAddSession()" class="flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale">추가하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- A-2. Delete Member Confirm Modal -->
+    <div id="modal-delete-confirm" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="p-6 text-center space-y-4 mt-2">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl text-red-500"></i>
+                </div>
+                <h3 class="font-black text-stone-800 text-lg">회원 삭제</h3>
+                <p class="text-xs text-stone-500 leading-relaxed">정말로 이 회원을 삭제하시겠습니까?<br>모든 레슨 및 일지 기록이 영구적으로 삭제됩니다.</p>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeDeleteConfirmModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.executeDeleteMember()" class="flex-1 py-3 bg-red-500 text-white font-black rounded-xl text-xs shadow-md active-scale">삭제하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- B. Schedule Event Modal -->
+    <div id="modal-schedule" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-stone-900 border border-stone-700 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
+            <div class="bg-stone-950 text-stone-100 p-4 flex justify-between items-center border-b border-stone-800">
+                <h3 class="font-black text-amber-500 text-base" id="sched-modal-title"><i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록</h3>
+                <button onclick="window.closeScheduleModal()" class="text-stone-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <input type="hidden" id="sched-id">
+                <input type="hidden" id="sched-date">
+                <input type="hidden" id="sched-time">
+
+                <div class="flex items-center space-x-3 text-stone-300 text-sm font-bold bg-stone-800 p-3 rounded-xl border border-stone-700">
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                    <span id="sched-display-dt">0000.00.00 (월) 14:00</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-stone-400 font-bold mb-1.5">예약 내용 (회원명 등)</label>
+                    <input type="text" id="sched-title" placeholder="회원명 또는 예약 내용을 입력" class="w-full text-sm bg-stone-800 text-white border border-stone-700 rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-bold">
+                    
+                    <div class="flex items-center justify-between mt-3 mb-1.5">
+                        <p class="text-[10px] text-stone-500 font-bold">등록된 회원 바로 입력</p>
+                        <p class="text-[9px] text-amber-500/80 font-bold">해당 일자 예약자 우선 정렬</p>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5" id="sched-quick-members">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div id="sched-recurring-block" class="flex items-center justify-between p-3 bg-stone-800 border border-stone-700 rounded-xl">
+                    <div>
+                        <span class="block text-sm font-bold text-stone-200">매주 반복 예약</span>
+                        <span class="text-[10px] text-stone-500">향후 12주(3개월) 동안 자동 세팅</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="sched-recurring" class="sr-only peer">
+                        <div class="w-11 h-6 bg-stone-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="p-4 bg-stone-950 flex space-x-2 border-t border-stone-800" id="sched-action-btns">
+                <!-- Action Buttons Injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- C. Signature Pad & Preview Modal (UPGRADED) -->
+    <div id="sign-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-box">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-amber-500 text-base" id="sign-modal-title">01회차 레슨 서명</h3>
+                <button onclick="window.closeSignModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-3">
+                <div class="text-center" id="sign-status-badge">
+                    <span class="text-[10px] text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen text-amber-500 mr-1"></i>사인 패드</span>
+                </div>
+                
+                <!-- CANVAS WRAPPER (그리기 모드) -->
+                <div id="signature-canvas-wrapper" class="relative bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl overflow-hidden aspect-[4/3] flex items-center justify-center">
+                    <canvas id="signature-canvas" class="absolute inset-0 w-full h-full touch-none cursor-crosshair" width="0" height="0" style="touch-action: none; user-select: none;"></canvas>
+                </div>
+                
+                <!-- PREVIEW WRAPPER (서명 보기 모드) -->
+                <div id="signature-preview-wrapper" class="hidden relative bg-stone-50 border border-stone-200 rounded-2xl overflow-hidden aspect-[4/3] flex items-center justify-center p-4">
+                    <img id="signature-preview-img" src="" class="max-w-full max-h-full object-contain drop-shadow-sm">
+                </div>
+            </div>
+            
+            <!-- DYNAMIC ACTION BUTTONS -->
+            <div class="p-4 bg-stone-50 border-t border-stone-100 flex space-x-2" id="sign-action-btns">
+                <!-- JS dynamically injects buttons here based on state (Sign Later, Clear, Confirm, Delete, Re-sign) -->
+            </div>
+        </div>
+    </div>
+
+    <!-- D. Smart Share Modal -->
+    <div id="share-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="share-modal-box">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-share-nodes mr-1.5"></i>운동일지 스마트 전송</h3>
+                <button onclick="window.closeShareModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-4">
+                <textarea id="share-text-preview" class="w-full text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 focus:outline-none min-h-[120px] leading-relaxed" readonly></textarea>
+                
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="window.shareViaEmail()" class="flex flex-col items-center justify-center p-3 bg-blue-50 border border-blue-200 rounded-xl active-scale">
+                        <i class="fa-regular fa-envelope text-xl text-blue-500 mb-1"></i>
+                        <span class="text-[10px] font-black text-stone-800">이메일 전송</span>
+                    </button>
+                    <button onclick="window.shareViaTelegram()" class="flex flex-col items-center justify-center p-3 bg-sky-50 border border-sky-200 rounded-xl active-scale">
+                        <i class="fa-brands fa-telegram text-xl text-sky-500 mb-1"></i>
+                        <span class="text-[10px] font-black text-stone-800">텔레그램 전송</span>
+                    </button>
+                </div>
+                <button onclick="window.copyShareTextToClipboard()" class="w-full py-2.5 bg-stone-100 text-stone-700 rounded-xl text-xs font-bold active-scale"><i class="fa-regular fa-copy mr-1.5"></i>메시지 전체 복사</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- E. PDF Preview Modal -->
+    <div id="pdf-preview-modal" class="fixed inset-0 bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
+        <div class="flex justify-between items-center p-4 text-white shrink-0">
+            <button onclick="window.closePdfPreviewModal()" class="text-stone-300 text-xl px-2 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
+            <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
+        </div>
+        <div class="flex-1 overflow-hidden relative flex items-center">
+            <div id="pdf-swipe-container" class="flex overflow-x-auto snap-x snap-mandatory h-full w-full items-center no-scrollbar pb-10" onscroll="window.updatePdfPageIndicator()">
+                <!-- Dynamic Pages Injected Here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM TOAST -->
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-stone-900/90 text-stone-100 px-5 py-3 rounded-full shadow-xl flex items-center space-x-2 text-xs z-50 pointer-events-none transform translate-y-10 opacity-0 transition-all duration-300">
+        <span id="toast-message">알림 내용</span>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- SCRIPT 1: 로컬 전용 안정적인 UI 코어 엔진      -->
+    <!-- 오프라인이거나 클라우드 에러시에도 100% 작동   -->
+    <!-- ============================================== -->
+    <script>
+        // Data Global Scope - 클라우드 연동을 위해 var 로 선언하여 window에 바인딩
+        var members = [];
+        var schedules = [];
+        var activeMemberId = null;
+        var currentEditingLessonIndex = null;
+        var currentZoom = 1;
+        var currentDate = new Date();
+        var signaturePad = null;
+        var currentPdfElementToExport = null;
+        var memberStatusFilter = 'active';
+        var detailProgressExpanded = false;
+        var lessonEditMode = false;
+        var appProfile = null;
+        var trainerProfiles = {};
+        var loggedInTrainerIds = [];
+        var activeLoginId = null;
+        var isAuthenticated = false;
+        var authMode = 'login';
+        var deferredInstallPrompt = null;
+
+        const HOURS = 16; 
+        const START_HOUR = 8;
+        const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+        const LEGACY_PROFILE_KEY = 'gofitgym_v10_profile';
+        const PROFILES_KEY = 'gofitgym_v11_profiles';
+        const LOGGED_SESSION_KEY = 'gofitgym_v11_logged_in_session';
+        const LOGGED_LOCAL_KEY = 'gofitgym_v11_logged_in_local';
+        const ACTIVE_LOGIN_KEY = 'gofitgym_v11_active_login';
+        const LEGACY_DATA_CLAIM_KEY = 'gofitgym_v11_legacy_data_claimed';
+        const ORPHANED_DATA_KEY = 'gofitgym_v11_orphaned_login_id';
+
+        window.onload = async function() {
+            if (new URLSearchParams(window.location.search).get('resetLogin') === '1') {
+                resetLocalLoginInfo();
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+            loadProfileStore();
+            initSignaturePad();
+            await initializeLoginGate();
+        };
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            window.deferredInstallPrompt = event;
+            const installButton = document.getElementById('install-app-btn');
+            if (installButton) installButton.classList.remove('hidden');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            window.deferredInstallPrompt = null;
+            const installButton = document.getElementById('install-app-btn');
+            if (installButton) installButton.classList.add('hidden');
+            showToast('앱 설치가 완료되었습니다.');
+        });
+
+        window.installPwaApp = async function() {
+            if (!window.deferredInstallPrompt) {
+                showToast('브라우저 메뉴에서 홈 화면에 추가할 수 있습니다.');
+                return;
+            }
+            window.deferredInstallPrompt.prompt();
+            const result = await window.deferredInstallPrompt.userChoice;
+            window.deferredInstallPrompt = null;
+            const installButton = document.getElementById('install-app-btn');
+            if (installButton) installButton.classList.add('hidden');
+            if (result.outcome === 'accepted') showToast('앱 설치를 시작합니다.');
+        };
+
+        function loadDatabase() {
+            if (!window.activeLoginId) {
+                window.members = [];
+                window.schedules = [];
+                return;
+            }
+
+            const savedData = localStorage.getItem(getMembersStorageKey());
+            const savedSched = localStorage.getItem(getSchedulesStorageKey());
+
+            if (savedData && savedSched) {
+                window.members = JSON.parse(savedData);
+                window.schedules = JSON.parse(savedSched);
+            } else if (localStorage.getItem(ORPHANED_DATA_KEY) && localStorage.getItem(getMembersStorageKey(localStorage.getItem(ORPHANED_DATA_KEY)))) {
+                const orphanId = localStorage.getItem(ORPHANED_DATA_KEY);
+                window.members = JSON.parse(localStorage.getItem(getMembersStorageKey(orphanId)) || '[]');
+                window.schedules = JSON.parse(localStorage.getItem(getSchedulesStorageKey(orphanId)) || '[]');
+                localStorage.removeItem(ORPHANED_DATA_KEY);
+            } else if (!localStorage.getItem(LEGACY_DATA_CLAIM_KEY) && localStorage.getItem('gofitgym_v9_members')) {
+                window.members = JSON.parse(localStorage.getItem('gofitgym_v9_members') || '[]');
+                window.schedules = JSON.parse(localStorage.getItem('gofitgym_v9_schedules') || '[]');
+                localStorage.setItem(LEGACY_DATA_CLAIM_KEY, window.activeLoginId);
+            } else {
+                window.members = [];
+                window.schedules = [];
+            }
+            normalizeDatabase();
+            saveDatabase();
+        }
+
+        function saveDatabase() {
+            if (!window.activeLoginId) return;
+            localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
+            localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
+        }
+
+        function resetLocalLoginInfo() {
+            let previousActive = localStorage.getItem(ACTIVE_LOGIN_KEY) || sessionStorage.getItem(ACTIVE_LOGIN_KEY);
+            if (!previousActive) {
+                try {
+                    const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '{}');
+                    previousActive = Object.keys(profiles)[0] || null;
+                } catch (err) {}
+            }
+            if (previousActive && localStorage.getItem(getMembersStorageKey(previousActive))) {
+                localStorage.setItem(ORPHANED_DATA_KEY, previousActive);
+            }
+
+            [
+                LEGACY_PROFILE_KEY,
+                PROFILES_KEY,
+                LOGGED_LOCAL_KEY,
+                ACTIVE_LOGIN_KEY
+            ].forEach(key => localStorage.removeItem(key));
+            [
+                LOGGED_SESSION_KEY,
+                ACTIVE_LOGIN_KEY
+            ].forEach(key => sessionStorage.removeItem(key));
+        }
+
+        function normalizeDatabase() {
+            window.members = (window.members || []).map(m => {
+                m.lessons = Array.isArray(m.lessons) ? m.lessons : [];
+                const targetTotal = Math.max(parseInt(m.totalSessions) || 0, m.lessons.length);
+                while (m.lessons.length < targetTotal) {
+                    m.lessons.push({ no: m.lessons.length + 1, date: '', trainer: '', signature: '' });
+                }
+                m.lessons.forEach((lesson, index) => {
+                    lesson.no = index + 1;
+                    if (typeof lesson.date === 'undefined') lesson.date = '';
+                    if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
+                    if (typeof lesson.signature === 'undefined') lesson.signature = '';
+                });
+                m.totalSessions = m.lessons.length;
+                m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
+                m.workouts = Array.isArray(m.workouts) ? m.workouts : [];
+                return m;
+            });
+            window.schedules = Array.isArray(window.schedules) ? window.schedules : [];
+        }
+
+        function getCompletedCount(m) {
+            return (m.lessons || []).filter(l => l.signature && l.signature !== 'LATER').length;
+        }
+
+        function isMemberCompleted(m) {
+            return m.totalSessions > 0 && getCompletedCount(m) >= m.totalSessions;
+        }
+
+        function getTodayScheduleForMember(m) {
+            const todayStr = formatDate(new Date());
+            return (window.schedules || [])
+                .filter(s => s.date === todayStr && s.title && s.title.includes(m.name))
+                .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0] || null;
+        }
+
+        function formatDisplayDate(dateStr) {
+            return dateStr ? dateStr.replace(/-/g, '.') : '';
+        }
+
+        function storageSuffix(loginId = window.activeLoginId) {
+            return encodeURIComponent(loginId || 'default');
+        }
+
+        function getMembersStorageKey(loginId = window.activeLoginId) {
+            return `gofitgym_v11_members_${storageSuffix(loginId)}`;
+        }
+
+        function getSchedulesStorageKey(loginId = window.activeLoginId) {
+            return `gofitgym_v11_schedules_${storageSuffix(loginId)}`;
+        }
+
+        function loadProfileStore() {
+            try {
+                window.trainerProfiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '{}') || {};
+            } catch (err) {
+                window.trainerProfiles = {};
+            }
+
+            try {
+                const legacy = JSON.parse(localStorage.getItem(LEGACY_PROFILE_KEY) || 'null');
+                if (legacy && legacy.loginId && !window.trainerProfiles[legacy.loginId]) {
+                    window.trainerProfiles[legacy.loginId] = legacy;
+                    saveProfileStore();
+                }
+            } catch (err) {}
+        }
+
+        function saveProfileStore() {
+            localStorage.setItem(PROFILES_KEY, JSON.stringify(window.trainerProfiles));
+        }
+
+        function readLoggedIds() {
+            const read = (store, key) => {
+                try { return JSON.parse(store.getItem(key) || '[]'); } catch (err) { return []; }
+            };
+            const ids = [...read(sessionStorage, LOGGED_SESSION_KEY), ...read(localStorage, LOGGED_LOCAL_KEY)];
+            return [...new Set(ids)].filter(id => window.trainerProfiles[id]);
+        }
+
+        function writeLoggedIds(store, key, ids) {
+            store.setItem(key, JSON.stringify([...new Set(ids)].filter(id => window.trainerProfiles[id])));
+        }
+
+        function refreshActiveProfile() {
+            window.loggedInTrainerIds = readLoggedIds();
+            window.appProfile = window.activeLoginId ? window.trainerProfiles[window.activeLoginId] : null;
+            window.isAuthenticated = !!window.appProfile;
+        }
+
+        function getTrainerName() {
+            return (window.appProfile && window.appProfile.trainerName) || '기본 담당';
+        }
+
+        function formatTrainerLabel(name) {
+            const value = (name || '미지정').trim();
+            return value.endsWith('트레이너') ? value : `${value} 트레이너`;
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function getTrainerSwitcherHtml() {
+            const chips = (window.loggedInTrainerIds || []).map(id => {
+                const profile = window.trainerProfiles[id];
+                const active = id === window.activeLoginId;
+                return `<button onclick="window.switchActiveTrainer('${encodeURIComponent(id)}')" class="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black active-scale border ${active ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-sm' : 'bg-stone-800 text-stone-300 border-stone-700'}">${escapeHtml(profile.trainerName)}</button>`;
+            }).join('');
+            return `<div class="flex items-center gap-1 max-w-[52vw] md:max-w-none overflow-x-auto no-scrollbar">${chips}<button onclick="window.openProfileSettingsModal()" class="shrink-0 bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center active-scale border border-stone-700"><i class="fa-solid fa-user-gear text-amber-500"></i></button></div>`;
+        }
+
+        async function hashPassword(password, salt) {
+            const text = `${salt}:${password}`;
+            if (window.crypto && window.crypto.subtle) {
+                const data = new TextEncoder().encode(text);
+                const digest = await window.crypto.subtle.digest('SHA-256', data);
+                return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            return btoa(unescape(encodeURIComponent(text)));
+        }
+
+        function createSalt() {
+            if (window.crypto && window.crypto.getRandomValues) {
+                const bytes = new Uint8Array(16);
+                window.crypto.getRandomValues(bytes);
+                return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            return Math.random().toString(36).slice(2) + Date.now().toString(36);
+        }
+
+        function addLoggedTrainer(loginId, keepLogin) {
+            writeLoggedIds(sessionStorage, LOGGED_SESSION_KEY, [...readLoggedIds(), loginId]);
+            if (keepLogin) {
+                let persisted = [];
+                try { persisted = JSON.parse(localStorage.getItem(LOGGED_LOCAL_KEY) || '[]'); } catch (err) {}
+                writeLoggedIds(localStorage, LOGGED_LOCAL_KEY, [...persisted, loginId]);
+            }
+            window.activeLoginId = loginId;
+            sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
+            localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
+            refreshActiveProfile();
+        }
+
+        function removeLoggedTrainer(loginId) {
+            const removeFrom = (store, key) => {
+                let ids = [];
+                try { ids = JSON.parse(store.getItem(key) || '[]'); } catch (err) {}
+                writeLoggedIds(store, key, ids.filter(id => id !== loginId));
+            };
+            removeFrom(sessionStorage, LOGGED_SESSION_KEY);
+            removeFrom(localStorage, LOGGED_LOCAL_KEY);
+            window.loggedInTrainerIds = readLoggedIds();
+            window.activeLoginId = window.loggedInTrainerIds[0] || null;
+            if (window.activeLoginId) {
+                sessionStorage.setItem(ACTIVE_LOGIN_KEY, window.activeLoginId);
+                localStorage.setItem(ACTIVE_LOGIN_KEY, window.activeLoginId);
+            } else {
+                sessionStorage.removeItem(ACTIVE_LOGIN_KEY);
+                localStorage.removeItem(ACTIVE_LOGIN_KEY);
+            }
+            refreshActiveProfile();
+        }
+
+        function showLoginOverlay(mode = 'login') {
+            window.authMode = mode;
+            const isCreate = mode === 'setup' || mode === 'add-setup';
+            const isAdditional = mode === 'add-login' || mode === 'add-setup';
+            const overlay = document.getElementById('login-overlay');
+            const trainerRow = document.getElementById('auth-trainer-row');
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+            const submit = document.getElementById('auth-submit-btn');
+            const secondary = document.getElementById('auth-secondary-btn');
+            const cancel = document.getElementById('auth-cancel-btn');
+            const reset = document.getElementById('auth-reset-btn');
+            overlay.classList.remove('hidden');
+            trainerRow.classList.toggle('hidden', !isCreate);
+            title.innerText = isCreate ? (isAdditional ? '새 트레이너 추가' : '트레이너 설정') : (isAdditional ? '추가 로그인' : '트레이너 로그인');
+            subtitle.innerText = isCreate ? '트레이너 이름과 로그인 정보를 설정하세요.' : '로그인하면 상단에서 트레이너를 전환할 수 있습니다.';
+            submit.innerText = isCreate ? (isAdditional ? '추가하고 로그인' : '설정하고 시작') : '로그인';
+            secondary.classList.toggle('hidden', Object.keys(window.trainerProfiles).length === 0);
+            secondary.innerText = isCreate ? '기존 트레이너 로그인' : '새 트레이너 등록';
+            cancel.classList.toggle('hidden', !isAdditional || !window.activeLoginId);
+            reset.classList.toggle('hidden', Object.keys(window.trainerProfiles).length === 0);
+            document.getElementById('auth-login-id').value = '';
+            document.getElementById('auth-password').value = '';
+            document.getElementById('auth-trainer-name').value = '';
+            setTimeout(() => {
+                const target = isCreate ? document.getElementById('auth-trainer-name') : document.getElementById('auth-login-id');
+                if (target) target.focus();
+            }, 100);
+        }
+
+        function hideLoginOverlay() {
+            document.getElementById('login-overlay').classList.add('hidden');
+        }
+
+        async function initializeLoginGate() {
+            const profileCount = Object.keys(window.trainerProfiles).length;
+            if (!profileCount) return showLoginOverlay('setup');
+
+            window.loggedInTrainerIds = readLoggedIds();
+            const storedActive = sessionStorage.getItem(ACTIVE_LOGIN_KEY) || localStorage.getItem(ACTIVE_LOGIN_KEY);
+            window.activeLoginId = window.loggedInTrainerIds.includes(storedActive) ? storedActive : (window.loggedInTrainerIds[0] || null);
+            refreshActiveProfile();
+
+            if (window.activeLoginId) {
+                enterTrainerWorkspace();
+                return;
+            }
+            showLoginOverlay('login');
+        }
+
+        function enterTrainerWorkspace() {
+            hideLoginOverlay();
+            loadDatabase();
+            updateTrainerUi();
+            if (window.restartCloudSyncHook) window.restartCloudSyncHook();
+        }
+
+        function updateTrainerUi() {
+            const subtitle = document.getElementById('header-subtitle');
+            if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
+            const detailTrainer = document.getElementById('detail-member-trainer');
+            if (window.activeMemberId && detailTrainer) {
+                const m = window.members.find(x => x.id === window.activeMemberId);
+                if (m) detailTrainer.innerText = formatTrainerLabel(m.trainer || getTrainerName());
+            }
+            if (!document.getElementById('view-schedule').classList.contains('hidden')) return window.switchMainView('schedule');
+            window.switchMainView('dashboard');
+        }
+
+        window.switchActiveTrainer = function(encodedLoginId) {
+            const loginId = decodeURIComponent(encodedLoginId);
+            if (!window.trainerProfiles[loginId]) return;
+            if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
+            saveDatabase();
+            window.activeLoginId = loginId;
+            sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
+            localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
+            refreshActiveProfile();
+            window.activeMemberId = null;
+            window.setDetailProgressExpanded(false);
+            window.setLessonEditMode(false, false);
+            loadDatabase();
+            if (window.restartCloudSyncHook) window.restartCloudSyncHook();
+            window.switchMainView('dashboard');
+            showToast(`${getTrainerName()} 트레이너로 전환되었습니다.`);
+        }
+
+        window.toggleAuthCreateMode = function() {
+            showLoginOverlay(window.authMode === 'add-setup' || window.authMode === 'setup' ? 'add-login' : 'add-setup');
+        }
+
+        window.cancelAdditionalLogin = function() {
+            hideLoginOverlay();
+        }
+
+        window.confirmResetLocalLoginInfo = function() {
+            const ok = confirm('로그인 정보만 초기화할까요? 회원/스케줄 데이터는 다음 새 트레이너 계정으로 옮겨집니다.');
+            if (!ok) return;
+            resetLocalLoginInfo();
+            window.trainerProfiles = {};
+            window.loggedInTrainerIds = [];
+            window.activeLoginId = null;
+            window.appProfile = null;
+            window.members = [];
+            window.schedules = [];
+            showLoginOverlay('setup');
+            showToast('로그인 정보가 초기화되었습니다.');
+        }
+
+        window.submitLocalLogin = async function() {
+            const trainerName = document.getElementById('auth-trainer-name').value.trim();
+            const loginId = document.getElementById('auth-login-id').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const keepLogin = document.getElementById('auth-keep-login').checked;
+            const isCreate = window.authMode === 'setup' || window.authMode === 'add-setup';
+
+            if (isCreate) {
+                if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
+                if (!loginId) return showToast('아이디를 입력해주세요.');
+                if (window.trainerProfiles[loginId]) return showToast('이미 등록된 아이디입니다.');
+                if (password.length < 4) return showToast('비밀번호는 4자리 이상으로 설정해주세요.');
+                const salt = createSalt();
+                window.trainerProfiles[loginId] = {
+                    trainerName,
+                    loginId,
+                    passwordSalt: salt,
+                    passwordHash: await hashPassword(password, salt),
+                    createdAt: new Date().toISOString()
+                };
+                saveProfileStore();
+                addLoggedTrainer(loginId, keepLogin);
+                enterTrainerWorkspace();
+                showToast('트레이너 로그인이 설정되었습니다.');
+                return;
+            }
+
+            if (!loginId || !password) return showToast('아이디와 비밀번호를 입력해주세요.');
+            const profile = window.trainerProfiles[loginId];
+            if (!profile) return showToast('등록되지 않은 아이디입니다.');
+            const passwordHash = await hashPassword(password, profile.passwordSalt);
+            if (passwordHash !== profile.passwordHash) {
+                return showToast('로그인 정보가 올바르지 않습니다.');
+            }
+            addLoggedTrainer(loginId, keepLogin);
+            enterTrainerWorkspace();
+            showToast('로그인되었습니다.');
+        }
+
+        window.openProfileSettingsModal = function() {
+            document.getElementById('profile-trainer-name').value = getTrainerName();
+            document.getElementById('profile-login-id').value = (window.appProfile && window.appProfile.loginId) || '';
+            document.getElementById('profile-current-password').value = '';
+            document.getElementById('profile-new-password').value = '';
+            const modal = document.getElementById('modal-profile-settings');
+            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeProfileSettingsModal = function() {
+            const modal = document.getElementById('modal-profile-settings');
+            modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.saveProfileSettings = async function() {
+            if (!window.appProfile) return;
+            const trainerName = document.getElementById('profile-trainer-name').value.trim();
+            const currentPassword = document.getElementById('profile-current-password').value;
+            const newPassword = document.getElementById('profile-new-password').value;
+            if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
+
+            const changingPassword = newPassword.length > 0;
+            if (changingPassword) {
+                const currentHash = await hashPassword(currentPassword, window.appProfile.passwordSalt);
+                if (currentHash !== window.appProfile.passwordHash) return showToast('현재 비밀번호를 확인해주세요.');
+            }
+            if (changingPassword) {
+                if (newPassword.length < 4) return showToast('새 비밀번호는 4자리 이상이어야 합니다.');
+                const salt = createSalt();
+                window.appProfile.passwordSalt = salt;
+                window.appProfile.passwordHash = await hashPassword(newPassword, salt);
+            }
+
+            window.appProfile.trainerName = trainerName;
+            window.trainerProfiles[window.activeLoginId] = window.appProfile;
+            saveProfileStore();
+            updateTrainerUi();
+            window.closeProfileSettingsModal();
+            showToast('트레이너 설정이 저장되었습니다.');
+        }
+
+        window.openAdditionalLogin = function() {
+            window.closeProfileSettingsModal();
+            showLoginOverlay('add-login');
+        }
+
+        window.logoutLocalUser = function() {
+            const loggedOutName = getTrainerName();
+            removeLoggedTrainer(window.activeLoginId);
+            window.closeProfileSettingsModal();
+            if (window.activeLoginId) {
+                enterTrainerWorkspace();
+            } else {
+                window.members = [];
+                window.schedules = [];
+                window.activeMemberId = null;
+                showLoginOverlay('login');
+            }
+            showToast(`${loggedOutName} 트레이너가 로그아웃되었습니다.`);
+        }
+
+        // 클라우드와 통신하는 핵심 훅 (비동기 처리)
+        function localSaveMember(m) { saveDatabase(); if(window.cloudSaveMemberHook) window.cloudSaveMemberHook(m); }
+        function localDeleteMember(id) { saveDatabase(); if(window.cloudDeleteMemberHook) window.cloudDeleteMemberHook(id); }
+        function localSaveSchedule(s) { saveDatabase(); if(window.cloudSaveScheduleHook) window.cloudSaveScheduleHook(s); }
+        function localDeleteSchedule(id) { saveDatabase(); if(window.cloudDeleteScheduleHook) window.cloudDeleteScheduleHook(id); }
+
+        // ================= BACKUP & RESTORE =================
+        function buildBackupPayload() {
+            return {
+                app: 'GOFITGYM_PT_MANAGER',
+                version: 11,
+                scope: 'active-trainer',
+                exportedAt: new Date().toISOString(),
+                trainer: window.appProfile ? { loginId: window.appProfile.loginId, trainerName: window.appProfile.trainerName } : null,
+                members: window.members || [],
+                schedules: window.schedules || []
+            };
+        }
+
+        function getBackupFileName() {
+            const now = new Date();
+            const trainer = getTrainerName().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '');
+            const date = formatDate(now).replace(/-/g, '');
+            const time = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            return `고핏짐_${trainer}_백업_${date}_${time}.json`;
+        }
+
+        function createBackupFile() {
+            const payload = buildBackupPayload();
+            const json = JSON.stringify(payload, null, 2);
+            const fileName = getBackupFileName();
+            const blob = new Blob([json], { type: 'application/json' });
+            const file = new File([blob], fileName, { type: 'application/json' });
+            return { blob, file, fileName };
+        }
+
+        async function syncRestoredDataToCloud(previousMembers, previousSchedules) {
+            if (!window.cloudSaveMemberHook && !window.cloudSaveScheduleHook) return;
+
+            const nextMemberIds = new Set((window.members || []).map(m => m.id && m.id.toString()));
+            const nextScheduleIds = new Set((window.schedules || []).map(s => s.id && s.id.toString()));
+
+            if (window.cloudDeleteMemberHook) {
+                (previousMembers || []).forEach(m => {
+                    if (m.id && !nextMemberIds.has(m.id.toString())) window.cloudDeleteMemberHook(m.id);
+                });
+            }
+            if (window.cloudDeleteScheduleHook) {
+                (previousSchedules || []).forEach(s => {
+                    if (s.id && !nextScheduleIds.has(s.id.toString())) window.cloudDeleteScheduleHook(s.id);
+                });
+            }
+            if (window.cloudSaveMemberHook) (window.members || []).forEach(m => window.cloudSaveMemberHook(m));
+            if (window.cloudSaveScheduleHook) (window.schedules || []).forEach(s => window.cloudSaveScheduleHook(s));
+        }
+
+        window.openBackupChoiceModal = function() {
+            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            const modal = document.getElementById('modal-backup-choice');
+            modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeBackupChoiceModal = function() {
+            const modal = document.getElementById('modal-backup-choice');
+            modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.shareBackupFile = async function() {
+            try {
+                if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+                const { file } = createBackupFile();
+                if (!(navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share)) {
+                    showToast('이 기기에서는 공유가 어려워 다운로드로 저장합니다.');
+                    window.downloadBackupFile();
+                    return;
+                }
+                await navigator.share({ files: [file], title: 'GOFITGYM 백업' });
+                window.closeBackupChoiceModal();
+                showToast('백업 파일을 공유했습니다.');
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.error(err);
+                showToast('백업 공유에 실패했습니다.');
+            }
+        }
+
+        window.downloadBackupFile = function() {
+            try {
+                if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+                const { blob, fileName } = createBackupFile();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                window.closeBackupChoiceModal();
+                showToast('백업 파일을 저장했습니다.');
+            } catch (err) {
+                console.error(err);
+                showToast('백업 저장에 실패했습니다.');
+            }
+        }
+
+        window.openBackupRestorePicker = function() {
+            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            const input = document.getElementById('backup-restore-input');
+            if (input) input.click();
+        }
+
+        window.restoreBackupFile = async function(input) {
+            const file = input && input.files && input.files[0];
+            if (input) input.value = '';
+            if (!file) return;
+
+            try {
+                if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+                const parsed = JSON.parse(await file.text());
+                if (!parsed || !Array.isArray(parsed.members) || !Array.isArray(parsed.schedules)) {
+                    return showToast('백업 파일 형식이 올바르지 않습니다.');
+                }
+
+                const ok = confirm(`${getTrainerName()} 트레이너의 현재 데이터를 선택한 백업 파일로 복원할까요?`);
+                if (!ok) return;
+
+                const previousMembers = window.members || [];
+                const previousSchedules = window.schedules || [];
+                window.members = parsed.members;
+                window.schedules = parsed.schedules;
+                normalizeDatabase();
+                saveDatabase();
+                await syncRestoredDataToCloud(previousMembers, previousSchedules);
+
+                window.activeMemberId = null;
+                window.setDetailProgressExpanded(false);
+                window.setLessonEditMode(false, false);
+                window.switchMainView('dashboard');
+                showToast('백업 데이터가 복원되었습니다.');
+            } catch (err) {
+                console.error(err);
+                showToast('백업 복원에 실패했습니다.');
+            }
+        }
+
+        // ================= COPY APP =================
+        window.copyAppSource = function() {
+            try {
+                const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+                const tempTextArea = document.createElement("textarea");
+                tempTextArea.value = htmlContent;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+                showToast("✅ 앱 전체 코드가 복사되었어! 에디터에 붙여넣어 줘.");
+            } catch (err) { showToast("❌ 복사에 실패했어."); }
+        }
+
+        // ================= NAVIGATION =================
+        window.switchMainView = function(view) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-schedule').classList.add('hidden');
+            document.getElementById('view-member-detail').classList.add('hidden');
+            
+            document.getElementById('nav-dashboard').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
+            document.getElementById('nav-schedule').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
+            document.getElementById('main-scroll-area').classList.remove('overflow-y-auto');
+
+            if (view === 'dashboard') {
+                document.getElementById('main-scroll-area').classList.add('overflow-y-auto');
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                document.getElementById('header-subtitle').innerText = `${getTrainerName()} Trainer`;
+                document.getElementById('nav-dashboard').classList.replace('text-stone-400', 'text-amber-600');
+                
+                document.getElementById('header-action-container').innerHTML = `
+                    ${getTrainerSwitcherHtml()}
+                    <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all"><i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span></button>
+                `;
+                window.renderMemberList();
+            } else if (view === 'schedule') {
+                document.getElementById('view-schedule').classList.remove('hidden');
+                document.getElementById('header-subtitle').innerText = 'Class Schedule';
+                document.getElementById('nav-schedule').classList.replace('text-stone-400', 'text-amber-600');
+                document.getElementById('header-action-container').innerHTML = `${getTrainerSwitcherHtml()}<button onclick="window.goToToday()" class="border border-stone-600 hover:bg-stone-800 text-stone-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active-scale">오늘 이동</button>`;
+                window.initCalendar();
+            }
+        }
+
+        // ================= DASHBOARD CRM =================
+        window.switchMemberStatusTab = function(status) {
+            window.memberStatusFilter = status;
+            window.renderMemberList();
+        }
+
+        window.renderMemberList = function() {
+            const query = document.getElementById('member-search').value.toLowerCase().trim();
+            const container = document.getElementById('member-list-container');
+            container.innerHTML = '';
+
+            let filtered = window.members.filter(m => m.name.toLowerCase().includes(query));
+            let totalComp = 0;
+            const todayScheduleCount = (window.schedules || []).filter(s => s.date === formatDate(new Date())).length;
+
+            filtered.forEach(m => {
+                const sched = getTodayScheduleForMember(m);
+                m._todayTime = sched ? sched.time : null;
+            });
+
+            const activeCount = filtered.filter(m => !isMemberCompleted(m)).length;
+            const completedCount = filtered.filter(m => isMemberCompleted(m)).length;
+            document.getElementById('member-tab-active-count').innerText = activeCount;
+            document.getElementById('member-tab-completed-count').innerText = completedCount;
+
+            const activeBtn = document.getElementById('member-tab-active');
+            const completedBtn = document.getElementById('member-tab-completed');
+            activeBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            completedBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            if (window.memberStatusFilter === 'completed') {
+                activeBtn.className += " text-stone-500";
+                completedBtn.className += " bg-stone-900 text-white shadow";
+            } else {
+                activeBtn.className += " bg-stone-900 text-white shadow";
+                completedBtn.className += " text-stone-500";
+            }
+
+            filtered = filtered.filter(m => window.memberStatusFilter === 'completed' ? isMemberCompleted(m) : !isMemberCompleted(m));
+
+            filtered.sort((a, b) => {
+                if (a._todayTime && b._todayTime) return a._todayTime.localeCompare(b._todayTime);
+                if (a._todayTime) return -1;
+                if (b._todayTime) return 1;
+                return b.totalSessions - a.totalSessions;
+            });
+
+            filtered.forEach(m => {
+                // Check if signed and not just marked as 'LATER'
+                const comp = getCompletedCount(m);
+                totalComp += comp;
+                const percent = Math.round((comp / m.totalSessions) * 100) || 0;
+                const completed = isMemberCompleted(m);
+                
+                const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
+                const statusBadge = completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] bg-stone-100 text-stone-500 font-bold px-2 py-0.5 rounded-full">총 ${m.totalSessions}회</span>`;
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${m._todayTime ? 'border-amber-400' : 'border-stone-200/80'} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between`;
+                card.onclick = () => window.selectMember(m.id);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="text-base font-black text-stone-800">${timePrefix}${m.name}</h3>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <span class="text-lg font-black ${m._todayTime ? 'text-amber-500' : 'text-stone-400'}">${percent}%</span>
+                    </div>
+                    <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
+                        <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            if (!filtered.length) {
+                const empty = document.createElement('div');
+                empty.className = "sm:col-span-2 lg:col-span-3 bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-xs font-bold text-stone-400";
+                empty.innerText = window.memberStatusFilter === 'completed' ? '완료된 회원이 없습니다.' : '진행중인 회원이 없습니다.';
+                container.appendChild(empty);
+            }
+
+            document.getElementById('stat-today-schedules').innerText = `${todayScheduleCount}건`;
+            document.getElementById('stat-total-members').innerText = `${filtered.length}명`;
+            document.getElementById('stat-total-completed').innerText = `${totalComp}회`;
+        }
+
+        window.openNewMemberModal = function() {
+            document.getElementById('reg-date-input').value = new Date().toISOString().split('T')[0];
+            const m = document.getElementById('modal-member');
+            m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
+        }
+        window.closeNewMemberModal = function() {
+            const m = document.getElementById('modal-member');
+            m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
+        }
+        window.submitNewMember = function() {
+            const name = document.getElementById('reg-name').value.trim();
+            const sessions = parseInt(document.getElementById('reg-sessions').value) || 0;
+            if(!name) return showToast("이름을 입력하세요!");
+            if(sessions < 1) return showToast("세션 수를 올바르게 입력하세요!");
+            
+            const newM = {
+                id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
+                registrationDate: document.getElementById('reg-date-input').value,
+                email: document.getElementById('reg-email').value, telegram: document.getElementById('reg-telegram').value,
+                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: []
+            };
+            window.members.push(newM);
+            localSaveMember(newM);
+            window.renderMemberList();
+            window.closeNewMemberModal();
+            showToast('신규 회원이 정상 등록되었습니다.');
+        }
+
+        // ================= DELETE & ADD SESSION =================
+        window.confirmDeleteActiveMember = function() {
+            const m = document.getElementById('modal-delete-confirm');
+            m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
+        }
+        window.closeDeleteConfirmModal = function() {
+            const m = document.getElementById('modal-delete-confirm');
+            m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
+        }
+        window.executeDeleteMember = function() {
+            window.members = window.members.filter(x => x.id !== window.activeMemberId);
+            localDeleteMember(window.activeMemberId);
+            window.closeDeleteConfirmModal();
+            window.backToDashboard();
+            showToast('회원 데이터가 삭제되었습니다.');
+        }
+
+        window.openAddSessionModal = function() {
+            document.getElementById('add-session-date').value = formatDate(new Date());
+            const m = document.getElementById('modal-add-session');
+            m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
+        }
+        window.closeAddSessionModal = function() {
+            const m = document.getElementById('modal-add-session');
+            m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
+        }
+        window.executeAddSession = function() {
+            const count = parseInt(document.getElementById('add-sessions-count').value) || 0;
+            const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
+            if (count < 1) return showToast("추가할 세션 횟수를 확인해주세요!");
+            
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const currentLen = m.lessons.length;
+            const renewalId = 'renewal_' + Date.now();
+            m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
+            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count });
+            for(let i = 0; i < count; i++) {
+                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate });
+            }
+            m.totalSessions = m.lessons.length;
+            localSaveMember(m);
+            window.renderMemberLessons();
+            document.getElementById('detail-total-sessions').innerText = m.totalSessions;
+            window.closeAddSessionModal();
+            showToast(`재등록 세션 ${count}회가 추가되었습니다.`);
+        }
+
+        // ================= MEMBER DETAIL =================
+        window.selectMember = function(id) {
+            window.activeMemberId = id;
+            const m = window.members.find(x => x.id === id);
+            if(!m) return;
+
+            document.getElementById('detail-member-name').innerText = m.name;
+            document.getElementById('detail-member-trainer').innerText = formatTrainerLabel(m.trainer || getTrainerName());
+            document.getElementById('detail-reg-date').innerText = m.registrationDate;
+            document.getElementById('detail-total-sessions').innerText = m.totalSessions;
+            document.getElementById('detail-member-contacts').innerText = `이메일: ${m.email||'없음'} | 텔레그램: ${m.telegram ? '@'+m.telegram : '없음'}`;
+
+            window.setDetailProgressExpanded(false);
+            window.setLessonEditMode(false, false);
+            window.switchDetailTab('lessons');
+            window.renderMemberLessons();
+            window.renderMemberWorkouts();
+
+            document.getElementById('main-scroll-area').classList.add('overflow-y-auto');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-member-detail').classList.remove('hidden');
+            document.getElementById('header-action-container').innerHTML = '';
+            document.getElementById('main-scroll-area').scrollTo({top:0});
+        }
+
+        window.backToDashboard = function() {
+            window.activeMemberId = null;
+            window.switchMainView('dashboard');
+        }
+
+        window.switchDetailTab = function(tab) {
+            const tl = document.getElementById('tab-lessons'); const tw = document.getElementById('tab-workout');
+            const bl = document.getElementById('tab-lessons-btn'); const bw = document.getElementById('tab-workout-btn');
+
+            if (tab === 'lessons') {
+                tl.classList.remove('hidden'); tw.classList.add('hidden');
+                bl.className = "flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200";
+                bw.className = "flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200";
+            } else {
+                tl.classList.add('hidden'); tw.classList.remove('hidden');
+                bl.className = "flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200";
+                bw.className = "flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200";
+            }
+        }
+
+        window.setDetailProgressExpanded = function(expanded) {
+            window.detailProgressExpanded = expanded;
+            const panel = document.getElementById('detail-progress-panel');
+            const icon = document.getElementById('detail-progress-icon');
+            if (!panel || !icon) return;
+            panel.classList.toggle('hidden', !expanded);
+            icon.classList.toggle('rotate-180', expanded);
+        }
+
+        window.toggleDetailProgress = function() {
+            window.setDetailProgressExpanded(!window.detailProgressExpanded);
+        }
+
+        window.setLessonEditMode = function(editing, shouldRender = false) {
+            window.lessonEditMode = editing;
+            const btn = document.getElementById('lesson-edit-btn');
+            if (btn) {
+                btn.className = editing
+                    ? "px-2 py-1 rounded-md bg-amber-500 text-stone-950 text-[10px] font-black active-scale"
+                    : "px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale";
+                btn.innerHTML = editing
+                    ? '<i class="fa-solid fa-check mr-1"></i>완료'
+                    : '<i class="fa-solid fa-pen-to-square mr-1"></i>수정';
+            }
+            const addTools = document.getElementById('lesson-add-tools');
+            const addInput = document.getElementById('lesson-add-count');
+            if (addTools) {
+                addTools.classList.toggle('hidden', !editing);
+                addTools.classList.toggle('flex', editing);
+            }
+            if (editing && addInput && (!addInput.value || parseInt(addInput.value) < 1)) addInput.value = 1;
+            const rows = document.getElementById('lessons-rows-container');
+            if (rows) rows.classList.toggle('lesson-editing', editing);
+            if (shouldRender) window.renderMemberLessons();
+        }
+
+        window.toggleLessonEditMode = function() {
+            window.setLessonEditMode(!window.lessonEditMode);
+        }
+
+        function updateDetailProgress(m, comp) {
+            const total = m.totalSessions || 0;
+            const remaining = Math.max(total - comp, 0);
+            const percent = total ? Math.round((comp / total) * 100) : 0;
+            document.getElementById('detail-session-progress').innerText = `잔여 수업 ${remaining}회`;
+            document.getElementById('detail-progress-summary').innerText = `${percent}%`;
+            document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
+            document.getElementById('detail-progress-label').innerText = `${percent}%`;
+            document.getElementById('detail-progress-bar').style.width = `${percent}%`;
+        }
+
+        function isRenewalStartLesson(m, lesson, index) {
+            if (!lesson || !lesson.renewalDate) return false;
+            if (!lesson.renewalId) return true;
+
+            const renewal = (m.renewals || []).find(r => r.id === lesson.renewalId);
+            if (renewal && Number(renewal.startNo) === Number(lesson.no)) return true;
+
+            const prevLesson = m.lessons[index - 1];
+            return !prevLesson || prevLesson.renewalId !== lesson.renewalId;
+        }
+
+        function rebuildRenewalSummaries(m) {
+            const renewalIds = new Set((m.lessons || []).map(l => l.renewalId).filter(Boolean));
+            m.renewals = (m.renewals || [])
+                .filter(r => renewalIds.has(r.id))
+                .map(r => {
+                    const firstIndex = m.lessons.findIndex(l => l.renewalId === r.id);
+                    const count = m.lessons.filter(l => l.renewalId === r.id).length;
+                    const firstLesson = m.lessons[firstIndex];
+                    return {
+                        ...r,
+                        startNo: firstIndex + 1,
+                        count,
+                        date: (firstLesson && firstLesson.renewalDate) || r.date
+                    };
+                });
+        }
+
+        window.deleteLessonAt = function(index) {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m || !m.lessons[index]) return;
+            const lesson = m.lessons[index];
+            const isSigned = lesson.signature && lesson.signature !== 'LATER';
+            if (isSigned) return showToast('서명 완료된 회차는 삭제할 수 없습니다.');
+
+            m.lessons.splice(index, 1);
+            m.lessons.forEach((l, i) => l.no = i + 1);
+            m.totalSessions = m.lessons.length;
+            rebuildRenewalSummaries(m);
+            localSaveMember(m);
+            document.getElementById('detail-total-sessions').innerText = m.totalSessions;
+            window.renderMemberLessons();
+            showToast('선택한 수업 항목이 삭제되었습니다.');
+        }
+
+        window.addLessonSlotsFromEdit = function() {
+            const input = document.getElementById('lesson-add-count');
+            const count = parseInt(input && input.value) || 0;
+            if (count < 1) return showToast('추가할 수업 횟수를 입력해주세요.');
+
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            const currentLen = m.lessons.length;
+            for (let i = 0; i < count; i++) {
+                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '' });
+            }
+            m.totalSessions = m.lessons.length;
+            localSaveMember(m);
+            document.getElementById('detail-total-sessions').innerText = m.totalSessions;
+            window.renderMemberLessons();
+            showToast(`수업 대기 ${count}회가 추가되었습니다.`);
+        }
+
+        window.editLessonRenewalDate = function(index) {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m || !m.lessons[index]) return;
+            const lesson = m.lessons[index];
+            const currentDate = lesson.renewalDate || formatDate(new Date());
+            const nextDate = prompt('재등록 날짜를 입력하세요. (YYYY-MM-DD)', currentDate);
+            if (nextDate === null) return;
+            const trimmed = nextDate.trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return showToast('날짜는 YYYY-MM-DD 형식으로 입력해주세요.');
+
+            if (lesson.renewalId) {
+                m.lessons.forEach(l => {
+                    if (l.renewalId === lesson.renewalId) l.renewalDate = trimmed;
+                });
+                const renewal = (m.renewals || []).find(r => r.id === lesson.renewalId);
+                if (renewal) renewal.date = trimmed;
+            } else {
+                lesson.renewalDate = trimmed;
+            }
+
+            localSaveMember(m);
+            window.renderMemberLessons();
+            showToast('재등록 날짜가 수정되었습니다.');
+        }
+
+        window.renderMemberLessons = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if(!m) return;
+            const container = document.getElementById('lessons-rows-container'); container.innerHTML = '';
+            container.classList.toggle('lesson-editing', window.lessonEditMode);
+            let comp = 0;
+
+            m.lessons.forEach((l, i) => {
+                const isSigned = l.signature && l.signature !== 'LATER';
+                const isLater = l.signature === 'LATER';
+                const isRenewalStart = isRenewalStartLesson(m, l, i);
+                const renewalBadge = isRenewalStart ? `<button onclick="event.stopPropagation(); window.editLessonRenewalDate(${i})" class="inline-flex items-center text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 ml-1 align-middle"><i class="fa-solid fa-rotate-right mr-1"></i>재등록추가</button>` : '';
+                const renewalDateText = isRenewalStart ? `재등록일: ${formatDisplayDate(l.renewalDate)} · ` : '';
+                const deleteLessonButton = !isSigned ? `<span class="lesson-delete-slot"><button onclick="event.stopPropagation(); window.deleteLessonAt(${i})" class="inline-flex items-center justify-center w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full align-middle shadow-sm active-scale" aria-label="수업 삭제"><i class="fa-solid fa-minus text-[10px]"></i></button></span>` : '';
+                
+                if(isSigned) comp++;
+                
+                let statusText = '수업 대기';
+                let subText = '터치하여 서명';
+                let rightContent = `<button class="text-amber-500"><i class="fa-solid fa-chevron-right text-xs"></i></button>`;
+                let rowClass = '';
+
+                if (isSigned) {
+                    statusText = l.date;
+                    subText = `${renewalDateText}서명완료`;
+                    rightContent = `<img src="${l.signature}" class="h-6 object-contain bg-white border border-stone-200 rounded p-0.5 shadow-sm">`;
+                    rowClass = 'bg-amber-500/5';
+                } else if (isLater) {
+                    statusText = l.date || '날짜 미정';
+                    subText = `${renewalDateText}나중에 서명`;
+                    rightContent = `<span class="text-[10px] font-bold text-stone-500 bg-stone-200 px-2.5 py-1 rounded-md shadow-sm">나중에 서명</span>`;
+                    rowClass = 'bg-stone-50';
+                } else {
+                    subText = `${renewalDateText}터치하여 서명`;
+                }
+
+                const row = document.createElement('div');
+                row.className = `lesson-row flex justify-between items-center p-3 border-b border-stone-50 transition-colors ${rowClass}`;
+                row.onclick = () => { if (!window.lessonEditMode) window.openSignatureDrawingModal(i); };
+                
+                row.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="font-black text-xs text-stone-400 w-4">${String(l.no).padStart(2,'0')}</span>
+                        <div>
+                            <p class="text-sm font-bold text-stone-800">${statusText}${deleteLessonButton}${renewalBadge}</p>
+                            <p class="text-[9px] text-stone-400">${subText}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 items-center">
+                        ${rightContent}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+            updateDetailProgress(m, comp);
+        }
+
+        // ================= SIGNATURE LOGIC =================
+        function initSignaturePad() {
+            const canvas = document.getElementById('signature-canvas');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                if(rect.width === 0) return;
+                canvas.width = rect.width * ratio; canvas.height = rect.height * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                if (window.signaturePad) window.signaturePad.clear();
+            }
+            window.addEventListener("resize", resizeCanvas);
+            window.signaturePad = new SignaturePad(canvas, { minWidth: 1.5, maxWidth: 4, penColor: "#1c1917" });
+            const observer = new MutationObserver(m => {
+                m.forEach(mut => { if(mut.attributeName === 'class' && !document.getElementById('sign-modal').classList.contains('hidden')) setTimeout(resizeCanvas, 150); });
+            });
+            observer.observe(document.getElementById('sign-modal'), {attributes: true});
+        }
+
+        window.openSignatureDrawingModal = function(index) {
+            window.currentEditingLessonIndex = index;
+            document.getElementById('sign-modal-title').innerText = `${String(index+1).padStart(2,'0')}회차 레슨 서명`;
+            
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const l = m.lessons[index];
+            const isSigned = l.signature && l.signature !== 'LATER';
+
+            const canvasWrap = document.getElementById('signature-canvas-wrapper');
+            const prevWrap = document.getElementById('signature-preview-wrapper');
+            const btns = document.getElementById('sign-action-btns');
+            const badge = document.getElementById('sign-status-badge');
+
+            if (isSigned) {
+                // 서명 보기 모드 (View Mode)
+                canvasWrap.classList.add('hidden');
+                prevWrap.classList.remove('hidden');
+                document.getElementById('signature-preview-img').src = l.signature;
+                badge.innerHTML = `<span class="text-[10px] text-emerald-500 font-bold bg-emerald-50 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i>서명 완료됨</span>`;
+                
+                btns.innerHTML = `
+                    <button onclick="window.deleteSignatureFromView()" class="w-1/4 py-3 bg-red-50 hover:bg-red-100 text-red-500 font-bold rounded-xl text-xs transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+                    <button onclick="window.reSignActiveSignature()" class="w-1/4 py-3 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-xl text-xs transition-colors">재서명</button>
+                    <button onclick="window.closeSignModal()" class="w-2/4 py-3 bg-stone-900 text-white font-black rounded-xl text-xs shadow-md active-scale">확인 (닫기)</button>
+                `;
+            } else {
+                // 직접 서명 그리기 모드 (Drawing Mode)
+                canvasWrap.classList.remove('hidden');
+                prevWrap.classList.add('hidden');
+                if(window.signaturePad) window.signaturePad.clear();
+                badge.innerHTML = `<span class="text-[10px] text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen text-amber-500 mr-1"></i>사인 패드</span>`;
+                
+                btns.innerHTML = `
+                    <button onclick="window.markSignLater()" class="w-1/4 py-3 bg-stone-200 text-stone-600 font-bold rounded-xl text-[10px] leading-tight hover:bg-stone-300 active-scale">나중에<br>서명</button>
+                    <button onclick="window.clearCanvas()" class="w-1/4 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs hover:bg-stone-300 active-scale"><i class="fa-solid fa-eraser"></i></button>
+                    <button onclick="window.saveActiveSignature()" class="w-2/4 py-3 bg-amber-500 hover:bg-amber-600 text-stone-900 font-black rounded-xl text-xs shadow-md active-scale">서명 완료</button>
+                `;
+                // Force resize for canvas to render correctly
+                setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 150);
+            }
+
+            const mModal = document.getElementById('sign-modal');
+            mModal.classList.remove('hidden'); setTimeout(() => mModal.classList.remove('opacity-0'), 10);
+        }
+
+        window.markSignLater = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const today = new Date();
+            m.lessons[window.currentEditingLessonIndex].signature = 'LATER';
+            if (!m.lessons[window.currentEditingLessonIndex].date) {
+                m.lessons[window.currentEditingLessonIndex].date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+            }
+            m.lessons[window.currentEditingLessonIndex].trainer = getTrainerName();
+            localSaveMember(m);
+            window.renderMemberLessons();
+            window.closeSignModal();
+            showToast('나중에 서명하기로 저장되었습니다.');
+        }
+
+        window.reSignActiveSignature = function() {
+            const canvasWrap = document.getElementById('signature-canvas-wrapper');
+            const prevWrap = document.getElementById('signature-preview-wrapper');
+            const btns = document.getElementById('sign-action-btns');
+            const badge = document.getElementById('sign-status-badge');
+
+            canvasWrap.classList.remove('hidden');
+            prevWrap.classList.add('hidden');
+            if(window.signaturePad) window.signaturePad.clear();
+            badge.innerHTML = `<span class="text-[10px] text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen mr-1"></i>재서명 모드</span>`;
+            
+            btns.innerHTML = `
+                <button onclick="window.markSignLater()" class="w-1/4 py-3 bg-stone-200 text-stone-600 font-bold rounded-xl text-[10px] leading-tight">나중에<br>서명</button>
+                <button onclick="window.clearCanvas()" class="w-1/4 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"><i class="fa-solid fa-eraser"></i></button>
+                <button onclick="window.saveActiveSignature()" class="w-2/4 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs shadow-md">서명 완료</button>
+            `;
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 50);
+        }
+
+        window.deleteSignatureFromView = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            m.lessons[window.currentEditingLessonIndex].signature = ''; 
+            m.lessons[window.currentEditingLessonIndex].date = '';
+            m.lessons[window.currentEditingLessonIndex].trainer = '';
+            localSaveMember(m);
+            window.renderMemberLessons();
+            window.closeSignModal();
+            showToast('서명이 삭제되었습니다.');
+        }
+
+        window.closeSignModal = function() {
+            const m = document.getElementById('sign-modal');
+            m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); if(window.signaturePad) window.signaturePad.clear(); }, 300);
+        }
+        window.clearCanvas = function() { if(window.signaturePad) window.signaturePad.clear(); }
+        
+        window.saveActiveSignature = function() {
+            if(window.signaturePad.isEmpty()) return showToast("사인을 입력하세요!");
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const today = new Date();
+            m.lessons[window.currentEditingLessonIndex].signature = window.signaturePad.toDataURL();
+            m.lessons[window.currentEditingLessonIndex].date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+            m.lessons[window.currentEditingLessonIndex].trainer = getTrainerName();
+            localSaveMember(m);
+            window.renderMemberLessons();
+            window.closeSignModal();
+            showToast('서명이 안전하게 저장되었습니다.');
+        }
+
+        // ================= WORKOUT =================
+        window.renderMemberWorkouts = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if(!m) return;
+            const container = document.getElementById('workout-rows-container'); container.innerHTML = '';
+            m.workouts.forEach(w => {
+                const div = document.createElement('div');
+                div.className = "bg-white border border-stone-200 p-3 rounded-xl";
+                div.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" onchange="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-16 bg-transparent outline-none border-b border-stone-300">
+                        <div class="flex items-center gap-1">
+                            <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale" aria-label="운동일지 복사">
+                                <i class="fa-regular fa-copy text-xs"></i>
+                            </button>
+                            <button onclick="window.shareWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-lg active-scale" aria-label="운동일지 공유">
+                                <i class="fa-solid fa-share-nodes text-xs"></i>
+                            </button>
+                            <button onclick="window.delW(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-red-50 text-stone-400 hover:text-red-500 rounded-lg active-scale" aria-label="운동일지 삭제">
+                                <i class="fa-solid fa-trash-can text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="workout-content-${w.id}" onchange="window.updateW(${w.id}, 'content', this.value)" class="w-full min-h-[72px] text-xs text-stone-600 bg-stone-50 border border-stone-100 p-2 rounded outline-none focus:border-amber-500">${escapeHtml(w.content)}</textarea>
+                `;
+                container.appendChild(div);
+            });
+        }
+        window.addNewWorkoutRow = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const d = new Date();
+            m.workouts.unshift({ id: Date.now(), date: `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, content: '' });
+            localSaveMember(m);
+            window.renderMemberWorkouts();
+        }
+        window.updateW = function(id, k, v) { 
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            m.workouts.find(w => w.id === id)[k] = v; 
+            localSaveMember(m); 
+        }
+        window.delW = function(id) { 
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            m.workouts = m.workouts.filter(w => w.id !== id); 
+            localSaveMember(m);
+            window.renderMemberWorkouts();
+        }
+
+        function getWorkoutSharePayload(id) {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return null;
+            const w = m.workouts.find(item => item.id === id);
+            if (!w) return null;
+
+            const dateEl = document.getElementById(`workout-date-${id}`);
+            const contentEl = document.getElementById(`workout-content-${id}`);
+            if (dateEl) w.date = dateEl.value.trim();
+            if (contentEl) w.content = contentEl.value.trim();
+            localSaveMember(m);
+
+            if (!w.content) {
+                showToast('보낼 운동내용을 먼저 입력해주세요.');
+                return null;
+            }
+
+            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}\n\n${w.content}`;
+            return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
+        }
+
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+        }
+
+        window.copyWorkoutLog = async function(id) {
+            const payload = getWorkoutSharePayload(id);
+            if (!payload) return;
+            try {
+                await copyTextToClipboard(payload.text);
+                showToast('운동일지를 복사했습니다.');
+            } catch (err) {
+                showToast('복사에 실패했습니다.');
+            }
+        }
+
+        window.shareWorkoutLog = async function(id) {
+            const payload = getWorkoutSharePayload(id);
+            if (!payload) return;
+            if (navigator.share) {
+                try {
+                    await navigator.share(payload);
+                    showToast('공유창을 열었습니다.');
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+            try {
+                await copyTextToClipboard(payload.text);
+                showToast('공유 미지원 환경이라 복사했습니다.');
+            } catch (err) {
+                showToast('공유에 실패했습니다.');
+            }
+        }
+
+        // ================= CALENDAR ENGINE =================
+        window.zoomCalendar = function(delta) {
+            window.currentZoom = Math.max(0.7, Math.min(1.8, window.currentZoom + delta));
+            document.documentElement.style.setProperty('--cal-zoom', window.currentZoom);
+            document.getElementById('zoom-level-text').innerText = `${Math.round(window.currentZoom * 100)}%`;
+        }
+        function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function getStartOfWeek(date) { const d = new Date(date); d.setDate(d.getDate() - d.getDay()); return d; }
+        window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
+        window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
+
+        window.initCalendar = function() {
+            const s = getStartOfWeek(window.currentDate);
+            const e = new Date(s); e.setDate(e.getDate() + 6);
+
+            document.getElementById('calendar-month-year').innerText = `${s.getFullYear()}년 ${s.getMonth() + 1}월`;
+            document.getElementById('calendar-week-range').innerHTML = `<i class="fa-regular fa-calendar text-amber-500 mr-1"></i>${String(s.getMonth()+1).padStart(2,'0')}.${String(s.getDate()).padStart(2,'0')} - ${String(e.getMonth()+1).padStart(2,'0')}.${String(e.getDate()).padStart(2,'0')}`;
+
+            const header = document.getElementById('calendar-header');
+            const body = document.getElementById('calendar-body');
+            header.innerHTML = '<div class="py-2 text-center cal-grid-header flex flex-col justify-end text-[8px] text-stone-500 pb-1 bg-stone-900">TIME</div>';
+            body.innerHTML = '';
+
+            const todayStr = formatDate(window.currentDate);
+
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(s); d.setDate(d.getDate() + i);
+                const isToday = formatDate(d) === todayStr;
+                header.innerHTML += `
+                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header bg-stone-900">
+                        <span class="text-[9px] font-bold ${isToday ? 'text-amber-500' : 'text-stone-500'} mb-0.5">${DAYS[i]}</span>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${isToday ? 'bg-amber-500 text-stone-900' : 'text-stone-300'}">${d.getDate()}</div>
+                    </div>`;
+            }
+
+            for (let h = 0; h < HOURS; h++) {
+                const tStr = `${String(START_HOUR + h).padStart(2, '0')}:00`;
+                const row = document.createElement('div');
+                row.className = "grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] relative cal-grid-row";
+                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-bold text-stone-500 w-[50px] lg:w-[60px] cal-time-text">${tStr}</div>`;
+                
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(s); d.setDate(d.getDate() + i);
+                    const tDate = formatDate(d);
+                    const cell = document.createElement('div');
+                    cell.className = "cal-grid-cell relative cursor-pointer hover:bg-stone-800 transition-colors h-full";
+                    cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
+                    cell.id = `cell-${tDate}-${tStr}`;
+                    row.appendChild(cell);
+                }
+                body.appendChild(row);
+            }
+
+            window.schedules.forEach(evt => {
+                const cell = document.getElementById(`cell-${evt.date}-${evt.time}`);
+                if (cell) {
+                    const b = document.createElement('div');
+                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 p-1 flex items-start overflow-hidden shadow-sm active-scale z-10`;
+                    b.innerHTML = `<span class="font-bold text-white truncate leading-tight cal-evt-text">${evt.title}</span>`;
+                    b.onclick = (e) => { e.stopPropagation(); window.openScheduleModal(evt.date, evt.time, evt); };
+                    cell.appendChild(b);
+                }
+            });
+        }
+
+        // ================= SCHEDULE LOGIC =================
+        window.openScheduleModal = function(dt, tm, evt) {
+            const m = document.getElementById('modal-schedule');
+            const dObj = new Date(dt);
+            document.getElementById('sched-display-dt').innerText = `${dObj.getFullYear()}.${String(dObj.getMonth()+1).padStart(2,'0')}.${String(dObj.getDate()).padStart(2,'0')} (${DAYS[dObj.getDay()]}) ${tm}`;
+            
+            document.getElementById('sched-date').value = dt;
+            document.getElementById('sched-time').value = tm;
+            document.getElementById('sched-title').value = evt ? evt.title : '';
+
+            const daySchedules = window.schedules.filter(s => s.date === dt);
+            let memberItems = window.members.map(mem => {
+                const sched = daySchedules.find(s => s.title.includes(mem.name));
+                return { name: mem.name, time: sched ? sched.time : null };
+            });
+
+            memberItems.sort((a, b) => {
+                if (a.time && b.time) return a.time.localeCompare(b.time); 
+                if (a.time) return -1; 
+                if (b.time) return 1;
+                return a.name.localeCompare(b.name); 
+            });
+
+            const chips = document.getElementById('sched-quick-members'); chips.innerHTML = '';
+            memberItems.forEach(item => {
+                const isScheduled = item.time ? true : false;
+                const c = document.createElement('span');
+                c.className = `text-[10px] ${isScheduled ? 'bg-amber-500 text-stone-900 shadow-sm' : 'bg-stone-700 text-stone-300'} px-2 py-1 rounded cursor-pointer hover:opacity-80 font-bold transition-all`;
+                c.innerText = isScheduled ? `[${item.time}] ${item.name}` : item.name;
+                c.onclick = () => document.getElementById('sched-title').value = item.name;
+                chips.appendChild(c);
+            });
+
+            const btns = document.getElementById('sched-action-btns');
+            if (evt) {
+                document.getElementById('sched-modal-title').innerHTML = '<i class="fa-solid fa-pen mr-1.5"></i>일정 수정';
+                document.getElementById('sched-id').value = evt.id;
+                document.getElementById('sched-recurring-block').classList.add('hidden');
+                btns.innerHTML = `<button onclick="window.deleteSchedule(${evt.id})" class="w-1/3 py-3 bg-red-500/20 text-red-400 font-bold rounded-xl text-xs active-scale">삭제</button><button onclick="window.saveSchedule()" class="w-2/3 py-3 bg-blue-500 text-white font-black rounded-xl text-xs active-scale">저장</button>`;
+            } else {
+                document.getElementById('sched-modal-title').innerHTML = '<i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록';
+                document.getElementById('sched-id').value = '';
+                document.getElementById('sched-recurring-block').classList.remove('hidden');
+                document.getElementById('sched-recurring').checked = false;
+                btns.innerHTML = `<button onclick="window.closeScheduleModal()" class="flex-1 py-3 bg-stone-800 text-stone-300 font-bold rounded-xl text-xs active-scale">취소</button><button onclick="window.saveSchedule()" class="flex-1 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs active-scale">등록</button>`;
+            }
+            m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeScheduleModal = function() {
+            const m = document.getElementById('modal-schedule');
+            m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
+        }
+
+        window.saveSchedule = function() {
+            const title = document.getElementById('sched-title').value.trim();
+            if(!title) return showToast('내용을 입력하세요!');
+            const id = document.getElementById('sched-id').value;
+            const isRec = document.getElementById('sched-recurring').checked;
+            
+            if (id) {
+                const s = window.schedules.find(x => x.id == id);
+                s.title = title;
+                localSaveSchedule(s);
+            } else {
+                if (isRec) {
+                    for(let i=0; i<12; i++) {
+                        const target = new Date(document.getElementById('sched-date').value);
+                        target.setDate(target.getDate() + (i*7));
+                        const newS = { id: Date.now()+i, title, date: formatDate(target), time: document.getElementById('sched-time').value, color: 'bg-blue-500/90' };
+                        window.schedules.push(newS);
+                        localSaveSchedule(newS);
+                    }
+                    showToast('12주 반복 예약이 세팅되었습니다.');
+                } else {
+                    const newS = { id: Date.now(), title, date: document.getElementById('sched-date').value, time: document.getElementById('sched-time').value, color: 'bg-blue-500/90' };
+                    window.schedules.push(newS);
+                    localSaveSchedule(newS);
+                }
+            }
+            window.initCalendar(); window.renderMemberList(); window.closeScheduleModal();
+        }
+        window.deleteSchedule = function(id) { 
+            window.schedules = window.schedules.filter(s => s.id != id);
+            localDeleteSchedule(id);
+            window.initCalendar(); window.renderMemberList(); window.closeScheduleModal(); 
+        }
+
+        // ================= SMART SHARE =================
+        window.openShareModal = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const comp = m.lessons.filter(l => l.signature && l.signature !== 'LATER').length;
+            const lw = m.workouts[0] ? `[${m.workouts[0].date}] ${m.workouts[0].content}` : '기록 없음';
+            document.getElementById('share-text-preview').value = `[GOFITGYM] ${m.name} 회원님 피트니스 리포트\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지: ${lw}\n\n오늘도 고생하셨습니다!`;
+            const sm = document.getElementById('share-modal');
+            sm.classList.remove('hidden'); setTimeout(() => sm.classList.remove('opacity-0'), 10);
+        }
+        window.closeShareModal = function() {
+            const sm = document.getElementById('share-modal');
+            sm.classList.add('opacity-0'); setTimeout(() => sm.classList.add('hidden'), 300);
+        }
+        window.shareViaEmail = function() { window.location.href = `mailto:?subject=[GOFITGYM] 피트니스 리포트&body=${encodeURIComponent(document.getElementById('share-text-preview').value)}`; }
+        window.shareViaTelegram = function() { window.open(`https://t.me/share/url?url=https://gofitgym.com&text=${encodeURIComponent(document.getElementById('share-text-preview').value)}`, '_blank'); }
+        window.copyShareTextToClipboard = function() {
+            const ta = document.getElementById('share-text-preview'); ta.select(); document.execCommand('copy'); showToast("복사 완료!");
+        }
+
+        // ================= PDF PAGINATION & PREVIEW =================
+        window.openPdfPreviewModal = function() {
+            window.buildPdfPagesForPreview();
+            const pm = document.getElementById('pdf-preview-modal');
+            pm.classList.remove('hidden'); setTimeout(() => pm.classList.remove('opacity-0'), 10);
+        }
+
+        window.closePdfPreviewModal = function() {
+            const pm = document.getElementById('pdf-preview-modal');
+            pm.classList.add('opacity-0'); setTimeout(() => pm.classList.add('hidden'), 300);
+        }
+
+        window.buildPdfPagesForPreview = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const printDate = new Date().toISOString().split('T')[0].replace(/-/g, '.');
+            
+            const lessonsPerPage = 25;
+            const workoutsPerPage = 15;
+            
+            const lessonPages = Math.max(1, Math.ceil(m.lessons.length / lessonsPerPage));
+            const workoutPages = Math.max(1, Math.ceil(m.workouts.length / workoutsPerPage));
+            const totalPages = lessonPages + workoutPages;
+            
+            const container = document.createElement('div');
+            container.id = 'pdf-export-wrapper';
+            const swipeContainer = document.getElementById('pdf-swipe-container');
+            swipeContainer.innerHTML = '';
+
+            let globalPageNum = 1;
+
+            for(let p = 0; p < lessonPages; p++) {
+                const slice = []; 
+                for(let i=0; i<lessonsPerPage; i++) slice.push(m.lessons[p*lessonsPerPage + i] || null);
+
+                const buildRow = (item) => {
+                    if (item) {
+                        const isSigned = item.signature && item.signature !== 'LATER';
+                        const isLater = item.signature === 'LATER';
+                        const lessonIndex = m.lessons.findIndex(l => l.no === item.no);
+                        const lessonDate = item.date || (isRenewalStartLesson(m, item, lessonIndex) ? `재등록 ${formatDisplayDate(item.renewalDate)}` : '');
+                        let sigContent = '';
+                        if (isSigned) sigContent = `<img src="${item.signature}" class="h-6 w-auto object-contain mx-auto">`;
+                        else if (isLater) sigContent = `<span style="color:#a8a29e; font-size:9px; font-weight:bold;">나중에 서명</span>`;
+
+                        return `<tr><td class="border border-stone-300 p-2 text-center font-bold bg-stone-50 h-[32px]">${item.no}</td><td class="border border-stone-300 p-2 text-center font-medium text-[11px] h-[32px]">${lessonDate}</td><td class="border border-stone-300 p-2 text-center text-[11px] h-[32px] truncate max-w-[100px]">${item.trainer}</td><td class="border border-stone-300 p-1 text-center h-[32px]">${sigContent}</td></tr>`;
+                    }
+                    return `<tr><td class="border border-stone-300 p-2 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td></tr>`;
+                };
+
+                const rowsHtml = slice.map(i => buildRow(i)).join('');
+
+                const pageHtml = `
+                    <div class="p-10 bg-white text-stone-900 w-[794px] h-[1123px] border border-stone-300 relative flex flex-col justify-between overflow-hidden" style="font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box;">
+                        <div class="flex-grow flex flex-col">
+                            <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
+                                <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ LESSON CHECK <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold">회원명: ${m.name}</p>
+                                    <p class="text-sm font-bold">담당 트레이너: ${m.trainer}</p>
+                                </div>
+                            </div>
+                            <div class="flex-grow">
+                                <table class="w-full border-collapse border border-stone-300 table-fixed">
+                                    <thead class="bg-stone-100"><tr><th class="border border-stone-300 p-2 w-16 text-sm">NO</th><th class="border border-stone-300 p-2 w-32 text-sm">DATE</th><th class="border border-stone-300 p-2 w-40 text-sm">트레이너</th><th class="border border-stone-300 p-2 text-sm">고객서명</th></tr></thead>
+                                    <tbody>${rowsHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-6 border-t-4 border-stone-800 pt-5 flex justify-between items-center bg-stone-50 p-5 rounded-xl shrink-0">
+                            <div class="flex items-center space-x-4">
+                                <div class="bg-stone-900 text-amber-500 p-2.5 rounded-lg font-black text-base">GOFITGYM</div>
+                                <div>
+                                    <h4 class="font-bold text-sm">고핏짐 개인 트레이닝 보증 카드</h4>
+                                    <p class="text-[11px] text-stone-500">본 문서는 회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-stone-600 font-medium">인쇄 일자: ${printDate}</div>
+                        </div>
+                    </div>
+                `;
+                appendPage(pageHtml, globalPageNum > 1);
+                globalPageNum++;
+            }
+
+            for(let p = 0; p < workoutPages; p++) {
+                const slice = []; 
+                for(let i=0; i<workoutsPerPage; i++) slice.push(m.workouts[p*workoutsPerPage + i] || null);
+
+                const buildRow = (item) => {
+                    if (item) {
+                        return `<tr><td class="border border-stone-300 p-3 text-center font-bold bg-stone-50 h-[48px]">${item.date}</td><td class="border border-stone-300 p-3 text-xs h-[48px] overflow-hidden truncate max-w-[500px]">${item.content}</td></tr>`;
+                    }
+                    return `<tr><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td></tr>`;
+                };
+
+                const rowsHtml = slice.map(i => buildRow(i)).join('');
+
+                const pageHtml = `
+                    <div class="p-10 bg-white text-stone-900 w-[794px] h-[1123px] border border-stone-300 relative flex flex-col justify-between overflow-hidden" style="font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box;">
+                        <div class="flex-grow flex flex-col">
+                            <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
+                                <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ WORKOUT LOG <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
+                                <div class="text-right">
+                                    <p class="text-sm font-bold">회원명: ${m.name}</p>
+                                    <p class="text-sm font-bold">담당 트레이너: ${m.trainer}</p>
+                                </div>
+                            </div>
+                            <div class="flex-grow">
+                                <table class="w-full border-collapse border border-stone-300 table-fixed">
+                                    <thead class="bg-stone-100"><tr><th class="border border-stone-300 p-3 w-32 text-sm">날짜</th><th class="border border-stone-300 p-3 text-left text-sm">오늘의 운동 일지</th></tr></thead>
+                                    <tbody>${rowsHtml}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mt-6 border-t-4 border-stone-800 pt-5 flex justify-between items-center bg-stone-50 p-5 rounded-xl shrink-0">
+                            <div class="flex items-center space-x-4">
+                                <div class="bg-stone-900 text-amber-500 p-2.5 rounded-lg font-black text-base">GOFITGYM</div>
+                                <div>
+                                    <h4 class="font-bold text-sm">고핏짐 개인 트레이닝 보증 카드</h4>
+                                    <p class="text-[11px] text-stone-500">본 문서는 회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-stone-600 font-medium">인쇄 일자: ${printDate}</div>
+                        </div>
+                    </div>
+                `;
+                appendPage(pageHtml, true); 
+                globalPageNum++;
+            }
+
+            function appendPage(html, needsBreak) {
+                const exportPage = document.createElement('div');
+                exportPage.innerHTML = html;
+                if (needsBreak) exportPage.className = "html2pdf__page-break"; 
+                container.appendChild(exportPage);
+
+                const previewSlide = document.createElement('div');
+                previewSlide.className = "snap-center shrink-0 w-full flex justify-center items-center px-4 pt-4";
+                
+                const scaleWrapper = document.createElement('div');
+                scaleWrapper.className = "pdf-scale-wrapper bg-white shadow-2xl origin-top overflow-hidden border border-stone-700 mx-auto";
+                scaleWrapper.style.width = "794px";
+                scaleWrapper.style.height = "1123px";
+                scaleWrapper.innerHTML = html;
+                
+                previewSlide.appendChild(scaleWrapper);
+                swipeContainer.appendChild(previewSlide);
+            }
+
+            window.currentPdfElementToExport = container;
+            window.updatePdfPageIndicator();
+            setTimeout(window.scalePdfPreviewBoxes, 50);
+            window.addEventListener('resize', window.scalePdfPreviewBoxes);
+        }
+
+        window.scalePdfPreviewBoxes = function() {
+            const containerWidth = window.innerWidth - 32; 
+            const scale = Math.min(containerWidth / 794, 1); 
+            const wrappers = document.querySelectorAll('.pdf-scale-wrapper');
+            wrappers.forEach(w => {
+                w.style.transform = `scale(${scale})`;
+                w.parentElement.style.height = `${1123 * scale + 40}px`; 
+                w.parentElement.style.width = `${794 * scale}px`;
+            });
+        }
+
+        window.updatePdfPageIndicator = function() {
+            const container = document.getElementById('pdf-swipe-container');
+            if(!container || container.children.length === 0) return;
+            const scrollLeft = container.scrollLeft;
+            const width = container.clientWidth;
+            const currentPage = Math.round(scrollLeft / width) + 1;
+            const totalPages = container.children.length;
+            document.getElementById('pdf-page-indicator').innerText = `${currentPage} / ${totalPages} 페이지`;
+        }
+
+        window.executePDFDownload = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            showToast("PDF 문서 빌드 중입니다...");
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute'; tempDiv.style.left = '-9999px'; tempDiv.style.top = '0';
+            tempDiv.appendChild(window.currentPdfElementToExport);
+            document.body.appendChild(tempDiv);
+
+            html2pdf().set({ 
+                margin: 0, 
+                filename: `GOFITGYM_${m.name}.pdf`, 
+                image: {type: 'jpeg', quality: 0.98}, 
+                html2canvas: {scale: 2, useCORS: true}, 
+                jsPDF: {unit: 'px', format: [794, 1123], orientation: 'portrait'} 
+            }).from(window.currentPdfElementToExport).save().then(() => { 
+                document.body.removeChild(tempDiv);
+                showToast("PDF 다운로드 완료!"); 
+            });
+        }
+
+        // UTILS
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            t.classList.remove('translate-y-10', 'opacity-0');
+            setTimeout(() => t.classList.add('translate-y-10', 'opacity-0'), 2500);
+        }
+
+        // 클라우드 데이터 수신 시 UI 강제 업데이트
+        window.updateMembersFromCloud = function(cloudMembers) {
+            window.members = cloudMembers;
+            normalizeDatabase();
+            saveDatabase();
+            window.renderMemberList();
+            if (window.activeMemberId) {
+                if (window.members.find(x => x.id === window.activeMemberId)) {
+                    window.renderMemberLessons(); window.renderMemberWorkouts();
+                } else {
+                    window.backToDashboard();
+                }
+            }
+        };
+        window.updateSchedulesFromCloud = function(cloudScheds) {
+            window.schedules = cloudScheds;
+            normalizeDatabase();
+            saveDatabase();
+            window.initCalendar();
+            window.renderMemberList();
+        };
+
+        if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .catch(err => console.log('Service worker registration skipped.', err));
+            });
+        }
+    </script>
+
+    <!-- ============================================== -->
+    <!-- SCRIPT 2: 백그라운드 클라우드 동기화 모듈      -->
+    <!-- 로컬 데이터와 클라우드를 끊김없이 실시간 연동  -->
+    <!-- ============================================== -->
+    <script type="module">
+        try {
+            const fbConfigStr = window.__firebase_config;
+            if (!fbConfigStr) throw new Error("No config");
+            const config = JSON.parse(fbConfigStr);
+            if (!config.apiKey) throw new Error("Invalid config");
+
+            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+
+            const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'gofitgym-default';
+            const app = initializeApp(config);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            window.currentUser = null;
+            let stopMembersSync = null;
+            let stopSchedulesSync = null;
+            let cloudSyncTrainerId = null;
+
+            const getCloudTrainerId = () => window.activeLoginId ? encodeURIComponent(window.activeLoginId) : null;
+
+            function stopCloudSync() {
+                if (stopMembersSync) stopMembersSync();
+                if (stopSchedulesSync) stopSchedulesSync();
+                stopMembersSync = null;
+                stopSchedulesSync = null;
+                cloudSyncTrainerId = null;
+            }
+
+            const initAuth = async () => {
+                if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                    await signInWithCustomToken(auth, window.__initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            };
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    window.currentUser = user;
+                    document.getElementById('cloud-status-text').innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i>동기화 됨';
+                    startCloudSync();
+                } else {
+                    stopCloudSync();
+                    document.getElementById('cloud-status-text').innerHTML = '<i class="fa-solid fa-server text-stone-400 mr-1"></i>로컬 단독';
+                }
+            });
+
+            function startCloudSync() {
+                if (!window.currentUser || !window.activeLoginId) return;
+                const trainerId = getCloudTrainerId();
+                if (!trainerId || cloudSyncTrainerId === trainerId) return;
+                stopCloudSync();
+                cloudSyncTrainerId = trainerId;
+
+                let isFirstLoadMembers = true;
+                const membersRef = collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members');
+                stopMembersSync = onSnapshot(membersRef, (snapshot) => {
+                    if (cloudSyncTrainerId !== trainerId) return;
+                    if (isFirstLoadMembers && snapshot.empty) {
+                        const localData = localStorage.getItem(`gofitgym_v11_members_${encodeURIComponent(window.activeLoginId)}`);
+                        if (localData && JSON.parse(localData).length > 0) {
+                            JSON.parse(localData).forEach(m => window.cloudSaveMemberHook(m));
+                        }
+                    }
+                    isFirstLoadMembers = false;
+                    const cloudMembers = [];
+                    snapshot.forEach(d => cloudMembers.push(d.data()));
+                    if(window.updateMembersFromCloud && !snapshot.empty) window.updateMembersFromCloud(cloudMembers);
+                }, (err) => console.error(err));
+
+                let isFirstLoadScheds = true;
+                const schedsRef = collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules');
+                stopSchedulesSync = onSnapshot(schedsRef, (snapshot) => {
+                    if (cloudSyncTrainerId !== trainerId) return;
+                    if (isFirstLoadScheds && snapshot.empty) {
+                        const localScheds = localStorage.getItem(`gofitgym_v11_schedules_${encodeURIComponent(window.activeLoginId)}`);
+                        if (localScheds && JSON.parse(localScheds).length > 0) {
+                            JSON.parse(localScheds).forEach(s => window.cloudSaveScheduleHook(s));
+                        }
+                    }
+                    isFirstLoadScheds = false;
+                    const cloudScheds = [];
+                    snapshot.forEach(d => cloudScheds.push(d.data()));
+                    if(window.updateSchedulesFromCloud && !snapshot.empty) window.updateSchedulesFromCloud(cloudScheds);
+                }, (err) => console.error(err));
+            }
+            window.restartCloudSyncHook = startCloudSync;
+
+            window.cloudSaveMemberHook = async function(m) {
+                const trainerId = getCloudTrainerId();
+                if(!window.currentUser || !trainerId) return;
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members', m.id.toString()), m);
+            }
+            window.cloudDeleteMemberHook = async function(id) {
+                const trainerId = getCloudTrainerId();
+                if(!window.currentUser || !trainerId) return;
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members', id.toString()));
+            }
+            window.cloudSaveScheduleHook = async function(s) {
+                const trainerId = getCloudTrainerId();
+                if(!window.currentUser || !trainerId) return;
+                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules', s.id.toString()), s);
+            }
+            window.cloudDeleteScheduleHook = async function(id) {
+                const trainerId = getCloudTrainerId();
+                if(!window.currentUser || !trainerId) return;
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules', id.toString()));
+            }
+        } catch(err) {
+            console.log("Firebase sync not available. Running perfectly in local mode.", err);
+        }
+    </script>
+</body>
+</html>
