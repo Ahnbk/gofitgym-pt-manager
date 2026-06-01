@@ -693,7 +693,7 @@
         var pendingWorkoutSave = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v16';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v17';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -2097,19 +2097,25 @@
             const source = document.getElementById('signature-canvas');
             if (!source || !source.width || !source.height) return window.signaturePad.toDataURL();
 
-            const original = source.toDataURL('image/png');
             const maxWidth = 560;
             const maxHeight = 420;
             const scale = Math.min(maxWidth / source.width, maxHeight / source.height, 1);
-            if (scale >= 1) return original;
+            const output = scale < 1 ? document.createElement('canvas') : source;
 
-            const target = document.createElement('canvas');
-            target.width = Math.max(1, Math.round(source.width * scale));
-            target.height = Math.max(1, Math.round(source.height * scale));
-            const ctx = target.getContext('2d');
-            ctx.drawImage(source, 0, 0, target.width, target.height);
-            const optimized = target.toDataURL('image/png');
-            return optimized.length < original.length ? optimized : original;
+            if (scale < 1) {
+                output.width = Math.max(1, Math.round(source.width * scale));
+                output.height = Math.max(1, Math.round(source.height * scale));
+                output.getContext('2d').drawImage(source, 0, 0, output.width, output.height);
+            }
+
+            const png = output.toDataURL('image/png');
+            let webp = '';
+            try {
+                webp = output.toDataURL('image/webp', 0.8);
+            } catch (err) {}
+
+            if (webp.startsWith('data:image/webp') && webp.length < png.length) return webp;
+            return png;
         }
 
         window.openSignatureDrawingModal = function(index) {
