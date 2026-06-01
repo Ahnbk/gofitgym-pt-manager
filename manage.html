@@ -166,9 +166,8 @@
                 <div>
                     <div class="flex items-center space-x-2">
                         <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
-                        <!-- CLOUD STATUS BADGE -->
                         <div id="cloud-status-text" class="text-[8px] font-bold text-stone-400 bg-stone-800 px-1.5 py-0.5 rounded flex items-center border border-stone-700">
-                            <i class="fa-solid fa-server mr-1"></i> 로컬 모드
+                            <i class="fa-solid fa-shield-halved mr-1"></i> 백업 모드
                         </div>
                     </div>
                     <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
@@ -176,9 +175,6 @@
             </div>
             
             <div id="header-action-container" class="flex space-x-2">
-                <button onclick="window.copyAppSource()" class="hidden md:flex bg-stone-800 hover:bg-stone-700 text-stone-300 px-3 py-1.5 rounded-xl text-xs font-bold items-center transition-all active-scale border border-stone-700">
-                    <i class="fa-solid fa-copy mr-1.5 text-amber-500"></i>코드 복사
-                </button>
                 <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all">
                     <i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span>
                 </button>
@@ -208,12 +204,22 @@
                         <i class="fa-solid fa-download mr-1.5 text-amber-500"></i>백업 저장
                     </button>
                     <button onclick="window.openBackupRestorePicker()" class="py-2.5 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale flex items-center justify-center border border-stone-200">
-                        <i class="fa-solid fa-folder-open mr-1.5 text-stone-500"></i>Drive/파일 복원
+                        <i class="fa-solid fa-folder-open mr-1.5 text-stone-500"></i>백업 파일 복원
                     </button>
                     <button onclick="window.installPwaApp()" id="install-app-btn" class="hidden py-2.5 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center shadow-sm">
                         <i class="fa-solid fa-mobile-screen-button mr-1.5"></i>앱 설치
                     </button>
                     <input type="file" id="backup-restore-input" accept=".json,application/json" class="hidden" onchange="window.restoreBackupFile(this)">
+                </div>
+
+                <div id="backup-status-panel" class="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5">
+                    <div id="backup-status-icon" class="w-8 h-8 rounded-xl flex items-center justify-center bg-stone-200 text-stone-500">
+                        <i class="fa-solid fa-shield-halved text-xs"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p id="backup-status-title" class="text-[11px] font-black text-stone-700">백업 상태 확인 중</p>
+                        <p id="backup-status-detail" class="text-[10px] font-bold text-stone-400 truncate">저장된 백업 기록을 확인하고 있습니다.</p>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
@@ -619,20 +625,16 @@
                 <textarea id="share-text-preview" class="w-full text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 focus:outline-none min-h-[120px] leading-relaxed" readonly></textarea>
                 
                 <div class="grid grid-cols-2 gap-2 pt-1">
-                    <button onclick="window.shareReportNative()" class="col-span-2 flex items-center justify-center p-3 bg-amber-500 text-stone-950 rounded-xl active-scale">
+                    <button onclick="window.shareReportNative()" class="flex items-center justify-center p-3 bg-amber-500 text-stone-950 rounded-xl active-scale">
                         <i class="fa-solid fa-share-nodes mr-1.5"></i>
                         <span class="text-[10px] font-black">기기 공유</span>
                     </button>
-                    <button onclick="window.shareViaEmail()" class="flex flex-col items-center justify-center p-3 bg-blue-50 border border-blue-200 rounded-xl active-scale">
-                        <i class="fa-regular fa-envelope text-xl text-blue-500 mb-1"></i>
-                        <span class="text-[10px] font-black text-stone-800">이메일 전송</span>
-                    </button>
-                    <button onclick="window.shareViaTelegram()" class="flex flex-col items-center justify-center p-3 bg-sky-50 border border-sky-200 rounded-xl active-scale">
-                        <i class="fa-brands fa-telegram text-xl text-sky-500 mb-1"></i>
-                        <span class="text-[10px] font-black text-stone-800">텔레그램 전송</span>
+                    <button onclick="window.copyShareTextToClipboard()" class="flex items-center justify-center p-3 bg-stone-100 text-stone-700 rounded-xl active-scale border border-stone-200">
+                        <i class="fa-regular fa-copy mr-1.5"></i>
+                        <span class="text-[10px] font-black">복사</span>
                     </button>
                 </div>
-                <button onclick="window.copyShareTextToClipboard()" class="w-full py-2.5 bg-stone-100 text-stone-700 rounded-xl text-xs font-bold active-scale"><i class="fa-regular fa-copy mr-1.5"></i>메시지 전체 복사</button>
+                <p class="text-[10px] text-stone-400 leading-relaxed">카카오톡, 문자, 이메일 전송은 기기 공유 화면에서 선택하는 방식이 가장 안정적입니다.</p>
             </div>
         </div>
     </div>
@@ -682,8 +684,10 @@
         var deferredInstallPrompt = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v11';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v12';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
+        const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
+        const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -817,13 +821,14 @@
                 window.schedules = [];
             }
             normalizeDatabase();
-            saveDatabase();
+            saveDatabase({ silent: true });
         }
 
-        function saveDatabase() {
+        function saveDatabase(options = {}) {
             if (!window.activeLoginId) return;
             localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
             localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
+            if (!options.silent) markDataChanged();
         }
 
         function resetLocalLoginInfo() {
@@ -900,6 +905,71 @@
 
         function getSchedulesStorageKey(loginId = window.activeLoginId) {
             return `gofitgym_v11_schedules_${storageSuffix(loginId)}`;
+        }
+
+        function getScopedMetaKey(prefix, loginId = window.activeLoginId) {
+            return `${prefix}${storageSuffix(loginId)}`;
+        }
+
+        function getSavedTimestamp(prefix) {
+            return Number(localStorage.getItem(getScopedMetaKey(prefix)) || 0);
+        }
+
+        function formatBackupTimestamp(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const today = new Date();
+            const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            if (formatDate(date) === formatDate(today)) return `오늘 ${time}`;
+            return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')} ${time}`;
+        }
+
+        function markDataChanged() {
+            if (!window.activeLoginId) return;
+            localStorage.setItem(getScopedMetaKey(LAST_DATA_CHANGE_KEY_PREFIX), String(Date.now()));
+            renderBackupStatus();
+        }
+
+        function markBackupSaved() {
+            if (!window.activeLoginId) return;
+            const now = Date.now();
+            localStorage.setItem(getScopedMetaKey(LAST_BACKUP_KEY_PREFIX), String(now));
+            localStorage.setItem(getScopedMetaKey(LAST_DATA_CHANGE_KEY_PREFIX), String(now));
+            renderBackupStatus();
+        }
+
+        function renderBackupStatus() {
+            const panel = document.getElementById('backup-status-panel');
+            if (!panel) return;
+            const icon = document.getElementById('backup-status-icon');
+            const title = document.getElementById('backup-status-title');
+            const detail = document.getElementById('backup-status-detail');
+            if (!window.activeLoginId) {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+
+            const lastBackup = getSavedTimestamp(LAST_BACKUP_KEY_PREFIX);
+            const lastChange = getSavedTimestamp(LAST_DATA_CHANGE_KEY_PREFIX);
+            if (!lastBackup) {
+                panel.className = 'flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5';
+                icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500 text-stone-950';
+                title.innerText = '백업 필요';
+                detail.innerText = '아직 이 트레이너의 백업 기록이 없습니다.';
+                return;
+            }
+            if (lastChange > lastBackup + 1000) {
+                panel.className = 'flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5';
+                icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500 text-stone-950';
+                title.innerText = '변경사항 백업 필요';
+                detail.innerText = `최근 백업: ${formatBackupTimestamp(lastBackup)}`;
+                return;
+            }
+            panel.className = 'flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5';
+            icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-500 text-white';
+            title.innerText = '백업 완료';
+            detail.innerText = `최근 백업: ${formatBackupTimestamp(lastBackup)}`;
         }
 
         function loadProfileStore() {
@@ -1068,12 +1138,12 @@
             hideLoginOverlay();
             loadDatabase();
             updateTrainerUi();
-            if (window.restartCloudSyncHook) window.restartCloudSyncHook();
         }
 
         function updateTrainerUi() {
             const subtitle = document.getElementById('header-subtitle');
             if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
+            renderBackupStatus();
             const detailTrainer = document.getElementById('detail-member-trainer');
             if (window.activeMemberId && detailTrainer) {
                 const m = window.members.find(x => x.id === window.activeMemberId);
@@ -1087,7 +1157,7 @@
             const loginId = decodeURIComponent(encodedLoginId);
             if (!window.trainerProfiles[loginId]) return;
             if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
-            saveDatabase();
+            saveDatabase({ silent: true });
             window.activeLoginId = loginId;
             sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
             localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
@@ -1096,7 +1166,6 @@
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
             loadDatabase();
-            if (window.restartCloudSyncHook) window.restartCloudSyncHook();
             window.switchMainView('dashboard');
             showToast(`${getTrainerName()} 트레이너로 전환되었습니다.`);
         }
@@ -1223,11 +1292,10 @@
             showToast(`${loggedOutName} 트레이너가 로그아웃되었습니다.`);
         }
 
-        // 클라우드와 통신하는 핵심 훅 (비동기 처리)
-        function localSaveMember(m) { saveDatabase(); if(window.cloudSaveMemberHook) window.cloudSaveMemberHook(m); }
-        function localDeleteMember(id) { saveDatabase(); if(window.cloudDeleteMemberHook) window.cloudDeleteMemberHook(id); }
-        function localSaveSchedule(s) { saveDatabase(); if(window.cloudSaveScheduleHook) window.cloudSaveScheduleHook(s); }
-        function localDeleteSchedule(id) { saveDatabase(); if(window.cloudDeleteScheduleHook) window.cloudDeleteScheduleHook(id); }
+        function localSaveMember(m) { saveDatabase(); }
+        function localDeleteMember(id) { saveDatabase(); }
+        function localSaveSchedule(s) { saveDatabase(); }
+        function localDeleteSchedule(id) { saveDatabase(); }
 
         // ================= BACKUP & RESTORE =================
         function buildBackupPayload() {
@@ -1258,28 +1326,9 @@
             return { blob, fileName, json };
         }
 
-        async function syncRestoredDataToCloud(previousMembers, previousSchedules) {
-            if (!window.cloudSaveMemberHook && !window.cloudSaveScheduleHook) return;
-
-            const nextMemberIds = new Set((window.members || []).map(m => m.id && m.id.toString()));
-            const nextScheduleIds = new Set((window.schedules || []).map(s => s.id && s.id.toString()));
-
-            if (window.cloudDeleteMemberHook) {
-                (previousMembers || []).forEach(m => {
-                    if (m.id && !nextMemberIds.has(m.id.toString())) window.cloudDeleteMemberHook(m.id);
-                });
-            }
-            if (window.cloudDeleteScheduleHook) {
-                (previousSchedules || []).forEach(s => {
-                    if (s.id && !nextScheduleIds.has(s.id.toString())) window.cloudDeleteScheduleHook(s.id);
-                });
-            }
-            if (window.cloudSaveMemberHook) (window.members || []).forEach(m => window.cloudSaveMemberHook(m));
-            if (window.cloudSaveScheduleHook) (window.schedules || []).forEach(s => window.cloudSaveScheduleHook(s));
-        }
-
         window.openBackupChoiceModal = function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            renderBackupStatus();
             const modal = document.getElementById('modal-backup-choice');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -1305,6 +1354,7 @@
             document.body.removeChild(a);
             if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 1000);
             window.closeBackupChoiceModal();
+            markBackupSaved();
             showToast(message);
         }
 
@@ -1324,6 +1374,7 @@
                     await writable.write(blob);
                     await writable.close();
                     window.closeBackupChoiceModal();
+                    markBackupSaved();
                     showToast('백업 파일을 저장했습니다.');
                     return;
                 } catch (err) {
@@ -1372,13 +1423,11 @@
                 const ok = confirm(`${getTrainerName()} 트레이너의 현재 데이터를 선택한 백업 파일로 복원할까요?`);
                 if (!ok) return;
 
-                const previousMembers = window.members || [];
-                const previousSchedules = window.schedules || [];
                 window.members = parsed.members;
                 window.schedules = parsed.schedules;
                 normalizeDatabase();
                 saveDatabase();
-                await syncRestoredDataToCloud(previousMembers, previousSchedules);
+                markBackupSaved();
 
                 window.activeMemberId = null;
                 window.setDetailProgressExpanded(false);
@@ -1389,20 +1438,6 @@
                 console.error(err);
                 showToast('백업 복원에 실패했습니다.');
             }
-        }
-
-        // ================= COPY APP =================
-        window.copyAppSource = function() {
-            try {
-                const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-                const tempTextArea = document.createElement("textarea");
-                tempTextArea.value = htmlContent;
-                document.body.appendChild(tempTextArea);
-                tempTextArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(tempTextArea);
-                showToast("✅ 앱 전체 코드가 복사되었어! 에디터에 붙여넣어 줘.");
-            } catch (err) { showToast("❌ 복사에 실패했어."); }
         }
 
         // ================= NAVIGATION =================
@@ -2271,8 +2306,6 @@
                 showToast('공유에 실패했습니다.');
             }
         }
-        window.shareViaEmail = function() { window.location.href = `mailto:?subject=[GOFITGYM] 피트니스 리포트&body=${encodeURIComponent(getShareReportText())}`; }
-        window.shareViaTelegram = function() { window.open(`https://t.me/share/url?url=https://gofitgym.com&text=${encodeURIComponent(getShareReportText())}`, '_blank'); }
         window.copyShareTextToClipboard = async function() {
             try {
                 await copyTextToClipboard(getShareReportText());
@@ -2566,28 +2599,6 @@
             setTimeout(() => t.classList.add('translate-y-10', 'opacity-0'), 2500);
         }
 
-        // 클라우드 데이터 수신 시 UI 강제 업데이트
-        window.updateMembersFromCloud = function(cloudMembers) {
-            window.members = cloudMembers;
-            normalizeDatabase();
-            saveDatabase();
-            window.renderMemberList();
-            if (window.activeMemberId) {
-                if (window.members.find(x => x.id === window.activeMemberId)) {
-                    window.renderMemberLessons(); window.renderMemberWorkouts();
-                } else {
-                    window.backToDashboard();
-                }
-            }
-        };
-        window.updateSchedulesFromCloud = function(cloudScheds) {
-            window.schedules = cloudScheds;
-            normalizeDatabase();
-            saveDatabase();
-            window.initCalendar();
-            window.renderMemberList();
-        };
-
         if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
             const hadServiceWorkerController = !!navigator.serviceWorker.controller;
             let serviceWorkerRefreshing = false;
@@ -2613,127 +2624,6 @@
                     })
                     .catch(err => console.log('Service worker registration skipped.', err));
             });
-        }
-    </script>
-
-    <!-- ============================================== -->
-    <!-- SCRIPT 2: 백그라운드 클라우드 동기화 모듈      -->
-    <!-- 로컬 데이터와 클라우드를 끊김없이 실시간 연동  -->
-    <!-- ============================================== -->
-    <script type="module">
-        try {
-            const fbConfigStr = window.__firebase_config;
-            if (!fbConfigStr) throw new Error("No config");
-            const config = JSON.parse(fbConfigStr);
-            if (!config.apiKey) throw new Error("Invalid config");
-
-            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-            const { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-            const { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-
-            const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'gofitgym-default';
-            const app = initializeApp(config);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-
-            window.currentUser = null;
-            let stopMembersSync = null;
-            let stopSchedulesSync = null;
-            let cloudSyncTrainerId = null;
-
-            const getCloudTrainerId = () => window.activeLoginId ? encodeURIComponent(window.activeLoginId) : null;
-
-            function stopCloudSync() {
-                if (stopMembersSync) stopMembersSync();
-                if (stopSchedulesSync) stopSchedulesSync();
-                stopMembersSync = null;
-                stopSchedulesSync = null;
-                cloudSyncTrainerId = null;
-            }
-
-            const initAuth = async () => {
-                if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-                    await signInWithCustomToken(auth, window.__initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            };
-            initAuth();
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    window.currentUser = user;
-                    document.getElementById('cloud-status-text').innerHTML = '<i class="fa-solid fa-cloud text-emerald-400 mr-1"></i>동기화 됨';
-                    startCloudSync();
-                } else {
-                    stopCloudSync();
-                    document.getElementById('cloud-status-text').innerHTML = '<i class="fa-solid fa-server text-stone-400 mr-1"></i>로컬 단독';
-                }
-            });
-
-            function startCloudSync() {
-                if (!window.currentUser || !window.activeLoginId) return;
-                const trainerId = getCloudTrainerId();
-                if (!trainerId || cloudSyncTrainerId === trainerId) return;
-                stopCloudSync();
-                cloudSyncTrainerId = trainerId;
-
-                let isFirstLoadMembers = true;
-                const membersRef = collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members');
-                stopMembersSync = onSnapshot(membersRef, (snapshot) => {
-                    if (cloudSyncTrainerId !== trainerId) return;
-                    if (isFirstLoadMembers && snapshot.empty) {
-                        const localData = localStorage.getItem(`gofitgym_v11_members_${encodeURIComponent(window.activeLoginId)}`);
-                        if (localData && JSON.parse(localData).length > 0) {
-                            JSON.parse(localData).forEach(m => window.cloudSaveMemberHook(m));
-                        }
-                    }
-                    isFirstLoadMembers = false;
-                    const cloudMembers = [];
-                    snapshot.forEach(d => cloudMembers.push(d.data()));
-                    if(window.updateMembersFromCloud && !snapshot.empty) window.updateMembersFromCloud(cloudMembers);
-                }, (err) => console.error(err));
-
-                let isFirstLoadScheds = true;
-                const schedsRef = collection(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules');
-                stopSchedulesSync = onSnapshot(schedsRef, (snapshot) => {
-                    if (cloudSyncTrainerId !== trainerId) return;
-                    if (isFirstLoadScheds && snapshot.empty) {
-                        const localScheds = localStorage.getItem(`gofitgym_v11_schedules_${encodeURIComponent(window.activeLoginId)}`);
-                        if (localScheds && JSON.parse(localScheds).length > 0) {
-                            JSON.parse(localScheds).forEach(s => window.cloudSaveScheduleHook(s));
-                        }
-                    }
-                    isFirstLoadScheds = false;
-                    const cloudScheds = [];
-                    snapshot.forEach(d => cloudScheds.push(d.data()));
-                    if(window.updateSchedulesFromCloud && !snapshot.empty) window.updateSchedulesFromCloud(cloudScheds);
-                }, (err) => console.error(err));
-            }
-            window.restartCloudSyncHook = startCloudSync;
-
-            window.cloudSaveMemberHook = async function(m) {
-                const trainerId = getCloudTrainerId();
-                if(!window.currentUser || !trainerId) return;
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members', m.id.toString()), m);
-            }
-            window.cloudDeleteMemberHook = async function(id) {
-                const trainerId = getCloudTrainerId();
-                if(!window.currentUser || !trainerId) return;
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'members', id.toString()));
-            }
-            window.cloudSaveScheduleHook = async function(s) {
-                const trainerId = getCloudTrainerId();
-                if(!window.currentUser || !trainerId) return;
-                await setDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules', s.id.toString()), s);
-            }
-            window.cloudDeleteScheduleHook = async function(id) {
-                const trainerId = getCloudTrainerId();
-                if(!window.currentUser || !trainerId) return;
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', window.currentUser.uid, 'trainers', trainerId, 'schedules', id.toString()));
-            }
-        } catch(err) {
-            console.log("Firebase sync not available. Running perfectly in local mode.", err);
         }
     </script>
 </body>
