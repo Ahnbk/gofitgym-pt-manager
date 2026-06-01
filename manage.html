@@ -634,14 +634,14 @@
     </div>
 
     <!-- E. PDF Preview Modal -->
-    <div id="pdf-preview-modal" class="fixed inset-0 bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
+    <div id="pdf-preview-modal" class="fixed inset-0 h-[100dvh] bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
         <div class="flex justify-between items-center p-4 text-white shrink-0">
             <button onclick="window.closePdfPreviewModal()" class="text-stone-300 text-xl px-2 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
             <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
         </div>
         <div class="flex-1 overflow-hidden relative flex items-center">
-            <div id="pdf-swipe-container" class="flex overflow-x-auto snap-x snap-mandatory h-full w-full items-center no-scrollbar pb-10" onscroll="window.updatePdfPageIndicator()">
+            <div id="pdf-swipe-container" class="flex overflow-x-auto snap-x snap-mandatory h-full w-full items-center no-scrollbar" onscroll="window.updatePdfPageIndicator()">
                 <!-- Dynamic Pages Injected Here -->
             </div>
         </div>
@@ -676,6 +676,8 @@
         var isAuthenticated = false;
         var authMode = 'login';
         var deferredInstallPrompt = null;
+        const PDF_PAGE_WIDTH = 794;
+        const PDF_PAGE_HEIGHT = 1123;
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -2184,17 +2186,26 @@
         window.openPdfPreviewModal = function() {
             window.buildPdfPagesForPreview();
             const pm = document.getElementById('pdf-preview-modal');
-            pm.classList.remove('hidden'); setTimeout(() => pm.classList.remove('opacity-0'), 10);
+            pm.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                pm.classList.remove('opacity-0');
+                window.scalePdfPreviewBoxes();
+                window.updatePdfPageIndicator();
+            });
         }
 
         window.closePdfPreviewModal = function() {
             const pm = document.getElementById('pdf-preview-modal');
             pm.classList.add('opacity-0'); setTimeout(() => pm.classList.add('hidden'), 300);
+            window.removeEventListener('resize', window.scalePdfPreviewBoxes);
         }
 
         window.buildPdfPagesForPreview = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
             const printDate = new Date().toISOString().split('T')[0].replace(/-/g, '.');
+            const memberName = escapeHtml(m.name);
+            const memberTrainer = escapeHtml(m.trainer || getTrainerName());
             
             const lessonsPerPage = 25;
             const workoutsPerPage = 15;
@@ -2224,7 +2235,7 @@
                         if (isSigned) sigContent = `<img src="${item.signature}" class="h-6 w-auto object-contain mx-auto">`;
                         else if (isLater) sigContent = `<span style="color:#a8a29e; font-size:9px; font-weight:bold;">나중에 서명</span>`;
 
-                        return `<tr><td class="border border-stone-300 p-2 text-center font-bold bg-stone-50 h-[32px]">${item.no}</td><td class="border border-stone-300 p-2 text-center font-medium text-[11px] h-[32px]">${lessonDate}</td><td class="border border-stone-300 p-2 text-center text-[11px] h-[32px] truncate max-w-[100px]">${item.trainer}</td><td class="border border-stone-300 p-1 text-center h-[32px]">${sigContent}</td></tr>`;
+                        return `<tr><td class="border border-stone-300 p-2 text-center font-bold bg-stone-50 h-[32px]">${item.no}</td><td class="border border-stone-300 p-2 text-center font-medium text-[11px] h-[32px]">${escapeHtml(lessonDate)}</td><td class="border border-stone-300 p-2 text-center text-[11px] h-[32px] truncate max-w-[100px]">${escapeHtml(item.trainer)}</td><td class="border border-stone-300 p-1 text-center h-[32px]">${sigContent}</td></tr>`;
                     }
                     return `<tr><td class="border border-stone-300 p-2 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td></tr>`;
                 };
@@ -2237,8 +2248,8 @@
                             <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
                                 <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ LESSON CHECK <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
                                 <div class="text-right">
-                                    <p class="text-sm font-bold">회원명: ${m.name}</p>
-                                    <p class="text-sm font-bold">담당 트레이너: ${m.trainer}</p>
+                                    <p class="text-sm font-bold">회원명: ${memberName}</p>
+                                    <p class="text-sm font-bold">담당 트레이너: ${memberTrainer}</p>
                                 </div>
                             </div>
                             <div class="flex-grow">
@@ -2270,7 +2281,7 @@
 
                 const buildRow = (item) => {
                     if (item) {
-                        return `<tr><td class="border border-stone-300 p-3 text-center font-bold bg-stone-50 h-[48px]">${item.date}</td><td class="border border-stone-300 p-3 text-xs h-[48px] overflow-hidden truncate max-w-[500px]">${item.content}</td></tr>`;
+                        return `<tr><td class="border border-stone-300 p-3 text-center font-bold bg-stone-50 h-[48px]">${escapeHtml(item.date)}</td><td class="border border-stone-300 p-3 text-xs h-[48px] overflow-hidden max-w-[500px] leading-relaxed">${escapeHtml(item.content)}</td></tr>`;
                     }
                     return `<tr><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td></tr>`;
                 };
@@ -2283,8 +2294,8 @@
                             <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
                                 <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ WORKOUT LOG <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
                                 <div class="text-right">
-                                    <p class="text-sm font-bold">회원명: ${m.name}</p>
-                                    <p class="text-sm font-bold">담당 트레이너: ${m.trainer}</p>
+                                    <p class="text-sm font-bold">회원명: ${memberName}</p>
+                                    <p class="text-sm font-bold">담당 트레이너: ${memberTrainer}</p>
                                 </div>
                             </div>
                             <div class="flex-grow">
@@ -2317,43 +2328,56 @@
                 container.appendChild(exportPage);
 
                 const previewSlide = document.createElement('div');
-                previewSlide.className = "snap-center shrink-0 w-full flex justify-center items-center px-4 pt-4";
+                previewSlide.className = "snap-center shrink-0 w-full h-full flex justify-center items-center px-3 py-3 overflow-hidden";
+                
+                const previewBox = document.createElement('div');
+                previewBox.className = "pdf-preview-box relative shrink-0";
                 
                 const scaleWrapper = document.createElement('div');
-                scaleWrapper.className = "pdf-scale-wrapper bg-white shadow-2xl origin-top overflow-hidden border border-stone-700 mx-auto";
-                scaleWrapper.style.width = "794px";
-                scaleWrapper.style.height = "1123px";
+                scaleWrapper.className = "pdf-scale-wrapper absolute top-0 left-0 bg-white shadow-2xl origin-top-left overflow-hidden border border-stone-700";
+                scaleWrapper.style.width = `${PDF_PAGE_WIDTH}px`;
+                scaleWrapper.style.height = `${PDF_PAGE_HEIGHT}px`;
+                scaleWrapper.style.transformOrigin = 'top left';
                 scaleWrapper.innerHTML = html;
                 
-                previewSlide.appendChild(scaleWrapper);
+                previewBox.appendChild(scaleWrapper);
+                previewSlide.appendChild(previewBox);
                 swipeContainer.appendChild(previewSlide);
             }
 
             window.currentPdfElementToExport = container;
-            window.updatePdfPageIndicator();
-            setTimeout(window.scalePdfPreviewBoxes, 50);
+            document.getElementById('pdf-page-indicator').innerText = `1 / ${totalPages} 페이지`;
+            window.removeEventListener('resize', window.scalePdfPreviewBoxes);
             window.addEventListener('resize', window.scalePdfPreviewBoxes);
         }
 
         window.scalePdfPreviewBoxes = function() {
-            const containerWidth = window.innerWidth - 32; 
-            const scale = Math.min(containerWidth / 794, 1); 
-            const wrappers = document.querySelectorAll('.pdf-scale-wrapper');
-            wrappers.forEach(w => {
-                w.style.transform = `scale(${scale})`;
-                w.parentElement.style.height = `${1123 * scale + 40}px`; 
-                w.parentElement.style.width = `${794 * scale}px`;
+            const container = document.getElementById('pdf-swipe-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const availableWidth = Math.max(240, rect.width - 24);
+            const availableHeight = Math.max(320, rect.height - 24);
+            const scale = Math.min(availableWidth / PDF_PAGE_WIDTH, availableHeight / PDF_PAGE_HEIGHT, 1);
+            const boxes = document.querySelectorAll('.pdf-preview-box');
+            boxes.forEach(box => {
+                const page = box.querySelector('.pdf-scale-wrapper');
+                box.style.width = `${Math.round(PDF_PAGE_WIDTH * scale)}px`;
+                box.style.height = `${Math.round(PDF_PAGE_HEIGHT * scale)}px`;
+                if (page) page.style.transform = `scale(${scale})`;
             });
+            window.updatePdfPageIndicator();
         }
 
         window.updatePdfPageIndicator = function() {
             const container = document.getElementById('pdf-swipe-container');
             if(!container || container.children.length === 0) return;
             const scrollLeft = container.scrollLeft;
-            const width = container.clientWidth;
-            const currentPage = Math.round(scrollLeft / width) + 1;
             const totalPages = container.children.length;
-            document.getElementById('pdf-page-indicator').innerText = `${currentPage} / ${totalPages} 페이지`;
+            const width = container.clientWidth || container.getBoundingClientRect().width || (container.scrollWidth / totalPages);
+            const currentPage = width ? Math.round(scrollLeft / width) + 1 : 1;
+            const safePage = Math.min(totalPages, Math.max(1, currentPage || 1));
+            document.getElementById('pdf-page-indicator').innerText = `${safePage} / ${totalPages} 페이지`;
         }
 
         window.executePDFDownload = function() {
