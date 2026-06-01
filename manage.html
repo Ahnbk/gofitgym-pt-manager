@@ -2206,9 +2206,44 @@
             const printDate = new Date().toISOString().split('T')[0].replace(/-/g, '.');
             const memberName = escapeHtml(m.name);
             const memberTrainer = escapeHtml(m.trainer || getTrainerName());
+            const pdfPageStyles = `
+                <style>
+                    .pdf-report-page, .pdf-report-page * { box-sizing: border-box; }
+                    .pdf-report-page { width: 794px; height: 1123px; padding: 30px; background: #fff; color: #1c1917; font-family: 'Noto Sans KR', sans-serif; border: 1px solid #d6d3d1; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+                    .pdf-report-main { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+                    .pdf-report-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #292524; padding-bottom: 10px; margin-bottom: 12px; flex-shrink: 0; }
+                    .pdf-compact-width { width: 88%; margin-left: auto; margin-right: auto; }
+                    .pdf-report-title { margin: 0; display: flex; align-items: flex-end; color: #292524; font-size: 24px; line-height: 1; font-weight: 900; }
+                    .pdf-report-page-num { margin-left: 10px; color: #78716c; font-size: 11px; line-height: 1.2; font-weight: 600; }
+                    .pdf-report-meta { text-align: right; color: #292524; font-size: 11px; line-height: 1.45; font-weight: 700; }
+                    .pdf-report-meta p { margin: 0; }
+                    .pdf-report-table-wrap { flex: 1 1 auto; min-height: 0; }
+                    .pdf-report-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #d6d3d1; }
+                    .pdf-report-table th { height: 20px; padding: 2px 4px; border: 1px solid #d6d3d1; background: #f5f5f4; color: #292524; font-size: 9px; line-height: 1.05; font-weight: 800; }
+                    .pdf-report-table td { border: 1px solid #d6d3d1; vertical-align: middle; }
+                    .pdf-lesson-table-wrap { width: 92%; margin-left: auto; margin-right: auto; flex: 0 0 auto; }
+                    .pdf-lesson-row td { height: 37px; padding: 2px 4px; font-size: 9.5px; line-height: 1.1; }
+                    .pdf-lesson-no { width: 30px; text-align: center; background: #fafaf9; font-weight: 800; }
+                    .pdf-lesson-date { width: 58px; text-align: center; font-weight: 600; }
+                    .pdf-lesson-trainer { width: 68px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .pdf-sign-cell { padding: 1px 3px !important; text-align: center; }
+                    .pdf-sign-img { display: block; max-width: 145px; max-height: 28px; margin: 0 auto; object-fit: contain; }
+                    .pdf-empty-row td { height: 37px; padding: 0; }
+                    .pdf-lesson-separator { border-left: 2px solid #a8a29e !important; }
+                    .pdf-workout-row td { height: 44px; padding: 5px 7px; font-size: 10px; line-height: 1.25; }
+                    .pdf-workout-date { width: 92px; text-align: center; background: #fafaf9; font-weight: 800; }
+                    .pdf-workout-content { overflow: hidden; word-break: break-word; }
+                    .pdf-report-footer { margin-top: 14px; padding: 10px 12px; border-top: 3px solid #292524; border-radius: 8px; background: #f5f5f4; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+                    .pdf-footer-left { display: flex; align-items: center; gap: 10px; }
+                    .pdf-logo { padding: 7px 9px; border-radius: 6px; background: #1c1917; color: #f59e0b; font-size: 13px; line-height: 1; font-weight: 900; }
+                    .pdf-footer-title { margin: 0 0 2px; color: #292524; font-size: 12px; line-height: 1.2; font-weight: 800; }
+                    .pdf-footer-desc { margin: 0; color: #78716c; font-size: 9px; line-height: 1.25; }
+                    .pdf-print-date { color: #57534e; font-size: 9px; font-weight: 600; white-space: nowrap; }
+                </style>`;
             
-            const lessonsPerPage = 25;
-            const workoutsPerPage = 15;
+            const lessonRowsPerPage = 25;
+            const lessonsPerPage = lessonRowsPerPage * 2;
+            const workoutsPerPage = 18;
             
             const lessonPages = Math.max(1, Math.ceil(m.lessons.length / lessonsPerPage));
             const workoutPages = Math.max(1, Math.ceil(m.workouts.length / workoutsPerPage));
@@ -2225,49 +2260,59 @@
                 const slice = []; 
                 for(let i=0; i<lessonsPerPage; i++) slice.push(m.lessons[p*lessonsPerPage + i] || null);
 
-                const buildRow = (item) => {
+                const buildLessonCells = (item, isRightGroup = false) => {
+                    const separatorClass = isRightGroup ? ' pdf-lesson-separator' : '';
                     if (item) {
                         const isSigned = item.signature && item.signature !== 'LATER';
                         const isLater = item.signature === 'LATER';
                         const lessonIndex = m.lessons.findIndex(l => l.no === item.no);
                         const lessonDate = item.date || (isRenewalStartLesson(m, item, lessonIndex) ? `재등록 ${formatDisplayDate(item.renewalDate)}` : '');
                         let sigContent = '';
-                        if (isSigned) sigContent = `<img src="${item.signature}" class="h-6 w-auto object-contain mx-auto">`;
+                        if (isSigned) sigContent = `<img src="${item.signature}" class="pdf-sign-img">`;
                         else if (isLater) sigContent = `<span style="color:#a8a29e; font-size:9px; font-weight:bold;">나중에 서명</span>`;
 
-                        return `<tr><td class="border border-stone-300 p-2 text-center font-bold bg-stone-50 h-[32px]">${item.no}</td><td class="border border-stone-300 p-2 text-center font-medium text-[11px] h-[32px]">${escapeHtml(lessonDate)}</td><td class="border border-stone-300 p-2 text-center text-[11px] h-[32px] truncate max-w-[100px]">${escapeHtml(item.trainer)}</td><td class="border border-stone-300 p-1 text-center h-[32px]">${sigContent}</td></tr>`;
+                        return `<td class="pdf-lesson-no${separatorClass}">${item.no}</td><td class="pdf-lesson-date">${escapeHtml(lessonDate)}</td><td class="pdf-lesson-trainer">${escapeHtml(item.trainer)}</td><td class="pdf-sign-cell">${sigContent}</td>`;
                     }
-                    return `<tr><td class="border border-stone-300 p-2 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td><td class="border border-stone-300 h-[32px]">&nbsp;</td></tr>`;
+                    return `<td class="pdf-lesson-no${separatorClass}">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>`;
                 };
 
-                const rowsHtml = slice.map(i => buildRow(i)).join('');
+                const rowsHtml = Array.from({ length: lessonRowsPerPage }, (_, rowIndex) => {
+                    const leftItem = slice[rowIndex] || null;
+                    const rightItem = slice[rowIndex + lessonRowsPerPage] || null;
+                    const rowClass = leftItem || rightItem ? 'pdf-lesson-row' : 'pdf-empty-row';
+                    return `<tr class="${rowClass}">${buildLessonCells(leftItem)}${buildLessonCells(rightItem, true)}</tr>`;
+                }).join('');
 
                 const pageHtml = `
-                    <div class="p-10 bg-white text-stone-900 w-[794px] h-[1123px] border border-stone-300 relative flex flex-col justify-between overflow-hidden" style="font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box;">
-                        <div class="flex-grow flex flex-col">
-                            <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
-                                <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ LESSON CHECK <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
-                                <div class="text-right">
-                                    <p class="text-sm font-bold">회원명: ${memberName}</p>
-                                    <p class="text-sm font-bold">담당 트레이너: ${memberTrainer}</p>
+                    ${pdfPageStyles}
+                    <div class="pdf-report-page">
+                        <div class="pdf-report-main">
+                            <div class="pdf-report-header pdf-compact-width">
+                                <h2 class="pdf-report-title">LESSON CHECK <span class="pdf-report-page-num">Page ${globalPageNum}/${totalPages}</span></h2>
+                                <div class="pdf-report-meta">
+                                    <p>회원명: ${memberName}</p>
+                                    <p>담당 트레이너: ${memberTrainer}</p>
                                 </div>
                             </div>
-                            <div class="flex-grow">
-                                <table class="w-full border-collapse border border-stone-300 table-fixed">
-                                    <thead class="bg-stone-100"><tr><th class="border border-stone-300 p-2 w-16 text-sm">NO</th><th class="border border-stone-300 p-2 w-32 text-sm">DATE</th><th class="border border-stone-300 p-2 w-40 text-sm">트레이너</th><th class="border border-stone-300 p-2 text-sm">고객서명</th></tr></thead>
+                            <div class="pdf-report-table-wrap pdf-lesson-table-wrap">
+                                <table class="pdf-report-table">
+                                    <thead><tr>
+                                        <th style="width:30px;">NO</th><th style="width:58px;">DATE</th><th style="width:68px;">트레이너</th><th>고객서명</th>
+                                        <th class="pdf-lesson-separator" style="width:30px;">NO</th><th style="width:58px;">DATE</th><th style="width:68px;">트레이너</th><th>고객서명</th>
+                                    </tr></thead>
                                     <tbody>${rowsHtml}</tbody>
                                 </table>
                             </div>
                         </div>
-                        <div class="mt-6 border-t-4 border-stone-800 pt-5 flex justify-between items-center bg-stone-50 p-5 rounded-xl shrink-0">
-                            <div class="flex items-center space-x-4">
-                                <div class="bg-stone-900 text-amber-500 p-2.5 rounded-lg font-black text-base">GOFITGYM</div>
+                        <div class="pdf-report-footer pdf-compact-width">
+                            <div class="pdf-footer-left">
+                                <div class="pdf-logo">GOFITGYM</div>
                                 <div>
-                                    <h4 class="font-bold text-sm">고핏짐 개인 트레이닝 보증 카드</h4>
-                                    <p class="text-[11px] text-stone-500">본 문서는 회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
+                                    <h4 class="pdf-footer-title">고핏짐 개인 트레이닝 보증 카드</h4>
+                                    <p class="pdf-footer-desc">회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
                                 </div>
                             </div>
-                            <div class="text-[11px] text-stone-600 font-medium">인쇄 일자: ${printDate}</div>
+                            <div class="pdf-print-date">인쇄 일자: ${printDate}</div>
                         </div>
                     </div>
                 `;
@@ -2281,39 +2326,40 @@
 
                 const buildRow = (item) => {
                     if (item) {
-                        return `<tr><td class="border border-stone-300 p-3 text-center font-bold bg-stone-50 h-[48px]">${escapeHtml(item.date)}</td><td class="border border-stone-300 p-3 text-xs h-[48px] overflow-hidden max-w-[500px] leading-relaxed">${escapeHtml(item.content)}</td></tr>`;
+                        return `<tr class="pdf-workout-row"><td class="pdf-workout-date">${escapeHtml(item.date)}</td><td class="pdf-workout-content">${escapeHtml(item.content)}</td></tr>`;
                     }
-                    return `<tr><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td><td class="border border-stone-300 p-3 h-[48px]">&nbsp;</td></tr>`;
+                    return `<tr class="pdf-workout-row"><td class="pdf-workout-date">&nbsp;</td><td>&nbsp;</td></tr>`;
                 };
 
                 const rowsHtml = slice.map(i => buildRow(i)).join('');
 
                 const pageHtml = `
-                    <div class="p-10 bg-white text-stone-900 w-[794px] h-[1123px] border border-stone-300 relative flex flex-col justify-between overflow-hidden" style="font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box;">
-                        <div class="flex-grow flex flex-col">
-                            <div class="flex justify-between items-end border-b-2 border-stone-800 pb-3 mb-6 shrink-0">
-                                <h2 class="text-3xl font-black text-stone-800 flex items-center">☑ WORKOUT LOG <span class="text-sm text-stone-400 font-medium ml-4 mt-2">Page ${globalPageNum}/${totalPages}</span></h2>
-                                <div class="text-right">
-                                    <p class="text-sm font-bold">회원명: ${memberName}</p>
-                                    <p class="text-sm font-bold">담당 트레이너: ${memberTrainer}</p>
+                    ${pdfPageStyles}
+                    <div class="pdf-report-page">
+                        <div class="pdf-report-main">
+                            <div class="pdf-report-header">
+                                <h2 class="pdf-report-title">WORKOUT LOG <span class="pdf-report-page-num">Page ${globalPageNum}/${totalPages}</span></h2>
+                                <div class="pdf-report-meta">
+                                    <p>회원명: ${memberName}</p>
+                                    <p>담당 트레이너: ${memberTrainer}</p>
                                 </div>
                             </div>
-                            <div class="flex-grow">
-                                <table class="w-full border-collapse border border-stone-300 table-fixed">
-                                    <thead class="bg-stone-100"><tr><th class="border border-stone-300 p-3 w-32 text-sm">날짜</th><th class="border border-stone-300 p-3 text-left text-sm">오늘의 운동 일지</th></tr></thead>
+                            <div class="pdf-report-table-wrap">
+                                <table class="pdf-report-table">
+                                    <thead><tr><th style="width:92px;">날짜</th><th style="text-align:left;">오늘의 운동 일지</th></tr></thead>
                                     <tbody>${rowsHtml}</tbody>
                                 </table>
                             </div>
                         </div>
-                        <div class="mt-6 border-t-4 border-stone-800 pt-5 flex justify-between items-center bg-stone-50 p-5 rounded-xl shrink-0">
-                            <div class="flex items-center space-x-4">
-                                <div class="bg-stone-900 text-amber-500 p-2.5 rounded-lg font-black text-base">GOFITGYM</div>
+                        <div class="pdf-report-footer">
+                            <div class="pdf-footer-left">
+                                <div class="pdf-logo">GOFITGYM</div>
                                 <div>
-                                    <h4 class="font-bold text-sm">고핏짐 개인 트레이닝 보증 카드</h4>
-                                    <p class="text-[11px] text-stone-500">본 문서는 회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
+                                    <h4 class="pdf-footer-title">고핏짐 개인 트레이닝 보증 카드</h4>
+                                    <p class="pdf-footer-desc">회원과 트레이너 간의 유효한 운동 실적을 보증합니다.</p>
                                 </div>
                             </div>
-                            <div class="text-[11px] text-stone-600 font-medium">인쇄 일자: ${printDate}</div>
+                            <div class="pdf-print-date">인쇄 일자: ${printDate}</div>
                         </div>
                     </div>
                 `;
