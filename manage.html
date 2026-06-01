@@ -621,6 +621,10 @@
                 <textarea id="share-text-preview" class="w-full text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 focus:outline-none min-h-[120px] leading-relaxed" readonly></textarea>
                 
                 <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="window.shareReportNative()" class="col-span-2 flex items-center justify-center p-3 bg-amber-500 text-stone-950 rounded-xl active-scale">
+                        <i class="fa-solid fa-share-nodes mr-1.5"></i>
+                        <span class="text-[10px] font-black">기기 공유</span>
+                    </button>
                     <button onclick="window.shareViaEmail()" class="flex flex-col items-center justify-center p-3 bg-blue-50 border border-blue-200 rounded-xl active-scale">
                         <i class="fa-regular fa-envelope text-xl text-blue-500 mb-1"></i>
                         <span class="text-[10px] font-black text-stone-800">이메일 전송</span>
@@ -2178,10 +2182,38 @@
             const sm = document.getElementById('share-modal');
             sm.classList.add('opacity-0'); setTimeout(() => sm.classList.add('hidden'), 300);
         }
-        window.shareViaEmail = function() { window.location.href = `mailto:?subject=[GOFITGYM] 피트니스 리포트&body=${encodeURIComponent(document.getElementById('share-text-preview').value)}`; }
-        window.shareViaTelegram = function() { window.open(`https://t.me/share/url?url=https://gofitgym.com&text=${encodeURIComponent(document.getElementById('share-text-preview').value)}`, '_blank'); }
-        window.copyShareTextToClipboard = function() {
-            const ta = document.getElementById('share-text-preview'); ta.select(); document.execCommand('copy'); showToast("복사 완료!");
+        function getShareReportText() {
+            return document.getElementById('share-text-preview').value || '';
+        }
+
+        window.shareReportNative = async function() {
+            const text = getShareReportText();
+            if (!text) return showToast('공유할 내용이 없습니다.');
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'GOFITGYM 피트니스 리포트', text });
+                    showToast('공유창을 열었습니다.');
+                    return;
+                } catch (err) {
+                    if (err && err.name === 'AbortError') return;
+                }
+            }
+            try {
+                await copyTextToClipboard(text);
+                showToast('공유 미지원 환경이라 복사했습니다.');
+            } catch (err) {
+                showToast('공유에 실패했습니다.');
+            }
+        }
+        window.shareViaEmail = function() { window.location.href = `mailto:?subject=[GOFITGYM] 피트니스 리포트&body=${encodeURIComponent(getShareReportText())}`; }
+        window.shareViaTelegram = function() { window.open(`https://t.me/share/url?url=https://gofitgym.com&text=${encodeURIComponent(getShareReportText())}`, '_blank'); }
+        window.copyShareTextToClipboard = async function() {
+            try {
+                await copyTextToClipboard(getShareReportText());
+                showToast("복사 완료!");
+            } catch (err) {
+                showToast("복사에 실패했습니다.");
+            }
         }
 
         // ================= PDF PAGINATION & PREVIEW =================
