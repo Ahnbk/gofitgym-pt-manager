@@ -452,11 +452,14 @@
                 <button onclick="window.saveBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-folder-open mr-1.5 text-amber-500"></i>저장 위치 선택
                 </button>
+                <button onclick="window.shareBackupFileNative()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                    <i class="fa-solid fa-share-nodes mr-1.5"></i>기기 공유로 백업
+                </button>
                 <button onclick="window.restoreLastSafetySnapshot()" id="restore-safety-btn" class="hidden w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-rotate-left mr-1.5"></i>직전 복원 되돌리기
                 </button>
                 <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
-                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">저장 후 다운로드 폴더나 파일 앱에서 Google Drive에 직접 올릴 수 있습니다. 저장 위치 선택이 지원되지 않는 기기는 자동으로 다운로드됩니다.</p>
+                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">저장은 파일로 보관하고, 공유는 기기 공유 화면에서 Google Drive나 파일 앱을 선택할 수 있습니다. 공유 미지원 기기는 자동으로 파일 저장으로 전환됩니다.</p>
             </div>
         </div>
     </div>
@@ -686,14 +689,17 @@
         var isAuthenticated = false;
         var authMode = 'login';
         var deferredInstallPrompt = null;
+        var workoutSaveTimer = null;
+        var pendingWorkoutSave = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v14';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v15';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
         const RESTORE_SAFETY_KEY_PREFIX = 'gofitgym_v11_restore_safety_';
         const BACKUP_FRESH_MS = 1000 * 60 * 60 * 24 * 7;
+        const WORKOUT_SAVE_DELAY_MS = 450;
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -1229,6 +1235,7 @@
             const loginId = decodeURIComponent(encodedLoginId);
             if (!window.trainerProfiles[loginId]) return;
             if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
+            flushWorkoutSave();
             saveDatabase({ silent: true });
             window.activeLoginId = loginId;
             sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
@@ -1351,6 +1358,7 @@
 
         window.logoutLocalUser = function() {
             const loggedOutName = getTrainerName();
+            flushWorkoutSave();
             removeLoggedTrainer(window.activeLoginId);
             window.closeProfileSettingsModal();
             if (window.activeLoginId) {
@@ -1528,6 +1536,32 @@
             } catch (err) {
                 console.error(err);
                 showToast('백업 저장에 실패했습니다.');
+            }
+        }
+
+        window.shareBackupFileNative = async function() {
+            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            const { blob, fileName } = createBackupFile();
+            try {
+                if (navigator.share && navigator.canShare && typeof File !== 'undefined') {
+                    const file = new File([blob], fileName, { type: 'application/json' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'GOFITGYM 백업',
+                            text: `${getTrainerName()} 트레이너 백업 파일입니다.`,
+                            files: [file]
+                        });
+                        window.closeBackupChoiceModal();
+                        markBackupSaved();
+                        showToast('백업 공유창을 열었습니다.');
+                        return;
+                    }
+                }
+                downloadBackupBlob(blob, fileName, '공유 미지원 환경이라 백업 파일을 저장했습니다.');
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.error(err);
+                downloadBackupBlob(blob, fileName, '공유에 실패해 백업 파일을 저장했습니다.');
             }
         }
 
@@ -2059,6 +2093,25 @@
             observer.observe(document.getElementById('sign-modal'), {attributes: true});
         }
 
+        function getOptimizedSignatureDataUrl() {
+            const source = document.getElementById('signature-canvas');
+            if (!source || !source.width || !source.height) return window.signaturePad.toDataURL();
+
+            const original = source.toDataURL('image/png');
+            const maxWidth = 560;
+            const maxHeight = 420;
+            const scale = Math.min(maxWidth / source.width, maxHeight / source.height, 1);
+            if (scale >= 1) return original;
+
+            const target = document.createElement('canvas');
+            target.width = Math.max(1, Math.round(source.width * scale));
+            target.height = Math.max(1, Math.round(source.height * scale));
+            const ctx = target.getContext('2d');
+            ctx.drawImage(source, 0, 0, target.width, target.height);
+            const optimized = target.toDataURL('image/png');
+            return optimized.length < original.length ? optimized : original;
+        }
+
         window.openSignatureDrawingModal = function(index) {
             window.currentEditingLessonIndex = index;
             document.getElementById('sign-modal-title').innerText = `${String(index+1).padStart(2,'0')}회차 레슨 서명`;
@@ -2158,7 +2211,7 @@
             if(window.signaturePad.isEmpty()) return showToast("사인을 입력하세요!");
             const m = window.members.find(x => x.id === window.activeMemberId);
             const today = new Date();
-            m.lessons[window.currentEditingLessonIndex].signature = window.signaturePad.toDataURL();
+            m.lessons[window.currentEditingLessonIndex].signature = getOptimizedSignatureDataUrl();
             m.lessons[window.currentEditingLessonIndex].date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
             m.lessons[window.currentEditingLessonIndex].trainer = getTrainerName();
             localSaveMember(m);
@@ -2195,6 +2248,26 @@
                 container.appendChild(div);
             });
         }
+
+        function queueWorkoutSave() {
+            pendingWorkoutSave = true;
+            clearTimeout(workoutSaveTimer);
+            workoutSaveTimer = setTimeout(flushWorkoutSave, WORKOUT_SAVE_DELAY_MS);
+        }
+
+        function flushWorkoutSave() {
+            if (!pendingWorkoutSave) return;
+            clearTimeout(workoutSaveTimer);
+            workoutSaveTimer = null;
+            pendingWorkoutSave = false;
+            saveDatabase();
+        }
+
+        window.addEventListener('beforeunload', flushWorkoutSave);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) flushWorkoutSave();
+        });
+
         window.addNewWorkoutRow = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             const d = new Date();
@@ -2204,8 +2277,10 @@
         }
         window.updateW = function(id, k, v) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
-            m.workouts.find(w => w.id === id)[k] = v; 
-            localSaveMember(m); 
+            const workout = m && m.workouts.find(w => w.id === id);
+            if (!workout) return;
+            workout[k] = v;
+            queueWorkoutSave();
         }
         window.delW = function(id) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
@@ -2224,6 +2299,7 @@
             const contentEl = document.getElementById(`workout-content-${id}`);
             if (dateEl) w.date = dateEl.value.trim();
             if (contentEl) w.content = contentEl.value.trim();
+            flushWorkoutSave();
             localSaveMember(m);
 
             if (!w.content) {
