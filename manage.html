@@ -428,6 +428,7 @@
                 </div>
                 <button onclick="window.saveProfileSettings()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
                 <button onclick="window.openAdditionalLogin()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
+                <button onclick="window.checkAppUpdate(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
                 <button onclick="window.logoutLocalUser()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
             </div>
         </div>
@@ -681,6 +682,8 @@
         var deferredInstallPrompt = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
+        const APP_CACHE_VERSION = 'gofitgym-pt-v11';
+        const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -701,7 +704,13 @@
             loadProfileStore();
             initSignaturePad();
             await initializeLoginGate();
+            setTimeout(() => window.checkAppUpdate(false), 1500);
         };
+
+        setInterval(() => window.checkAppUpdate(false), 1000 * 60 * 30);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) window.checkAppUpdate(false);
+        });
 
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
@@ -728,6 +737,57 @@
             const installButton = document.getElementById('install-app-btn');
             if (installButton) installButton.classList.add('hidden');
             if (result.outcome === 'accepted') showToast('앱 설치를 시작합니다.');
+        };
+
+        function getLatestAppVersionFromServiceWorker(source) {
+            const match = source.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+            return match ? match[1] : '';
+        }
+
+        window.checkAppUpdate = async function(manual = false) {
+            try {
+                if (!navigator.onLine) {
+                    if (manual) showToast('오프라인 상태입니다.');
+                    return;
+                }
+
+                const now = Date.now();
+                const lastCheck = Number(localStorage.getItem(APP_UPDATE_CHECK_KEY) || 0);
+                if (!manual && now - lastCheck < 1000 * 60 * 30) return;
+                localStorage.setItem(APP_UPDATE_CHECK_KEY, String(now));
+
+                const response = await fetch(`./service-worker.js?update=${now}`, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Update check failed: ${response.status}`);
+
+                const latestVersion = getLatestAppVersionFromServiceWorker(await response.text());
+                if (!latestVersion) throw new Error('No app version found.');
+
+                if (latestVersion === APP_CACHE_VERSION) {
+                    if (manual) showToast('현재 최신 버전입니다.');
+                    return;
+                }
+
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration('./');
+                    if (registration) {
+                        await registration.update();
+                        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                }
+
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys
+                        .filter(key => key.startsWith('gofitgym-pt-') && key !== latestVersion)
+                        .map(key => caches.delete(key)));
+                }
+
+                showToast('새 버전으로 업데이트합니다.');
+                setTimeout(() => window.location.reload(), 700);
+            } catch (err) {
+                console.log('Update check skipped.', err);
+                if (manual) showToast('업데이트 확인에 실패했습니다.');
+            }
         };
 
         function loadDatabase() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gofitgym-pt-v10';
+const CACHE_NAME = 'gofitgym-pt-v11';
 const APP_SHELL = [
   './index.html',
   './manage.html',
@@ -44,6 +44,11 @@ self.addEventListener('fetch', (event) => {
 
   const request = event.request;
   const requestUrl = new URL(request.url);
+
+  if (requestUrl.origin === self.location.origin && requestUrl.pathname.endsWith('/service-worker.js')) {
+    event.respondWith(fetch(createFreshRequest(request)));
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(
