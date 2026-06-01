@@ -434,6 +434,7 @@
                 </div>
                 <button onclick="window.saveProfileSettings()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
                 <button onclick="window.openAdditionalLogin()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
+                <button onclick="window.checkStorageProtection(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>저장 보호 확인</button>
                 <button onclick="window.checkAppUpdate(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
                 <button onclick="window.logoutLocalUser()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
             </div>
@@ -450,6 +451,9 @@
             <div class="p-5 space-y-2">
                 <button onclick="window.saveBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-folder-open mr-1.5 text-amber-500"></i>저장 위치 선택
+                </button>
+                <button onclick="window.restoreLastSafetySnapshot()" id="restore-safety-btn" class="hidden w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-rotate-left mr-1.5"></i>직전 복원 되돌리기
                 </button>
                 <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
                 <p class="text-[10px] text-stone-400 leading-relaxed pt-1">저장 후 다운로드 폴더나 파일 앱에서 Google Drive에 직접 올릴 수 있습니다. 저장 위치 선택이 지원되지 않는 기기는 자동으로 다운로드됩니다.</p>
@@ -684,10 +688,12 @@
         var deferredInstallPrompt = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v13';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v14';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
+        const RESTORE_SAFETY_KEY_PREFIX = 'gofitgym_v11_restore_safety_';
+        const BACKUP_FRESH_MS = 1000 * 60 * 60 * 24 * 7;
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -801,34 +807,63 @@
                 return;
             }
 
+            let loadHadError = false;
+            const readArray = (key, fallback = []) => {
+                const raw = localStorage.getItem(key);
+                if (!raw) return fallback;
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) return parsed;
+                    loadHadError = true;
+                    return fallback;
+                } catch (err) {
+                    console.error('Local data parse failed.', key, err);
+                    loadHadError = true;
+                    return fallback;
+                }
+            };
+
             const savedData = localStorage.getItem(getMembersStorageKey());
             const savedSched = localStorage.getItem(getSchedulesStorageKey());
 
-            if (savedData && savedSched) {
-                window.members = JSON.parse(savedData);
-                window.schedules = JSON.parse(savedSched);
+            if (savedData || savedSched) {
+                window.members = readArray(getMembersStorageKey());
+                window.schedules = readArray(getSchedulesStorageKey());
             } else if (localStorage.getItem(ORPHANED_DATA_KEY) && localStorage.getItem(getMembersStorageKey(localStorage.getItem(ORPHANED_DATA_KEY)))) {
                 const orphanId = localStorage.getItem(ORPHANED_DATA_KEY);
-                window.members = JSON.parse(localStorage.getItem(getMembersStorageKey(orphanId)) || '[]');
-                window.schedules = JSON.parse(localStorage.getItem(getSchedulesStorageKey(orphanId)) || '[]');
+                window.members = readArray(getMembersStorageKey(orphanId));
+                window.schedules = readArray(getSchedulesStorageKey(orphanId));
                 localStorage.removeItem(ORPHANED_DATA_KEY);
             } else if (!localStorage.getItem(LEGACY_DATA_CLAIM_KEY) && localStorage.getItem('gofitgym_v9_members')) {
-                window.members = JSON.parse(localStorage.getItem('gofitgym_v9_members') || '[]');
-                window.schedules = JSON.parse(localStorage.getItem('gofitgym_v9_schedules') || '[]');
+                window.members = readArray('gofitgym_v9_members');
+                window.schedules = readArray('gofitgym_v9_schedules');
                 localStorage.setItem(LEGACY_DATA_CLAIM_KEY, window.activeLoginId);
             } else {
                 window.members = [];
                 window.schedules = [];
             }
             normalizeDatabase();
+            if (loadHadError) {
+                showToast('저장 데이터를 일부 읽지 못했습니다. 백업 파일을 확인해주세요.');
+                renderBackupStatus();
+                return;
+            }
             saveDatabase({ silent: true });
         }
 
         function saveDatabase(options = {}) {
             if (!window.activeLoginId) return;
-            localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
-            localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
-            if (!options.silent) markDataChanged();
+            try {
+                localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
+                localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
+                if (!options.silent) markDataChanged();
+                return true;
+            } catch (err) {
+                console.error('Local save failed.', err);
+                showToast('저장 공간이 부족합니다. 백업 파일을 먼저 저장해주세요.');
+                renderBackupStatus('error');
+                return false;
+            }
         }
 
         function resetLocalLoginInfo() {
@@ -938,7 +973,7 @@
             renderBackupStatus();
         }
 
-        function renderBackupStatus() {
+        function renderBackupStatus(mode = '') {
             const panel = document.getElementById('backup-status-panel');
             if (!panel) return;
             const icon = document.getElementById('backup-status-icon');
@@ -952,6 +987,13 @@
 
             const lastBackup = getSavedTimestamp(LAST_BACKUP_KEY_PREFIX);
             const lastChange = getSavedTimestamp(LAST_DATA_CHANGE_KEY_PREFIX);
+            if (mode === 'error') {
+                panel.className = 'flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5';
+                icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-red-500 text-white';
+                title.innerText = '저장 확인 필요';
+                detail.innerText = '저장 공간 또는 데이터 읽기 문제가 있습니다. 백업을 먼저 저장하세요.';
+                return;
+            }
             if (!lastBackup) {
                 panel.className = 'flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5';
                 icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500 text-stone-950';
@@ -966,11 +1008,40 @@
                 detail.innerText = `최근 백업: ${formatBackupTimestamp(lastBackup)}`;
                 return;
             }
+            if (Date.now() - lastBackup > BACKUP_FRESH_MS) {
+                panel.className = 'flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5';
+                icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500 text-stone-950';
+                title.innerText = '정기 백업 권장';
+                detail.innerText = `최근 백업: ${formatBackupTimestamp(lastBackup)}`;
+                return;
+            }
             panel.className = 'flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5';
             icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-500 text-white';
             title.innerText = '백업 완료';
             detail.innerText = `최근 백업: ${formatBackupTimestamp(lastBackup)}`;
         }
+
+        async function ensurePersistentStorage(manual = false) {
+            try {
+                if (!navigator.storage || !navigator.storage.persist) {
+                    if (manual) showToast('이 브라우저는 저장 보호 확인을 지원하지 않습니다.');
+                    return false;
+                }
+                if (await navigator.storage.persisted()) {
+                    if (manual) showToast('기기 저장 보호가 켜져 있습니다.');
+                    return true;
+                }
+                const granted = await navigator.storage.persist();
+                if (manual) showToast(granted ? '기기 저장 보호가 켜졌습니다.' : '브라우저 설정상 저장 보호를 켜지 못했습니다.');
+                return granted;
+            } catch (err) {
+                console.error('Persistent storage request failed.', err);
+                if (manual) showToast('저장 보호 확인에 실패했습니다.');
+                return false;
+            }
+        }
+
+        window.checkStorageProtection = ensurePersistentStorage;
 
         function loadProfileStore() {
             try {
@@ -1138,6 +1209,7 @@
             hideLoginOverlay();
             loadDatabase();
             updateTrainerUi();
+            setTimeout(() => ensurePersistentStorage(false), 700);
         }
 
         function updateTrainerUi() {
@@ -1298,15 +1370,49 @@
         function localDeleteSchedule(id) { saveDatabase(); }
 
         // ================= BACKUP & RESTORE =================
+        function getDataSummary(members = window.members, schedules = window.schedules) {
+            const safeMembers = Array.isArray(members) ? members : [];
+            const safeSchedules = Array.isArray(schedules) ? schedules : [];
+            const lessonCount = safeMembers.reduce((sum, member) => sum + ((member.lessons || []).length), 0);
+            const signedCount = safeMembers.reduce((sum, member) => sum + getCompletedCount(member), 0);
+            const workoutCount = safeMembers.reduce((sum, member) => sum + ((member.workouts || []).length), 0);
+            return {
+                members: safeMembers.length,
+                schedules: safeSchedules.length,
+                lessons: lessonCount,
+                signedLessons: signedCount,
+                workouts: workoutCount
+            };
+        }
+
         function buildBackupPayload() {
             return {
                 app: 'GOFITGYM_PT_MANAGER',
-                version: 11,
+                version: 14,
                 scope: 'active-trainer',
                 exportedAt: new Date().toISOString(),
                 trainer: window.appProfile ? { loginId: window.appProfile.loginId, trainerName: window.appProfile.trainerName } : null,
+                summary: getDataSummary(),
                 members: window.members || [],
                 schedules: window.schedules || []
+            };
+        }
+
+        function validateBackupPayload(parsed) {
+            if (!parsed || typeof parsed !== 'object') throw new Error('Invalid backup object.');
+            if (!Array.isArray(parsed.members) || !Array.isArray(parsed.schedules)) throw new Error('Invalid backup arrays.');
+            parsed.members.forEach((member, index) => {
+                if (!member || typeof member !== 'object') throw new Error(`Invalid member at ${index}.`);
+                if (!member.id || !member.name) throw new Error(`Invalid member fields at ${index}.`);
+                if (member.lessons && !Array.isArray(member.lessons)) throw new Error(`Invalid lessons at ${index}.`);
+                if (member.workouts && !Array.isArray(member.workouts)) throw new Error(`Invalid workouts at ${index}.`);
+            });
+            return {
+                members: parsed.members,
+                schedules: parsed.schedules,
+                trainerName: parsed.trainer && parsed.trainer.trainerName ? parsed.trainer.trainerName : '알 수 없음',
+                exportedAt: parsed.exportedAt || '',
+                summary: parsed.summary || getDataSummary(parsed.members, parsed.schedules)
             };
         }
 
@@ -1326,9 +1432,32 @@
             return { blob, fileName, json };
         }
 
+        function getRestoreSafetyKey() {
+            return getScopedMetaKey(RESTORE_SAFETY_KEY_PREFIX);
+        }
+
+        function hasRestoreSafetySnapshot() {
+            return !!localStorage.getItem(getRestoreSafetyKey());
+        }
+
+        function saveRestoreSafetySnapshot() {
+            try {
+                const snapshot = buildBackupPayload();
+                snapshot.reason = 'before-restore';
+                snapshot.exportedAt = new Date().toISOString();
+                localStorage.setItem(getRestoreSafetyKey(), JSON.stringify(snapshot));
+                return true;
+            } catch (err) {
+                console.error('Restore safety snapshot failed.', err);
+                return false;
+            }
+        }
+
         window.openBackupChoiceModal = function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
             renderBackupStatus();
+            const safetyButton = document.getElementById('restore-safety-btn');
+            if (safetyButton) safetyButton.classList.toggle('hidden', !hasRestoreSafetySnapshot());
             const modal = document.getElementById('modal-backup-choice');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -1415,16 +1544,26 @@
 
             try {
                 if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-                const parsed = JSON.parse(await file.text());
-                if (!parsed || !Array.isArray(parsed.members) || !Array.isArray(parsed.schedules)) {
+                let backup;
+                try {
+                    backup = validateBackupPayload(JSON.parse(await file.text()));
+                } catch (err) {
+                    console.error(err);
                     return showToast('백업 파일 형식이 올바르지 않습니다.');
                 }
 
-                const ok = confirm(`${getTrainerName()} 트레이너의 현재 데이터를 선택한 백업 파일로 복원할까요?`);
+                const detail = `회원 ${backup.summary.members}명 · 서명 ${backup.summary.signedLessons}회 · 예약 ${backup.summary.schedules}건`;
+                const ok = confirm(`${backup.trainerName} 트레이너 백업입니다.\n${detail}\n\n현재 ${getTrainerName()} 트레이너 데이터를 이 백업으로 복원할까요?`);
                 if (!ok) return;
 
-                window.members = parsed.members;
-                window.schedules = parsed.schedules;
+                const safetySaved = saveRestoreSafetySnapshot();
+                if (!safetySaved) {
+                    const continueRestore = confirm('현재 상태 되돌리기 저장에 실패했습니다. 그래도 복원할까요?');
+                    if (!continueRestore) return;
+                }
+
+                window.members = backup.members;
+                window.schedules = backup.schedules;
                 normalizeDatabase();
                 saveDatabase();
                 markBackupSaved();
@@ -1437,6 +1576,33 @@
             } catch (err) {
                 console.error(err);
                 showToast('백업 복원에 실패했습니다.');
+            }
+        }
+
+        window.restoreLastSafetySnapshot = function() {
+            try {
+                if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+                const raw = localStorage.getItem(getRestoreSafetyKey());
+                if (!raw) return showToast('되돌릴 복원 기록이 없습니다.');
+                const backup = validateBackupPayload(JSON.parse(raw));
+                const detail = `회원 ${backup.summary.members}명 · 서명 ${backup.summary.signedLessons}회 · 예약 ${backup.summary.schedules}건`;
+                const ok = confirm(`직전 복원 전 상태로 되돌릴까요?\n${detail}`);
+                if (!ok) return;
+
+                window.members = backup.members;
+                window.schedules = backup.schedules;
+                normalizeDatabase();
+                saveDatabase();
+                localStorage.removeItem(getRestoreSafetyKey());
+                window.closeBackupChoiceModal();
+                window.activeMemberId = null;
+                window.setDetailProgressExpanded(false);
+                window.setLessonEditMode(false, false);
+                window.switchMainView('dashboard');
+                showToast('직전 복원 전 상태로 되돌렸습니다.');
+            } catch (err) {
+                console.error(err);
+                showToast('되돌리기에 실패했습니다.');
             }
         }
 
@@ -2011,7 +2177,7 @@
                 div.className = "bg-white border border-stone-200 p-3 rounded-xl";
                 div.innerHTML = `
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" onchange="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-16 bg-transparent outline-none border-b border-stone-300">
+                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" oninput="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-16 bg-transparent outline-none border-b border-stone-300">
                         <div class="flex items-center gap-1">
                             <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale" aria-label="운동일지 복사">
                                 <i class="fa-regular fa-copy text-xs"></i>
@@ -2024,7 +2190,7 @@
                             </button>
                         </div>
                     </div>
-                    <textarea id="workout-content-${w.id}" onchange="window.updateW(${w.id}, 'content', this.value)" class="w-full min-h-[72px] text-xs text-stone-600 bg-stone-50 border border-stone-100 p-2 rounded outline-none focus:border-amber-500">${escapeHtml(w.content)}</textarea>
+                    <textarea id="workout-content-${w.id}" oninput="window.updateW(${w.id}, 'content', this.value)" class="w-full min-h-[72px] text-xs text-stone-600 bg-stone-50 border border-stone-100 p-2 rounded outline-none focus:border-amber-500">${escapeHtml(w.content)}</textarea>
                 `;
                 container.appendChild(div);
             });
