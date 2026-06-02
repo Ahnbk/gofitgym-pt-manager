@@ -109,6 +109,27 @@
         }
         .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
 
+        .header-control {
+            height: 30px;
+            min-height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .header-control i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .header-control-icon {
+            width: 30px;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
         #signature-canvas-wrapper.signature-counter-side {
             transform: rotate(180deg) !important;
             transform-origin: center !important;
@@ -224,20 +245,20 @@
                 <div class="min-w-0">
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
-                        <div id="cloud-status-text" class="text-[10px] font-black text-stone-300 bg-stone-800 px-2 py-1 rounded-lg flex items-center border border-stone-700">
+                        <div id="cloud-status-text" class="header-control text-[10px] font-black text-stone-300 bg-stone-800 px-2 rounded-lg border border-stone-700">
                             <i class="fa-solid fa-shield-halved mr-1"></i> 백업 모드
                         </div>
-                        <button onclick="window.pushFullCloudSync(true)" id="header-cloud-sync-btn" class="hidden text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-1 rounded-lg active-scale">
+                        <button onclick="window.pushFullCloudSync(true)" id="header-cloud-sync-btn" class="hidden header-control text-[10px] font-black bg-amber-500 text-stone-950 px-2 rounded-lg active-scale">
                             <i class="fa-solid fa-rotate mr-1"></i><span class="hidden sm:inline">지금 </span>동기화
                         </button>
-                        <span id="header-cloud-sync-time" class="hidden max-w-[104px] sm:max-w-[150px] truncate text-[9px] font-bold text-stone-300 bg-stone-800/70 px-2 py-1 rounded-lg border border-stone-700"></span>
+                        <span id="header-cloud-sync-time" class="hidden header-control max-w-[104px] sm:max-w-[150px] truncate text-[9px] font-bold text-stone-300 bg-stone-800/70 px-2 rounded-lg border border-stone-700"></span>
                     </div>
                     <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
                 </div>
             </div>
             
             <div id="header-action-container" class="flex items-center justify-end gap-2 min-w-0">
-                <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all">
+                <button onclick="window.openNewMemberModal()" class="header-control bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 rounded-xl text-xs font-black shadow-sm active-scale transition-all">
                     <i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span>
                 </button>
             </div>
@@ -859,7 +880,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v37';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v38';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1366,7 +1387,7 @@
                 : '백업 모드';
 
             if (header) {
-                header.className = `text-[10px] font-black px-2 py-1 rounded-lg flex items-center border ${activeCloud ? 'text-emerald-200 bg-emerald-950 border-emerald-700' : 'text-stone-300 bg-stone-800 border-stone-700'}`;
+                header.className = `header-control text-[10px] font-black px-2 rounded-lg border ${activeCloud ? 'text-emerald-200 bg-emerald-950 border-emerald-700' : 'text-stone-300 bg-stone-800 border-stone-700'}`;
                 header.innerHTML = `<i class="fa-solid ${activeCloud ? 'fa-cloud-arrow-up' : 'fa-shield-halved'} mr-1"></i>${label}`;
             }
             if (headerSyncBtn) {
@@ -1847,9 +1868,9 @@
             const chips = (window.loggedInTrainerIds || []).map(id => {
                 const profile = window.trainerProfiles[id];
                 const active = id === window.activeLoginId;
-                return `<button onclick="window.switchActiveTrainer('${encodeURIComponent(id)}')" class="shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-black active-scale border ${active ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-sm' : 'bg-stone-800 text-stone-300 border-stone-700'}">${escapeHtml(profile.trainerName)}</button>`;
+                return `<button onclick="window.switchActiveTrainer('${encodeURIComponent(id)}')" class="header-control shrink-0 px-2.5 rounded-xl text-[10px] font-black active-scale border ${active ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-sm' : 'bg-stone-800 text-stone-300 border-stone-700'}">${escapeHtml(profile.trainerName)}</button>`;
             }).join('');
-            return `<div class="flex items-center gap-1 max-w-[52vw] md:max-w-none overflow-x-auto no-scrollbar">${chips}<button onclick="window.openProfileSettingsModal()" class="shrink-0 bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center active-scale border border-stone-700"><i class="fa-solid fa-user-gear text-amber-500"></i></button></div>`;
+            return `<div class="flex items-center gap-1 max-w-[52vw] md:max-w-none overflow-x-auto no-scrollbar">${chips}<button onclick="window.openProfileSettingsModal()" class="header-control header-control-icon shrink-0 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs font-bold active-scale border border-stone-700"><i class="fa-solid fa-user-gear text-amber-500"></i></button></div>`;
         }
 
         function renderHeaderActions(view = 'dashboard') {
@@ -1857,13 +1878,13 @@
             if (!container) return;
             const trainerSwitcher = getTrainerSwitcherHtml();
             if (view === 'schedule') {
-                container.innerHTML = `${trainerSwitcher}<button onclick="window.goToToday()" class="border border-stone-600 hover:bg-stone-800 text-stone-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active-scale">오늘 이동</button>`;
+                container.innerHTML = `${trainerSwitcher}<button onclick="window.goToToday()" class="header-control border border-stone-600 hover:bg-stone-800 text-stone-300 px-3 rounded-xl text-xs font-bold transition-all active-scale">오늘 이동</button>`;
             } else if (view === 'detail') {
                 container.innerHTML = trainerSwitcher;
             } else {
                 container.innerHTML = `
                     ${trainerSwitcher}
-                    <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all"><i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span></button>
+                    <button onclick="window.openNewMemberModal()" class="header-control bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 rounded-xl text-xs font-black shadow-sm active-scale transition-all"><i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span></button>
                 `;
             }
             renderCloudStatus();
