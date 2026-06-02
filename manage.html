@@ -129,7 +129,11 @@
             padding-left: 0 !important;
             padding-right: 0 !important;
         }
-        .header-shell,
+        .header-shell {
+            align-items: flex-start;
+            box-sizing: border-box;
+            padding-top: 4px;
+        }
         .header-brand {
             align-items: flex-start;
         }
@@ -900,7 +904,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v40';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v41';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3479,6 +3483,45 @@
             document.getElementById('zoom-level-text').innerText = `${Math.round(window.currentZoom * 100)}%`;
         }
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function parseScheduleDate(dateStr) {
+            const parts = String(dateStr || '').split('-').map(Number);
+            if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+        function getScheduleDayDiff(fromDate, toDate) {
+            const from = parseScheduleDate(fromDate);
+            const to = parseScheduleDate(toDate);
+            if (!from || !to) return NaN;
+            return Math.round((to - from) / 86400000);
+        }
+        function isSameWeeklySchedulePattern(target, schedule) {
+            if (!target || !schedule) return false;
+            if (String(schedule.id) === String(target.id)) return true;
+            if ((schedule.title || '').trim() !== (target.title || '').trim()) return false;
+            if ((schedule.time || '') !== (target.time || '')) return false;
+            const dayDiff = getScheduleDayDiff(target.date, schedule.date);
+            return Number.isFinite(dayDiff) && dayDiff >= 0 && dayDiff % 7 === 0;
+        }
+        function getFutureRecurringSchedules(target) {
+            const allSchedules = Array.isArray(window.schedules) ? window.schedules : [];
+            if (!target) return [];
+
+            const matches = target.repeatGroupId
+                ? allSchedules.filter(schedule => {
+                    const dayDiff = getScheduleDayDiff(target.date, schedule.date);
+                    return schedule.repeatGroupId === target.repeatGroupId
+                        && (String(schedule.id) === String(target.id) || (Number.isFinite(dayDiff) && dayDiff >= 0));
+                })
+                : allSchedules.filter(schedule => isSameWeeklySchedulePattern(target, schedule));
+
+            return matches.sort((a, b) => {
+                const dateCompare = String(a.date || '').localeCompare(String(b.date || ''));
+                if (dateCompare !== 0) return dateCompare;
+                const timeCompare = String(a.time || '').localeCompare(String(b.time || ''));
+                if (timeCompare !== 0) return timeCompare;
+                return String(a.id).localeCompare(String(b.id));
+            });
+        }
         function getStartOfWeek(date) { const d = new Date(date); d.setDate(d.getDate() - d.getDay()); return d; }
         function getScheduleTitleFontSize(title) {
             const length = Array.from(String(title || '').trim()).length;
@@ -3613,14 +3656,31 @@
             
             if (id) {
                 const s = window.schedules.find(x => x.id == id);
+                if (!s) {
+                    window.closeScheduleModal();
+                    return showToast('이미 삭제된 일정입니다.');
+                }
                 s.title = title;
                 localSaveSchedule(s);
             } else {
                 if (isRec) {
+                    const baseDate = document.getElementById('sched-date').value;
+                    const baseId = Date.now();
+                    const repeatGroupId = `weekly-${baseId}`;
                     for(let i=0; i<12; i++) {
-                        const target = new Date(document.getElementById('sched-date').value);
+                        const target = parseScheduleDate(baseDate) || new Date(baseDate);
                         target.setDate(target.getDate() + (i*7));
-                        const newS = { id: Date.now()+i, title, date: formatDate(target), time: document.getElementById('sched-time').value, color: 'bg-blue-500/90' };
+                        const newS = {
+                            id: baseId + i,
+                            title,
+                            date: formatDate(target),
+                            time: document.getElementById('sched-time').value,
+                            color: 'bg-blue-500/90',
+                            repeatGroupId,
+                            repeatType: 'weekly',
+                            repeatStartsAt: baseDate,
+                            repeatIndex: i
+                        };
                         window.schedules.push(newS);
                         localSaveSchedule(newS);
                     }
@@ -3634,9 +3694,25 @@
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal();
         }
         window.deleteSchedule = function(id) { 
-            window.schedules = window.schedules.filter(s => s.id != id);
-            localDeleteSchedule(id);
+            const target = window.schedules.find(s => s.id == id);
+            if (!target) {
+                window.closeScheduleModal();
+                return showToast('이미 삭제된 일정입니다.');
+            }
+            const recurringTargets = getFutureRecurringSchedules(target);
+            const deleteFuture = recurringTargets.length > 1 && confirm(
+                `${target.title} ${target.time} 반복 일정입니다.\n\n` +
+                `이 일정(${formatDisplayDate(target.date)}) 포함 이후 반복 일정 ${recurringTargets.length}건을 모두 삭제할까요?\n\n` +
+                `확인: 이 일정 포함 이후 반복 일정 전체 삭제\n` +
+                `취소: 이 일정만 삭제`
+            );
+            const deleteTargets = deleteFuture ? recurringTargets : [target];
+            const deleteIds = new Set(deleteTargets.map(schedule => String(schedule.id)));
+            window.schedules = window.schedules.filter(s => !deleteIds.has(String(s.id)));
+            saveDatabase({ skipCloud: true });
+            deleteIds.forEach(scheduleId => deleteCloudDocument('schedules', scheduleId));
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal(); 
+            showToast(deleteFuture ? `반복 일정 ${deleteIds.size}건을 삭제했습니다.` : '일정을 삭제했습니다.');
         }
 
         // ================= SMART SHARE =================
