@@ -189,31 +189,8 @@
             cursor: pointer;
         }
 
-        .lesson-delete-slot {
-            display: inline-flex;
-            width: 0;
-            margin-left: 0;
-            opacity: 0;
-            overflow: hidden;
-            transform: translateX(-8px);
-            transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1),
-                        margin-left 220ms cubic-bezier(0.4, 0, 0.2, 1),
-                        opacity 160ms ease,
-                        transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
-            vertical-align: middle;
-            pointer-events: none;
-        }
-
         .lesson-editing .lesson-row {
             cursor: default !important;
-        }
-
-        .lesson-editing .lesson-delete-slot {
-            width: 1.25rem;
-            margin-left: 0.5rem;
-            opacity: 1;
-            transform: translateX(0);
-            pointer-events: auto;
         }
     </style>
 </head>
@@ -931,7 +908,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v50';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v51';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3231,23 +3208,6 @@
                 });
         }
 
-        window.deleteLessonAt = function(index) {
-            const m = window.members.find(x => x.id === window.activeMemberId);
-            if (!m || !m.lessons[index]) return;
-            const lesson = m.lessons[index];
-            const isSigned = lesson.signature && lesson.signature !== 'LATER';
-            if (isSigned) return showToast('서명 완료된 회차는 삭제할 수 없습니다.');
-
-            m.lessons.splice(index, 1);
-            m.lessons.forEach((l, i) => l.no = i + 1);
-            m.totalSessions = m.lessons.length;
-            rebuildRenewalSummaries(m);
-            localSaveMember(m);
-            document.getElementById('detail-total-sessions').innerText = m.totalSessions;
-            window.renderMemberLessons();
-            showToast('선택한 수업 항목이 삭제되었습니다.');
-        }
-
         window.applyRemainingLessonsFromEdit = function() {
             const input = document.getElementById('lesson-remaining-target');
             const m = window.members.find(x => x.id === window.activeMemberId);
@@ -3267,7 +3227,7 @@
                 }
             } else {
                 const removeCount = Math.abs(diff);
-                const ok = confirm(`잔여 수업을 ${targetRemaining}회로 줄이면서 대기 수업 ${removeCount}개를 삭제할까요?\n서명 완료된 회차는 유지됩니다.`);
+                const ok = confirm(`잔여 수업을 ${targetRemaining}회로 줄이면서 미서명 회차 ${removeCount}개를 정리할까요?\n서명 완료된 회차는 유지됩니다.`);
                 if (!ok) return;
                 const removableIndexes = [];
                 for (let i = m.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
@@ -3276,7 +3236,7 @@
                     if (isSigned) continue;
                     removableIndexes.push(i);
                 }
-                if (removableIndexes.length < removeCount) return showToast('삭제할 수 있는 대기 수업이 부족합니다.');
+                if (removableIndexes.length < removeCount) return showToast('정리할 수 있는 미서명 회차가 부족합니다.');
                 removableIndexes.forEach(index => m.lessons.splice(index, 1));
             }
 
@@ -3330,8 +3290,12 @@
             const container = document.getElementById('lessons-rows-container'); container.innerHTML = '';
             container.classList.toggle('lesson-editing', window.lessonEditMode);
             const comp = getCompletedCount(m);
+            const remaining = getRemainingLessonCount(m, comp);
             const shouldCollapseSigned = comp >= 2;
             const hideSigned = shouldCollapseSigned && !window.signedLessonsExpanded;
+            const lessons = Array.isArray(m.lessons) ? m.lessons : [];
+            const nextEmptyIndex = lessons.findIndex(l => !l.signature);
+            let renderedCount = 0;
 
             if (shouldCollapseSigned) {
                 const toggleRow = document.createElement('button');
@@ -3340,40 +3304,39 @@
                 toggleRow.className = "w-full flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100 text-left active-scale";
                 toggleRow.innerHTML = `
                     <div>
-                        <p class="text-xs font-black text-amber-700">서명 완료 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
-                        <p class="text-[9px] font-bold text-amber-600">${hideSigned ? '대기 수업을 찾기 쉽게 완료 회차를 숨겼습니다.' : '터치하면 완료 회차를 다시 접습니다.'}</p>
+                        <p class="text-xs font-black text-amber-700">완료 서명 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
+                        <p class="text-[9px] font-bold text-amber-600">${hideSigned ? '최근 서명 기록을 접어두고 다음 서명만 보여줍니다.' : '터치하면 완료 기록을 다시 접습니다.'}</p>
                     </div>
                     <i class="fa-solid ${hideSigned ? 'fa-chevron-down' : 'fa-chevron-up'} text-amber-600 text-xs"></i>
                 `;
                 container.appendChild(toggleRow);
             }
 
-            m.lessons.forEach((l, i) => {
+            const renderLessonRow = (l, i, mode = 'history') => {
                 const isSigned = l.signature && l.signature !== 'LATER';
-                if (isSigned && hideSigned) return;
                 const isLater = l.signature === 'LATER';
                 const isRenewalStart = isRenewalStartLesson(m, l, i);
                 const renewalBadge = isRenewalStart ? `<button onclick="event.stopPropagation(); window.editLessonRenewalDate(${i})" class="inline-flex items-center text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 ml-1 align-middle"><i class="fa-solid fa-rotate-right mr-1"></i>재등록추가</button>` : '';
                 const renewalDateText = isRenewalStart ? `재등록일: ${formatDisplayDate(l.renewalDate)} · ` : '';
-                const deleteLessonButton = !isSigned ? `<span class="lesson-delete-slot"><button onclick="event.stopPropagation(); window.deleteLessonAt(${i})" class="inline-flex items-center justify-center w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full align-middle shadow-sm active-scale" aria-label="수업 삭제"><i class="fa-solid fa-minus text-[10px]"></i></button></span>` : '';
                 
-                let statusText = '수업 대기';
-                let subText = '터치하여 서명';
+                let statusText = '다음 레슨 서명';
+                let subText = `${renewalDateText}${String(l.no).padStart(2,'0')}회차 · 터치하여 서명`;
                 let rightContent = `<button class="text-amber-500"><i class="fa-solid fa-chevron-right text-xs"></i></button>`;
-                let rowClass = '';
+                let rowClass = 'bg-white hover:bg-amber-50';
 
                 if (isSigned) {
-                    statusText = l.date;
-                    subText = `${renewalDateText}서명완료`;
+                    statusText = `${String(l.no).padStart(2,'0')}회차 완료`;
+                    subText = `${renewalDateText}${l.date || '날짜 미정'} · 서명완료`;
                     rightContent = `<img src="${l.signature}" class="h-6 object-contain bg-white border border-stone-200 rounded p-0.5 shadow-sm">`;
                     rowClass = 'bg-amber-500/5';
                 } else if (isLater) {
-                    statusText = l.date || '날짜 미정';
-                    subText = `${renewalDateText}나중에 서명`;
+                    statusText = `${String(l.no).padStart(2,'0')}회차 서명 보류`;
+                    subText = `${renewalDateText}${l.date || '날짜 미정'} · 터치하여 서명`;
                     rightContent = `<span class="text-[10px] font-bold text-stone-500 bg-stone-200 px-2.5 py-1 rounded-md shadow-sm">나중에 서명</span>`;
                     rowClass = 'bg-stone-50';
-                } else {
-                    subText = `${renewalDateText}터치하여 서명`;
+                } else if (mode === 'next') {
+                    rightContent = `<span class="inline-flex items-center gap-1 text-[10px] font-black text-stone-950 bg-amber-500 px-2.5 py-1 rounded-md shadow-sm"><i class="fa-solid fa-signature"></i>서명하기</span>`;
+                    rowClass = 'bg-amber-50/40 hover:bg-amber-50';
                 }
 
                 const row = document.createElement('div');
@@ -3384,8 +3347,8 @@
                     <div class="flex items-center space-x-3">
                         <span class="font-black text-xs text-stone-400 w-4">${String(l.no).padStart(2,'0')}</span>
                         <div>
-                            <p class="text-sm font-bold text-stone-800">${statusText}${deleteLessonButton}${renewalBadge}</p>
-                            <p class="text-[9px] text-stone-400">${subText}</p>
+                            <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}</p>
+                            <p class="text-[9px] text-stone-400">${escapeHtml(subText)}</p>
                         </div>
                     </div>
                     <div class="flex space-x-2 items-center">
@@ -3393,7 +3356,32 @@
                     </div>
                 `;
                 container.appendChild(row);
+                renderedCount += 1;
+            };
+
+            lessons.forEach((l, i) => {
+                const isSigned = l.signature && l.signature !== 'LATER';
+                const isLater = l.signature === 'LATER';
+                if (isSigned && hideSigned) return;
+                if (isSigned || isLater) renderLessonRow(l, i, 'history');
             });
+
+            if (nextEmptyIndex >= 0 && remaining > 0) {
+                renderLessonRow(lessons[nextEmptyIndex], nextEmptyIndex, 'next');
+            }
+
+            if (!renderedCount && remaining <= 0) {
+                const doneRow = document.createElement('div');
+                doneRow.className = 'flex items-center justify-between px-4 py-4 bg-emerald-50 text-emerald-700';
+                doneRow.innerHTML = `
+                    <div>
+                        <p class="text-sm font-black">모든 레슨 서명이 완료되었습니다.</p>
+                        <p class="text-[10px] font-bold text-emerald-600">필요하면 수정에서 잔여 수업을 다시 조정할 수 있습니다.</p>
+                    </div>
+                    <i class="fa-solid fa-circle-check"></i>
+                `;
+                container.appendChild(doneRow);
+            }
             updateDetailProgress(m, comp);
         }
 
