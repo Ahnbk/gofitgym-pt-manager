@@ -859,7 +859,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v36';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v37';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1990,8 +1990,7 @@
             }
             const detailView = document.getElementById('view-member-detail');
             if (detailView && !detailView.classList.contains('hidden') && window.activeMemberId) {
-                const m = window.members.find(x => x.id === window.activeMemberId);
-                if (m && subtitle) subtitle.innerText = `${m.name} Member`;
+                if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
                 renderHeaderActions('detail');
                 return;
             }
@@ -2840,7 +2839,7 @@
             document.getElementById('main-scroll-area').classList.add('overflow-y-auto');
             document.getElementById('view-dashboard').classList.add('hidden');
             document.getElementById('view-member-detail').classList.remove('hidden');
-            document.getElementById('header-subtitle').innerText = `${m.name} Member`;
+            document.getElementById('header-subtitle').innerText = `${getTrainerName()} Trainer`;
             renderHeaderActions('detail');
             document.getElementById('main-scroll-area').scrollTo({top:0});
         }
