@@ -63,6 +63,15 @@
             height: calc(var(--cal-base-row-height) * var(--cal-zoom));
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: 50px repeat(7, minmax(0, 1fr));
+        }
+        @media (min-width: 1024px) {
+            .cal-grid {
+                grid-template-columns: 60px repeat(7, minmax(0, 1fr));
+            }
+        }
         .cal-grid-cell {
             border-right: 1px solid #292524;
             border-bottom: 1px solid #292524;
@@ -82,7 +91,7 @@
             white-space: normal;
             word-break: keep-all;
             overflow-wrap: anywhere;
-            line-height: 1.08;
+            line-height: 1.12;
             text-align: center;
             letter-spacing: 0;
         }
@@ -303,7 +312,7 @@
                 <!-- Independent Scrollable Grid Wrapper for Sticky Header -->
                 <div class="overflow-auto calendar-scroll bg-stone-900 flex-grow relative" id="calendar-scroll-area">
                     <div class="cal-wrapper relative min-h-full">
-                        <div class="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] bg-stone-900 border-b border-stone-700 sticky top-0 z-20 shadow-md" id="calendar-header"></div>
+                        <div class="cal-grid bg-stone-900 border-b border-stone-700 sticky top-0 z-20 shadow-md" id="calendar-header"></div>
                         <div id="calendar-body" class="relative text-stone-400 pb-10"></div>
                     </div>
                 </div>
@@ -812,7 +821,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v28';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v29';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3351,10 +3360,10 @@
         function getStartOfWeek(date) { const d = new Date(date); d.setDate(d.getDate() - d.getDay()); return d; }
         function getScheduleTitleFontSize(title) {
             const length = Array.from(String(title || '').trim()).length;
-            if (length <= 8) return 'calc(13px * var(--cal-zoom))';
-            if (length <= 14) return 'calc(12px * var(--cal-zoom))';
-            if (length <= 22) return 'calc(10.5px * var(--cal-zoom))';
-            return 'calc(9.5px * var(--cal-zoom))';
+            if (length <= 8) return 'calc(11.5px * var(--cal-zoom))';
+            if (length <= 14) return 'calc(10.5px * var(--cal-zoom))';
+            if (length <= 22) return 'calc(9.5px * var(--cal-zoom))';
+            return 'calc(8.7px * var(--cal-zoom))';
         }
         window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
         window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
@@ -3386,8 +3395,8 @@
             for (let h = 0; h < HOURS; h++) {
                 const tStr = `${String(START_HOUR + h).padStart(2, '0')}:00`;
                 const row = document.createElement('div');
-                row.className = "grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] relative cal-grid-row";
-                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-bold text-stone-500 w-[50px] lg:w-[60px] cal-time-text">${tStr}</div>`;
+                row.className = "cal-grid relative cal-grid-row";
+                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-bold text-stone-500 w-full cal-time-text">${tStr}</div>`;
                 
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(s); d.setDate(d.getDate() + i);
