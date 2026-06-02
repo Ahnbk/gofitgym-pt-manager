@@ -362,20 +362,20 @@
 
             <!-- Tab Content 1 -->
             <div id="tab-lessons" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
-                <div class="bg-stone-50 px-4 py-3 border-b border-stone-200 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
+                <div class="bg-stone-50 px-4 py-3 border-b border-stone-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2 min-w-0">
                         <span class="font-bold text-sm text-stone-700">레슨 세션 타임라인</span>
                         <button onclick="window.toggleLessonEditMode()" id="lesson-edit-btn" class="px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale">
                             <i class="fa-solid fa-pen-to-square mr-1"></i>수정
                         </button>
                         <div id="lesson-add-tools" class="hidden items-center gap-1">
-                            <button onclick="window.addLessonSlotsFromEdit()" class="px-2 py-1 rounded-md bg-stone-900 text-white text-[10px] font-black active-scale">
-                                <i class="fa-solid fa-plus mr-1 text-amber-500"></i>추가
+                            <input type="number" id="lesson-remaining-target" value="0" min="0" onkeydown="if(event.key === 'Enter') window.applyRemainingLessonsFromEdit()" aria-label="잔여 수업 목표 횟수" class="w-14 px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[10px] font-black text-stone-800 outline-none focus:border-amber-500">
+                            <button onclick="window.applyRemainingLessonsFromEdit()" class="px-2 py-1 rounded-md bg-stone-900 text-white text-[10px] font-black active-scale">
+                                <i class="fa-solid fa-sliders mr-1 text-amber-500"></i>잔여수업 수정
                             </button>
-                            <input type="number" id="lesson-add-count" value="1" min="1" onkeydown="if(event.key === 'Enter') window.addLessonSlotsFromEdit()" aria-label="추가할 수업 횟수" class="w-12 px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[10px] font-black text-stone-800 outline-none focus:border-amber-500">
                         </div>
                     </div>
-                    <span id="detail-session-progress" class="text-xs font-black text-amber-600">잔여 수업 0회</span>
+                    <span id="detail-session-progress" class="text-xs font-black text-amber-600 self-end sm:self-auto">잔여 수업 0회</span>
                 </div>
                 <div id="lessons-rows-container" class="divide-y divide-stone-100"></div>
             </div>
@@ -768,7 +768,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v21';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v22';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2607,12 +2607,16 @@
                     : '<i class="fa-solid fa-pen-to-square mr-1"></i>수정';
             }
             const addTools = document.getElementById('lesson-add-tools');
-            const addInput = document.getElementById('lesson-add-count');
+            const remainingInput = document.getElementById('lesson-remaining-target');
             if (addTools) {
                 addTools.classList.toggle('hidden', !editing);
                 addTools.classList.toggle('flex', editing);
             }
-            if (editing && addInput && (!addInput.value || parseInt(addInput.value) < 1)) addInput.value = 1;
+            if (editing && remainingInput) {
+                const m = window.members.find(x => x.id === window.activeMemberId);
+                if (m) remainingInput.value = getRemainingLessonCount(m);
+                else if (!remainingInput.value || parseInt(remainingInput.value) < 0) remainingInput.value = 0;
+            }
             const rows = document.getElementById('lessons-rows-container');
             if (rows) rows.classList.toggle('lesson-editing', editing);
             if (shouldRender) window.renderMemberLessons();
@@ -2624,13 +2628,21 @@
 
         function updateDetailProgress(m, comp) {
             const total = m.totalSessions || 0;
-            const remaining = Math.max(total - comp, 0);
+            const remaining = getRemainingLessonCount(m, comp);
             const percent = total ? Math.round((comp / total) * 100) : 0;
             document.getElementById('detail-session-progress').innerText = `잔여 수업 ${remaining}회`;
             document.getElementById('detail-progress-summary').innerText = `${percent}%`;
             document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
             document.getElementById('detail-progress-label').innerText = `${percent}%`;
             document.getElementById('detail-progress-bar').style.width = `${percent}%`;
+            const remainingInput = document.getElementById('lesson-remaining-target');
+            if (window.lessonEditMode && remainingInput) remainingInput.value = remaining;
+        }
+
+        function getRemainingLessonCount(m, completedCount = null) {
+            const total = (m && Array.isArray(m.lessons)) ? m.lessons.length : (m && m.totalSessions) || 0;
+            const completed = completedCount === null ? getCompletedCount(m || {}) : completedCount;
+            return Math.max(total - completed, 0);
         }
 
         function isRenewalStartLesson(m, lesson, index) {
@@ -2678,23 +2690,51 @@
             showToast('선택한 수업 항목이 삭제되었습니다.');
         }
 
-        window.addLessonSlotsFromEdit = function() {
-            const input = document.getElementById('lesson-add-count');
-            const count = parseInt(input && input.value) || 0;
-            if (count < 1) return showToast('추가할 수업 횟수를 입력해주세요.');
-
+        window.applyRemainingLessonsFromEdit = function() {
+            const input = document.getElementById('lesson-remaining-target');
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m) return;
-            const currentLen = m.lessons.length;
-            for (let i = 0; i < count; i++) {
-                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '' });
+            const targetRemaining = parseInt(input && input.value, 10);
+            if (!Number.isFinite(targetRemaining) || targetRemaining < 0) return showToast('잔여 수업 횟수를 0 이상으로 입력해주세요.');
+
+            const completed = getCompletedCount(m);
+            const currentRemaining = getRemainingLessonCount(m, completed);
+            const diff = targetRemaining - currentRemaining;
+            if (diff === 0) return showToast('이미 입력한 잔여 수업 수와 같습니다.');
+
+            if (diff > 0) {
+                const currentLen = m.lessons.length;
+                for (let i = 0; i < diff; i++) {
+                    m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '' });
+                }
+            } else {
+                const removeCount = Math.abs(diff);
+                const ok = confirm(`잔여 수업을 ${targetRemaining}회로 줄이면서 대기 수업 ${removeCount}개를 삭제할까요?\n서명 완료된 회차는 유지됩니다.`);
+                if (!ok) return;
+                const removableIndexes = [];
+                for (let i = m.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
+                    const lesson = m.lessons[i];
+                    const isSigned = lesson.signature && lesson.signature !== 'LATER';
+                    if (isSigned) continue;
+                    removableIndexes.push(i);
+                }
+                if (removableIndexes.length < removeCount) return showToast('삭제할 수 있는 대기 수업이 부족합니다.');
+                removableIndexes.forEach(index => m.lessons.splice(index, 1));
             }
+
+            m.lessons.forEach((l, i) => l.no = i + 1);
             m.totalSessions = m.lessons.length;
+            rebuildRenewalSummaries(m);
             localSaveMember(m);
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
             window.renderMemberLessons();
-            showToast(`수업 대기 ${count}회가 추가되었습니다.`);
+            const changed = Math.abs(diff);
+            showToast(diff > 0
+                ? `잔여 수업을 ${targetRemaining}회로 맞췄습니다. (${changed}회 추가)`
+                : `잔여 수업을 ${targetRemaining}회로 맞췄습니다. (${changed}회 삭제)`);
         }
+
+        window.addLessonSlotsFromEdit = window.applyRemainingLessonsFromEdit;
 
         window.editLessonRenewalDate = function(index) {
             const m = window.members.find(x => x.id === window.activeMemberId);
