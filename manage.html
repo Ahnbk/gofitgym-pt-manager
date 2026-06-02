@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="GOFITGYM">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="manifest" href="./manifest.webmanifest?v=30">
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
@@ -821,7 +821,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v29';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v30';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -861,13 +861,31 @@
             initSignaturePad();
             await initializeCloudAuth();
             await initializeLoginGate();
+            setTimeout(lockAppOrientation, 600);
             setTimeout(() => window.checkAppUpdate(false), 1500);
         };
 
         setInterval(() => window.checkAppUpdate(false), 1000 * 60 * 30);
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) window.checkAppUpdate(false);
+            if (!document.hidden) {
+                lockAppOrientation();
+                window.checkAppUpdate(false);
+            }
         });
+
+        function isStandalonePwa() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        async function lockAppOrientation() {
+            try {
+                if (!isStandalonePwa()) return;
+                if (!screen.orientation || typeof screen.orientation.lock !== 'function') return;
+                await screen.orientation.lock('portrait');
+            } catch (err) {
+                console.log('Orientation lock skipped.', err);
+            }
+        }
 
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
