@@ -247,6 +247,9 @@
                     <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
                         완료 <span id="member-tab-completed-count" class="ml-1 text-stone-400">0</span>
                     </button>
+                    <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                        보류 <span id="member-tab-hold-count" class="ml-1 text-stone-400">0</span>
+                    </button>
                 </div>
             </div>
 
@@ -503,6 +506,30 @@
         </div>
     </div>
 
+    <!-- 0-0-1. Member Long Press Action Menu -->
+    <div id="modal-member-action" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-[75] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div class="min-w-0">
+                    <h3 id="member-action-title" class="font-black text-amber-500 text-base truncate">회원명</h3>
+                    <p id="member-action-subtitle" class="text-[10px] text-stone-400 mt-1">회원 상태 변경</p>
+                </div>
+                <button onclick="window.closeMemberActionMenu()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-2">
+                <button onclick="window.openActionMemberDetail()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-user mr-1.5 text-amber-500"></i>회원 화면 열기
+                </button>
+                <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-pause mr-1.5"></i>보류 탭으로 이동
+                </button>
+                <button onclick="window.closeMemberActionMenu()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 0-1. Backup Choice Modal -->
     <div id="modal-backup-choice" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -742,6 +769,9 @@
         var signaturePad = null;
         var currentPdfElementToExport = null;
         var memberStatusFilter = 'active';
+        var memberLongPressTimer = null;
+        var memberLongPressTriggered = false;
+        var memberActionMemberId = null;
         var detailProgressExpanded = false;
         var lessonEditMode = false;
         var appProfile = null;
@@ -768,7 +798,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v22';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v23';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1516,6 +1546,12 @@
 
         function normalizeDatabase() {
             window.members = (window.members || []).map(m => {
+                if (typeof m.status === 'undefined') m.status = '';
+                if (m.status !== 'hold') {
+                    delete m.holdAt;
+                } else if (!m.holdAt) {
+                    m.holdAt = new Date().toISOString();
+                }
                 m.lessons = Array.isArray(m.lessons) ? m.lessons : [];
                 const targetTotal = Math.max(parseInt(m.totalSessions) || 0, m.lessons.length);
                 while (m.lessons.length < targetTotal) {
@@ -1541,6 +1577,10 @@
 
         function isMemberCompleted(m) {
             return m.totalSessions > 0 && getCompletedCount(m) >= m.totalSessions;
+        }
+
+        function isMemberOnHold(m) {
+            return !!(m && m.status === 'hold');
         }
 
         function getTodayScheduleForMember(m) {
@@ -2370,6 +2410,104 @@
             window.renderMemberList();
         }
 
+        function bindMemberCardPress(card, memberId) {
+            const clearPressTimer = () => {
+                if (window.memberLongPressTimer) clearTimeout(window.memberLongPressTimer);
+                window.memberLongPressTimer = null;
+            };
+
+            card.addEventListener('pointerdown', event => {
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                clearPressTimer();
+                window.memberLongPressTriggered = false;
+                window.memberLongPressTimer = setTimeout(() => {
+                    window.memberLongPressTriggered = true;
+                    if (navigator.vibrate) navigator.vibrate(12);
+                    window.openMemberActionMenu(memberId);
+                }, 620);
+            });
+
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                card.addEventListener(type, clearPressTimer);
+            });
+
+            card.addEventListener('contextmenu', event => {
+                event.preventDefault();
+                clearPressTimer();
+                window.memberLongPressTriggered = true;
+                window.openMemberActionMenu(memberId);
+            });
+
+            card.onclick = event => {
+                if (window.memberLongPressTriggered) {
+                    event.preventDefault();
+                    window.memberLongPressTriggered = false;
+                    return;
+                }
+                window.selectMember(memberId);
+            };
+        }
+
+        window.openMemberActionMenu = function(memberId) {
+            const m = window.members.find(x => x.id === memberId);
+            if (!m) return;
+            window.memberActionMemberId = memberId;
+            const modal = document.getElementById('modal-member-action');
+            const hold = isMemberOnHold(m);
+            const completed = isMemberCompleted(m);
+            const comp = getCompletedCount(m);
+            document.getElementById('member-action-title').innerText = m.name;
+            document.getElementById('member-action-subtitle').innerText = hold
+                ? `보류 중 · ${comp}/${m.totalSessions || 0}회 완료`
+                : `${completed ? '완료' : '진행중'} · ${comp}/${m.totalSessions || 0}회 완료`;
+            const holdBtn = document.getElementById('member-action-hold-btn');
+            holdBtn.className = hold
+                ? 'w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black active-scale'
+                : 'w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale';
+            holdBtn.innerHTML = hold
+                ? '<i class="fa-solid fa-play mr-1.5"></i>진행중으로 복귀'
+                : '<i class="fa-solid fa-pause mr-1.5"></i>보류 탭으로 이동';
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeMemberActionMenu = function() {
+            const modal = document.getElementById('modal-member-action');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            window.memberActionMemberId = null;
+            window.memberLongPressTriggered = false;
+            if (window.memberLongPressTimer) clearTimeout(window.memberLongPressTimer);
+            window.memberLongPressTimer = null;
+        }
+
+        window.openActionMemberDetail = function() {
+            const memberId = window.memberActionMemberId;
+            window.closeMemberActionMenu();
+            if (memberId) window.selectMember(memberId);
+        }
+
+        window.toggleActionMemberHold = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m) return;
+            if (isMemberOnHold(m)) {
+                m.status = '';
+                delete m.holdAt;
+                localSaveMember(m);
+                window.switchMemberStatusTab(isMemberCompleted(m) ? 'completed' : 'active');
+                window.closeMemberActionMenu();
+                showToast(`${m.name} 회원을 진행 목록으로 복귀시켰습니다.`);
+                return;
+            }
+
+            m.status = 'hold';
+            m.holdAt = new Date().toISOString();
+            localSaveMember(m);
+            window.switchMemberStatusTab('hold');
+            window.closeMemberActionMenu();
+            showToast(`${m.name} 회원을 보류 탭으로 이동했습니다.`);
+        }
+
         window.renderMemberList = function() {
             const query = document.getElementById('member-search').value.toLowerCase().trim();
             const container = document.getElementById('member-list-container');
@@ -2384,24 +2522,38 @@
                 m._todayTime = sched ? sched.time : null;
             });
 
-            const activeCount = filtered.filter(m => !isMemberCompleted(m)).length;
-            const completedCount = filtered.filter(m => isMemberCompleted(m)).length;
+            const activeCount = filtered.filter(m => !isMemberOnHold(m) && !isMemberCompleted(m)).length;
+            const completedCount = filtered.filter(m => !isMemberOnHold(m) && isMemberCompleted(m)).length;
+            const holdCount = filtered.filter(m => isMemberOnHold(m)).length;
             document.getElementById('member-tab-active-count').innerText = activeCount;
             document.getElementById('member-tab-completed-count').innerText = completedCount;
+            document.getElementById('member-tab-hold-count').innerText = holdCount;
 
             const activeBtn = document.getElementById('member-tab-active');
             const completedBtn = document.getElementById('member-tab-completed');
+            const holdBtn = document.getElementById('member-tab-hold');
             activeBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
             completedBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            holdBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
             if (window.memberStatusFilter === 'completed') {
                 activeBtn.className += " text-stone-500";
                 completedBtn.className += " bg-stone-900 text-white shadow";
+                holdBtn.className += " text-stone-500";
+            } else if (window.memberStatusFilter === 'hold') {
+                activeBtn.className += " text-stone-500";
+                completedBtn.className += " text-stone-500";
+                holdBtn.className += " bg-stone-900 text-white shadow";
             } else {
                 activeBtn.className += " bg-stone-900 text-white shadow";
                 completedBtn.className += " text-stone-500";
+                holdBtn.className += " text-stone-500";
             }
 
-            filtered = filtered.filter(m => window.memberStatusFilter === 'completed' ? isMemberCompleted(m) : !isMemberCompleted(m));
+            filtered = filtered.filter(m => {
+                if (window.memberStatusFilter === 'hold') return isMemberOnHold(m);
+                if (window.memberStatusFilter === 'completed') return !isMemberOnHold(m) && isMemberCompleted(m);
+                return !isMemberOnHold(m) && !isMemberCompleted(m);
+            });
 
             filtered.sort((a, b) => {
                 if (a._todayTime && b._todayTime) return a._todayTime.localeCompare(b._todayTime);
@@ -2416,13 +2568,15 @@
                 totalComp += comp;
                 const percent = Math.round((comp / m.totalSessions) * 100) || 0;
                 const completed = isMemberCompleted(m);
+                const hold = isMemberOnHold(m);
                 
                 const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
-                const statusBadge = completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] bg-stone-100 text-stone-500 font-bold px-2 py-0.5 rounded-full">총 ${m.totalSessions}회</span>`;
+                const statusBadge = hold
+                    ? `<span class="text-[9px] bg-stone-800 text-amber-400 font-black px-2 py-0.5 rounded-full">보류</span>`
+                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] bg-stone-100 text-stone-500 font-bold px-2 py-0.5 rounded-full">총 ${m.totalSessions}회</span>`);
 
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${m._todayTime ? 'border-amber-400' : 'border-stone-200/80'} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between`;
-                card.onclick = () => window.selectMember(m.id);
+                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? 'border-stone-400 bg-stone-50' : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -2437,13 +2591,16 @@
                         <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                     </div>
                 `;
+                bindMemberCardPress(card, m.id);
                 container.appendChild(card);
             });
 
             if (!filtered.length) {
                 const empty = document.createElement('div');
                 empty.className = "sm:col-span-2 lg:col-span-3 bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-xs font-bold text-stone-400";
-                empty.innerText = window.memberStatusFilter === 'completed' ? '완료된 회원이 없습니다.' : '진행중인 회원이 없습니다.';
+                empty.innerText = window.memberStatusFilter === 'hold'
+                    ? '보류 중인 회원이 없습니다.'
+                    : (window.memberStatusFilter === 'completed' ? '완료된 회원이 없습니다.' : '진행중인 회원이 없습니다.');
                 container.appendChild(empty);
             }
 
