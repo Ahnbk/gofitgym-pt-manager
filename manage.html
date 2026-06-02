@@ -130,7 +130,7 @@
             padding-right: 0 !important;
         }
 
-        #signature-canvas-wrapper.signature-counter-side {
+        #modal-box.signature-counter-side {
             transform: rotate(180deg) !important;
             transform-origin: center !important;
         }
@@ -880,7 +880,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v38';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v39';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3153,11 +3153,11 @@
                 return originalCreatePoint(rect.left + rect.width - localX, rect.top + rect.height - localY, pressure);
             };
             pad._gofitCounterSideInput = true;
-            const wrapper = document.getElementById('signature-canvas-wrapper');
-            if (wrapper) {
-                wrapper.classList.add('signature-counter-side');
-                wrapper.style.transform = 'rotate(180deg)';
-                wrapper.style.transformOrigin = 'center';
+            const modalBox = document.getElementById('modal-box');
+            if (modalBox) {
+                modalBox.classList.add('signature-counter-side');
+                modalBox.style.transform = 'rotate(180deg)';
+                modalBox.style.transformOrigin = 'center';
             }
         }
 
