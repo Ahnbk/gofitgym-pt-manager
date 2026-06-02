@@ -929,7 +929,7 @@
         var dashboardToolsOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v45';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v46';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -939,6 +939,7 @@
             messagingSenderId: '615657179263',
             measurementId: 'G-XQMW29RNQL'
         };
+        const ALLOWED_CLOUD_EMAILS = ['rebirth1013@gmail.com'];
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1123,6 +1124,14 @@
             return uid ? `${CLOUD_LOGIN_PREFIX}${uid}` : '';
         }
 
+        function normalizeCloudEmail(email) {
+            return String(email || '').trim().toLowerCase();
+        }
+
+        function isAllowedCloudEmail(email) {
+            return ALLOWED_CLOUD_EMAILS.includes(normalizeCloudEmail(email));
+        }
+
         function isCloudProfile(profile = window.appProfile) {
             return !!(profile && profile.cloudUid);
         }
@@ -1220,6 +1229,15 @@
             if (!user) {
                 stopCloudSync();
                 renderCloudStatus();
+                return;
+            }
+            if (!isAllowedCloudEmail(user.email)) {
+                stopCloudSync();
+                window.cloudUser = null;
+                window.cloudLastError = '허용되지 않은 이메일';
+                renderCloudStatus();
+                showToast('허용된 이메일만 클라우드를 사용할 수 있습니다.');
+                if (window.firebaseAuth) window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
                 return;
             }
 
@@ -1522,6 +1540,7 @@
             const password = document.getElementById('cloud-password').value;
             const trainerName = document.getElementById('cloud-trainer-name').value.trim() || getTrainerName();
             if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
+            if (!isAllowedCloudEmail(email)) return showToast('허용된 이메일만 클라우드를 사용할 수 있습니다.');
             if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const previousLoginId = window.activeLoginId;
