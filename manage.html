@@ -911,6 +911,9 @@
         var deferredInstallPrompt = null;
         var workoutSaveTimer = null;
         var pendingWorkoutSave = false;
+        var pendingWorkoutSaveIds = {};
+        var workoutSaveStates = {};
+        var workoutLogsExpanded = false;
         var firebaseApp = null;
         var firebaseAuth = null;
         var firebaseDb = null;
@@ -928,7 +931,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v49';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v50';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1386,7 +1389,7 @@
             if (schedule && !schedule.classList.contains('hidden')) window.initCalendar();
             if (detail && !detail.classList.contains('hidden') && window.activeMemberId) {
                 const member = window.members.find(m => m.id === window.activeMemberId);
-                if (member) window.openMemberDetail(window.activeMemberId);
+                if (member) window.refreshActiveMemberDetail();
                 else window.switchMainView('dashboard');
             }
         }
@@ -3063,16 +3066,32 @@
         }
 
         // ================= MEMBER DETAIL =================
-        window.selectMember = function(id) {
-            window.activeMemberId = id;
-            const m = window.members.find(x => x.id === id);
-            if(!m) return;
-
+        function populateMemberDetail(m) {
             document.getElementById('detail-member-name').innerText = m.name;
             document.getElementById('detail-member-trainer').innerText = formatTrainerLabel(m.trainer || getTrainerName());
             document.getElementById('detail-reg-date').innerText = m.registrationDate;
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
             document.getElementById('detail-member-contacts').innerText = `이메일: ${m.email||'없음'} | 텔레그램: ${m.telegram ? '@'+m.telegram : '없음'}`;
+        }
+
+        window.refreshActiveMemberDetail = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            populateMemberDetail(m);
+            window.renderMemberLessons();
+            window.renderMemberWorkouts();
+        }
+
+        window.selectMember = function(id) {
+            flushWorkoutSave();
+            window.activeMemberId = id;
+            window.workoutLogsExpanded = false;
+            window.workoutSaveStates = {};
+            window.pendingWorkoutSaveIds = {};
+            const m = window.members.find(x => x.id === id);
+            if(!m) return;
+
+            populateMemberDetail(m);
 
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
@@ -3559,13 +3578,21 @@
             const m = window.members.find(x => x.id === window.activeMemberId);
             if(!m) return;
             const container = document.getElementById('workout-rows-container'); container.innerHTML = '';
-            m.workouts.forEach(w => {
+            const workouts = Array.isArray(m.workouts) ? m.workouts : [];
+            const renderWorkoutRow = (w) => {
                 const div = document.createElement('div');
                 div.className = "bg-white border border-stone-200 p-3 rounded-xl";
+                const saveState = window.workoutSaveStates[String(w.id)] || '';
                 div.innerHTML = `
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                         <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" oninput="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-16 bg-transparent outline-none border-b border-stone-300">
                         <div class="flex items-center gap-1">
+                            <button id="workout-save-${w.id}" onclick="window.saveWorkoutLog(${w.id})" class="${saveState === 'dirty' ? 'inline-flex' : 'hidden'} items-center justify-center h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black active-scale" aria-label="운동일지 저장">
+                                <i class="fa-solid fa-floppy-disk mr-1"></i>저장
+                            </button>
+                            <span id="workout-saved-${w.id}" class="${saveState === 'saved' ? 'inline-flex' : 'hidden'} items-center justify-center h-8 px-2.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg text-[10px] font-black">
+                                <i class="fa-solid fa-check mr-1"></i>저장됨
+                            </span>
                             <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale" aria-label="운동일지 복사">
                                 <i class="fa-regular fa-copy text-xs"></i>
                             </button>
@@ -3580,11 +3607,60 @@
                     <textarea id="workout-content-${w.id}" oninput="window.updateW(${w.id}, 'content', this.value)" class="w-full min-h-[72px] text-xs text-stone-600 bg-stone-50 border border-stone-100 p-2 rounded outline-none focus:border-amber-500">${escapeHtml(w.content)}</textarea>
                 `;
                 container.appendChild(div);
-            });
+            };
+
+            if (!workouts.length) return;
+            renderWorkoutRow(workouts[0]);
+
+            if (workouts.length > 1) {
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.onclick = window.toggleWorkoutLogs;
+                toggle.className = 'w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 text-stone-600 text-xs font-black active-scale border border-stone-200';
+                toggle.innerHTML = window.workoutLogsExpanded
+                    ? `<i class="fa-solid fa-chevron-up text-[10px]"></i>이전 일지 접기`
+                    : `<i class="fa-solid fa-chevron-down text-[10px]"></i>이전 일지 ${workouts.length - 1}개 펼치기`;
+                container.appendChild(toggle);
+                if (window.workoutLogsExpanded) workouts.slice(1).forEach(renderWorkoutRow);
+            }
         }
 
-        function queueWorkoutSave() {
+        function setWorkoutSaveState(id, state) {
+            const key = String(id);
+            if (state) window.workoutSaveStates[key] = state;
+            else delete window.workoutSaveStates[key];
+            const saveBtn = document.getElementById(`workout-save-${id}`);
+            const savedBadge = document.getElementById(`workout-saved-${id}`);
+            if (saveBtn) {
+                saveBtn.classList.toggle('hidden', state !== 'dirty');
+                saveBtn.classList.toggle('inline-flex', state === 'dirty');
+            }
+            if (savedBadge) {
+                savedBadge.classList.toggle('hidden', state !== 'saved');
+                savedBadge.classList.toggle('inline-flex', state === 'saved');
+            }
+            if (state === 'saved') {
+                setTimeout(() => {
+                    if (window.workoutSaveStates[key] !== 'saved') return;
+                    delete window.workoutSaveStates[key];
+                    const badge = document.getElementById(`workout-saved-${id}`);
+                    if (badge) {
+                        badge.classList.add('hidden');
+                        badge.classList.remove('inline-flex');
+                    }
+                }, 1600);
+            }
+        }
+
+        function markWorkoutDirty(id) {
+            if (!id) return;
+            window.pendingWorkoutSaveIds[String(id)] = true;
+            setWorkoutSaveState(id, 'dirty');
+        }
+
+        function queueWorkoutSave(id) {
             pendingWorkoutSave = true;
+            markWorkoutDirty(id);
             clearTimeout(workoutSaveTimer);
             workoutSaveTimer = setTimeout(flushWorkoutSave, WORKOUT_SAVE_DELAY_MS);
         }
@@ -3593,10 +3669,13 @@
             if (!pendingWorkoutSave) return;
             clearTimeout(workoutSaveTimer);
             workoutSaveTimer = null;
+            const savedIds = Object.keys(window.pendingWorkoutSaveIds || {});
+            window.pendingWorkoutSaveIds = {};
             pendingWorkoutSave = false;
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (m) localSaveMember(m);
             else saveDatabase({ skipCloud: true });
+            savedIds.forEach(id => setWorkoutSaveState(id, 'saved'));
         }
 
         window.addEventListener('beforeunload', flushWorkoutSave);
@@ -3608,6 +3687,7 @@
             const m = window.members.find(x => x.id === window.activeMemberId);
             const d = new Date();
             m.workouts.unshift({ id: Date.now(), date: `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, content: '' });
+            window.workoutLogsExpanded = false;
             localSaveMember(m);
             window.renderMemberWorkouts();
         }
@@ -3618,11 +3698,32 @@
             workout[k] = v;
             markLocalItemUpdated(m);
             if (isActiveCloudProfile()) markCloudWritePending('members', m);
-            queueWorkoutSave();
+            queueWorkoutSave(id);
+        }
+        window.saveWorkoutLog = function(id) {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const workout = m && m.workouts.find(w => String(w.id) === String(id));
+            if (!workout) return;
+            const dateEl = document.getElementById(`workout-date-${id}`);
+            const contentEl = document.getElementById(`workout-content-${id}`);
+            if (dateEl) workout.date = dateEl.value.trim();
+            if (contentEl) workout.content = contentEl.value;
+            markLocalItemUpdated(m);
+            if (isActiveCloudProfile()) markCloudWritePending('members', m);
+            window.pendingWorkoutSaveIds[String(id)] = true;
+            pendingWorkoutSave = true;
+            flushWorkoutSave();
+            showToast('운동일지가 저장되었습니다.');
+        }
+        window.toggleWorkoutLogs = function() {
+            window.workoutLogsExpanded = !window.workoutLogsExpanded;
+            window.renderMemberWorkouts();
         }
         window.delW = function(id) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
             m.workouts = m.workouts.filter(w => w.id !== id); 
+            delete window.pendingWorkoutSaveIds[String(id)];
+            delete window.workoutSaveStates[String(id)];
             localSaveMember(m);
             window.renderMemberWorkouts();
         }
