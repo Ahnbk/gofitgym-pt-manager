@@ -109,6 +109,11 @@
         }
         .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
 
+        .signature-counter-side #signature-canvas {
+            transform: rotate(180deg);
+            transform-origin: center;
+        }
+
         .lesson-row {
             cursor: pointer;
         }
@@ -833,7 +838,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v33';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v34';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3074,6 +3079,20 @@
         }
 
         // ================= SIGNATURE LOGIC =================
+        function enableCounterSideSignatureInput(pad, canvas) {
+            if (!pad || !canvas || typeof pad._createPoint !== 'function' || pad._gofitCounterSideInput) return;
+
+            const originalCreatePoint = pad._createPoint.bind(pad);
+            pad._createPoint = function(x, y, pressure) {
+                const rect = canvas.getBoundingClientRect();
+                const localX = Math.min(rect.width, Math.max(0, x - rect.left));
+                const localY = Math.min(rect.height, Math.max(0, y - rect.top));
+                return originalCreatePoint(rect.left + rect.width - localX, rect.top + rect.height - localY, pressure);
+            };
+            pad._gofitCounterSideInput = true;
+            document.getElementById('signature-canvas-wrapper')?.classList.add('signature-counter-side');
+        }
+
         function initSignaturePad() {
             const canvas = document.getElementById('signature-canvas');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -3086,6 +3105,7 @@
             }
             window.addEventListener("resize", resizeCanvas);
             window.signaturePad = new SignaturePad(canvas, { minWidth: 1.5, maxWidth: 4, penColor: "#1c1917" });
+            enableCounterSideSignatureInput(window.signaturePad, canvas);
             const observer = new MutationObserver(m => {
                 m.forEach(mut => { if(mut.attributeName === 'class' && !document.getElementById('sign-modal').classList.contains('hidden')) setTimeout(resizeCanvas, 150); });
             });
