@@ -452,14 +452,14 @@
                 <button onclick="window.saveBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-folder-open mr-1.5 text-amber-500"></i>저장 위치 선택
                 </button>
-                <button onclick="window.shareBackupFileNative()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                <button onclick="window.shareBackupFileNative()" id="backup-share-btn" class="hidden w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-share-nodes mr-1.5"></i>기기 공유로 백업
                 </button>
                 <button onclick="window.restoreLastSafetySnapshot()" id="restore-safety-btn" class="hidden w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-rotate-left mr-1.5"></i>직전 복원 되돌리기
                 </button>
                 <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
-                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">저장은 파일로 보관하고, 공유는 기기 공유 화면에서 Google Drive나 파일 앱을 선택할 수 있습니다. 공유 미지원 기기는 자동으로 파일 저장으로 전환됩니다.</p>
+                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">카카오톡 전송은 모바일 공유창에 카카오톡이 표시되는 기기에서만 가능합니다. 공유가 안 보이면 백업 파일을 저장한 뒤 카카오톡에서 파일 첨부로 보내주세요.</p>
             </div>
         </div>
     </div>
@@ -693,7 +693,7 @@
         var pendingWorkoutSave = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v17';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v18';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1461,11 +1461,27 @@
             }
         }
 
+        function supportsBackupNativeFileShare() {
+            try {
+                if (!navigator.share || !navigator.canShare || typeof File === 'undefined') return false;
+                const testFile = new File(['{}'], 'gofitgym-backup.json', { type: 'application/json' });
+                return navigator.canShare({ files: [testFile] });
+            } catch (err) {
+                return false;
+            }
+        }
+
         window.openBackupChoiceModal = function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
             renderBackupStatus();
             const safetyButton = document.getElementById('restore-safety-btn');
             if (safetyButton) safetyButton.classList.toggle('hidden', !hasRestoreSafetySnapshot());
+            const shareButton = document.getElementById('backup-share-btn');
+            if (shareButton) {
+                const canShareFile = supportsBackupNativeFileShare();
+                shareButton.classList.toggle('hidden', !canShareFile);
+                shareButton.classList.toggle('flex', canShareFile);
+            }
             const modal = document.getElementById('modal-backup-choice');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -1543,20 +1559,19 @@
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
             const { blob, fileName } = createBackupFile();
             try {
-                if (navigator.share && navigator.canShare && typeof File !== 'undefined') {
+                if (supportsBackupNativeFileShare()) {
                     const file = new File([blob], fileName, { type: 'application/json' });
-                    if (navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            title: 'GOFITGYM 백업',
-                            text: `${getTrainerName()} 트레이너 백업 파일입니다.`,
-                            files: [file]
-                        });
-                        window.closeBackupChoiceModal();
-                        markBackupSaved();
-                        showToast('백업 공유창을 열었습니다.');
-                        return;
-                    }
+                    await navigator.share({
+                        title: 'GOFITGYM 백업',
+                        text: `${getTrainerName()} 트레이너 백업 파일입니다.`,
+                        files: [file]
+                    });
+                    window.closeBackupChoiceModal();
+                    markBackupSaved();
+                    showToast('백업 공유창을 열었습니다.');
+                    return;
                 }
+                showToast('이 브라우저는 백업 파일 공유를 지원하지 않습니다.');
                 downloadBackupBlob(blob, fileName, '공유 미지원 환경이라 백업 파일을 저장했습니다.');
             } catch (err) {
                 if (err && err.name === 'AbortError') return;
