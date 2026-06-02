@@ -480,6 +480,9 @@
                         <button onclick="window.toggleLessonEditMode()" id="lesson-edit-btn" class="px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale">
                             <i class="fa-solid fa-pen-to-square mr-1"></i>수정
                         </button>
+                        <button onclick="window.cancelLessonEditMode()" id="lesson-edit-cancel-btn" class="hidden px-2 py-1 rounded-md bg-stone-100 text-stone-500 border border-stone-200 text-[10px] font-black active-scale">
+                            <i class="fa-solid fa-xmark mr-1"></i>취소
+                        </button>
                         <div id="lesson-add-tools" class="hidden items-center gap-1">
                             <input type="number" id="lesson-remaining-target" value="0" min="0" onkeydown="if(event.key === 'Enter') window.applyRemainingLessonsFromEdit()" aria-label="잔여 수업 목표 횟수" class="w-14 px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[10px] font-black text-stone-800 outline-none focus:border-amber-500">
                             <button onclick="window.applyRemainingLessonsFromEdit()" class="px-2 py-1 rounded-md bg-stone-900 text-white text-[10px] font-black active-scale">
@@ -913,7 +916,7 @@
         var dashboardToolsOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v42';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v43';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2965,6 +2968,12 @@
                     ? '<i class="fa-solid fa-check mr-1"></i>완료'
                     : '<i class="fa-solid fa-pen-to-square mr-1"></i>수정';
             }
+            const cancelBtn = document.getElementById('lesson-edit-cancel-btn');
+            if (cancelBtn) {
+                cancelBtn.classList.toggle('hidden', !editing);
+                cancelBtn.classList.toggle('inline-flex', editing);
+                cancelBtn.classList.toggle('items-center', editing);
+            }
             const addTools = document.getElementById('lesson-add-tools');
             const remainingInput = document.getElementById('lesson-remaining-target');
             if (addTools) {
@@ -2983,6 +2992,13 @@
 
         window.toggleLessonEditMode = function() {
             window.setLessonEditMode(!window.lessonEditMode);
+        }
+
+        window.cancelLessonEditMode = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const remainingInput = document.getElementById('lesson-remaining-target');
+            if (m && remainingInput) remainingInput.value = getRemainingLessonCount(m);
+            window.setLessonEditMode(false, true);
         }
 
         function updateDetailProgress(m, comp) {
