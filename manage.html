@@ -72,7 +72,20 @@
         }
         
         /* Font scaling based on zoom */
-        .cal-evt-text { font-size: calc(9px * var(--cal-zoom)); }
+        .cal-evt-text {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            width: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            white-space: normal;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+            line-height: 1.08;
+            text-align: center;
+            letter-spacing: 0;
+        }
         .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
 
         .lesson-row {
@@ -801,7 +814,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v24';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v25';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3313,6 +3326,13 @@
         }
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
         function getStartOfWeek(date) { const d = new Date(date); d.setDate(d.getDate() - d.getDay()); return d; }
+        function getScheduleTitleFontSize(title) {
+            const length = Array.from(String(title || '').trim()).length;
+            if (length <= 8) return 'calc(13px * var(--cal-zoom))';
+            if (length <= 14) return 'calc(12px * var(--cal-zoom))';
+            if (length <= 22) return 'calc(10.5px * var(--cal-zoom))';
+            return 'calc(9.5px * var(--cal-zoom))';
+        }
         window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
         window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
 
@@ -3362,8 +3382,8 @@
                 const cell = document.getElementById(`cell-${evt.date}-${evt.time}`);
                 if (cell) {
                     const b = document.createElement('div');
-                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 p-1 flex items-start overflow-hidden shadow-sm active-scale z-10`;
-                    b.innerHTML = `<span class="font-bold text-white truncate leading-tight cal-evt-text">${evt.title}</span>`;
+                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10`;
+                    b.innerHTML = `<span class="font-black text-white cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
                     b.onclick = (e) => { e.stopPropagation(); window.openScheduleModal(evt.date, evt.time, evt); };
                     cell.appendChild(b);
                 }
