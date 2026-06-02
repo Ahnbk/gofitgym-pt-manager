@@ -130,23 +130,33 @@
             padding-right: 0 !important;
         }
         .header-shell {
-            align-items: flex-start;
+            align-items: flex-end;
             box-sizing: border-box;
-            padding-top: 4px;
+            gap: 0.75rem;
         }
         .header-brand {
-            align-items: flex-start;
+            align-items: flex-end;
+            flex: 0 0 auto;
         }
-        .header-top-row {
-            min-height: 30px;
+        .header-brand-copy {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 42px;
+        }
+        .header-cloud-row {
+            height: 30px;
+            align-self: flex-end;
             display: flex;
             align-items: center;
             gap: 0.375rem;
-            flex-wrap: wrap;
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-x: auto;
         }
         .header-actions-row {
             height: 30px;
-            align-self: flex-start;
+            align-self: flex-end;
             display: flex;
             align-items: center;
             justify-content: flex-end;
@@ -266,19 +276,22 @@
                         <circle cx="19" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"></circle>
                     </svg>
                 </div>
-                <div class="min-w-0">
-                    <div class="header-top-row">
+                <div class="header-brand-copy min-w-0">
+                    <div class="min-h-[24px] flex items-center">
                         <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
-                        <div id="cloud-status-text" class="header-control text-[10px] font-black text-stone-300 bg-stone-800 px-2 rounded-lg border border-stone-700">
-                            <i class="fa-solid fa-shield-halved mr-1"></i> 백업 모드
-                        </div>
-                        <button onclick="window.pushFullCloudSync(true)" id="header-cloud-sync-btn" class="hidden header-control text-[10px] font-black bg-amber-500 text-stone-950 px-2 rounded-lg active-scale">
-                            <i class="fa-solid fa-rotate mr-1"></i><span class="hidden sm:inline">지금 </span>동기화
-                        </button>
-                        <span id="header-cloud-sync-time" class="hidden header-control max-w-[104px] sm:max-w-[150px] truncate text-[9px] font-bold text-stone-300 bg-stone-800/70 px-2 rounded-lg border border-stone-700"></span>
                     </div>
                     <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
                 </div>
+            </div>
+
+            <div class="header-cloud-row no-scrollbar">
+                <div id="cloud-status-text" class="header-control text-[10px] font-black text-stone-300 bg-stone-800 px-2 rounded-lg border border-stone-700">
+                    <i class="fa-solid fa-shield-halved mr-1"></i> 백업 모드
+                </div>
+                <button onclick="window.pushFullCloudSync(true)" id="header-cloud-sync-btn" class="hidden header-control text-[10px] font-black bg-amber-500 text-stone-950 px-2 rounded-lg active-scale">
+                    <i class="fa-solid fa-rotate mr-1"></i><span class="hidden sm:inline">지금 </span>동기화
+                </button>
+                <span id="header-cloud-sync-time" class="hidden header-control max-w-[104px] sm:max-w-[150px] truncate text-[9px] font-bold text-stone-300 bg-stone-800/70 px-2 rounded-lg border border-stone-700"></span>
             </div>
             
             <div id="header-action-container" class="header-actions-row">
@@ -916,7 +929,7 @@
         var dashboardToolsOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v44';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v45';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
