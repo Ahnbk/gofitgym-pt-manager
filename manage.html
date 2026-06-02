@@ -347,14 +347,8 @@
                 </div>
 
                 <div class="pt-3 border-t border-stone-100">
-                    <button onclick="window.toggleDetailProgress()" class="w-full flex items-center justify-between text-left">
-                        <div>
-                            <span class="block text-[10px] text-stone-400 font-black">전체 완료율</span>
-                            <span id="detail-progress-summary" class="text-sm font-black text-stone-900">0%</span>
-                        </div>
-                        <i id="detail-progress-icon" class="fa-solid fa-chevron-down text-stone-400 text-xs transition-transform"></i>
-                    </button>
-                    <div id="detail-progress-panel" class="hidden mt-3">
+                    <div id="detail-progress-panel">
+                        <span class="block text-[10px] text-stone-400 font-black mb-1">전체 완료율</span>
                         <div class="flex justify-between items-end mb-2">
                             <span id="detail-progress-label" class="text-xl font-black text-stone-900">0%</span>
                             <span id="detail-progress-count" class="text-xs font-black text-amber-600">0 / 0회 완료</span>
@@ -814,7 +808,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v26';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v27';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2793,16 +2787,13 @@
         }
 
         window.setDetailProgressExpanded = function(expanded) {
-            window.detailProgressExpanded = expanded;
+            window.detailProgressExpanded = true;
             const panel = document.getElementById('detail-progress-panel');
-            const icon = document.getElementById('detail-progress-icon');
-            if (!panel || !icon) return;
-            panel.classList.toggle('hidden', !expanded);
-            icon.classList.toggle('rotate-180', expanded);
+            if (panel) panel.classList.remove('hidden');
         }
 
         window.toggleDetailProgress = function() {
-            window.setDetailProgressExpanded(!window.detailProgressExpanded);
+            window.setDetailProgressExpanded(true);
         }
 
         window.setLessonEditMode = function(editing, shouldRender = false) {
@@ -2841,7 +2832,6 @@
             const remaining = getRemainingLessonCount(m, comp);
             const percent = total ? Math.round((comp / total) * 100) : 0;
             document.getElementById('detail-session-progress').innerText = `잔여 수업 ${remaining}회`;
-            document.getElementById('detail-progress-summary').innerText = `${percent}%`;
             document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
             document.getElementById('detail-progress-label').innerText = `${percent}%`;
             document.getElementById('detail-progress-bar').style.width = `${percent}%`;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gofitgym-pt-v26';
+const CACHE_NAME = 'gofitgym-pt-v27';
 const APP_SHELL = [
   './index.html',
   './manage.html',
