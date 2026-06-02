@@ -145,6 +145,9 @@
                 <button onclick="window.confirmResetLocalLoginInfo()" id="auth-reset-btn" class="hidden w-full py-2 text-[10px] font-bold text-red-500">
                     로그인 정보 초기화
                 </button>
+                <button onclick="window.openCloudAuthModal('login')" id="auth-cloud-login-btn" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-cloud mr-1 text-amber-500"></i>클라우드 로그인 / 복원
+                </button>
                 <p class="text-[10px] leading-relaxed text-stone-400">
                     비밀번호는 이 기기에 해시로 저장됩니다. 백업 파일에는 로그인 비밀번호가 포함되지 않습니다.
                 </p>
@@ -191,7 +194,7 @@
                 <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
                     <div>
                         <h2 class="text-lg font-black text-stone-800">회원 관리 대시보드</h2>
-                        <p class="text-xs text-stone-500">로컬 저장을 기본으로 사용하고 백업 파일로 보관할 수 있습니다.</p>
+                        <p class="text-xs text-stone-500">클라우드 로그인 시 자동 동기화되고, 로컬 사용 시 백업 파일로 보관할 수 있습니다.</p>
                     </div>
                     <div class="relative">
                         <input type="text" id="member-search" oninput="window.renderMemberList()" placeholder="회원 이름 검색..." class="w-full md:w-64 bg-stone-50 border border-stone-200 rounded-xl py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500">
@@ -428,7 +431,30 @@
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">아이디</label>
                     <input type="text" id="profile-login-id" autocomplete="username" readonly class="w-full text-sm bg-stone-100 border border-stone-200 rounded-xl px-3.5 py-3 outline-none font-medium text-stone-500">
                 </div>
-                <div class="border-t border-stone-100 pt-3 space-y-3">
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>클라우드 동기화</p>
+                            <p id="profile-cloud-status" class="text-[10px] font-bold text-stone-400 truncate">상태 확인 중</p>
+                        </div>
+                        <span id="profile-cloud-badge" class="shrink-0 px-2 py-1 rounded-full bg-stone-200 text-stone-500 text-[9px] font-black">OFF</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="window.openCloudAuthModal('login')" id="profile-cloud-login-btn" class="py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                            클라우드 로그인
+                        </button>
+                        <button onclick="window.openCloudAuthModal('signup')" id="profile-cloud-signup-btn" class="py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                            새 계정 만들기
+                        </button>
+                        <button onclick="window.pushFullCloudSync(true)" id="profile-cloud-sync-btn" class="hidden py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                            지금 동기화
+                        </button>
+                        <button onclick="window.logoutCloudUser()" id="profile-cloud-logout-btn" class="hidden py-2.5 bg-stone-100 text-stone-600 rounded-xl text-[10px] font-black active-scale">
+                            클라우드 로그아웃
+                        </button>
+                    </div>
+                </div>
+                <div id="profile-password-section" class="border-t border-stone-100 pt-3 space-y-3">
                     <input type="password" id="profile-current-password" autocomplete="current-password" placeholder="현재 비밀번호" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                     <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
@@ -437,6 +463,42 @@
                 <button onclick="window.checkStorageProtection(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>저장 보호 확인</button>
                 <button onclick="window.checkAppUpdate(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
                 <button onclick="window.logoutLocalUser()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0-0. Cloud Auth Modal -->
+    <div id="modal-cloud-auth" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div>
+                    <h3 id="cloud-auth-title" class="font-black text-amber-500 text-base"><i class="fa-solid fa-cloud mr-1.5"></i>클라우드 로그인</h3>
+                    <p id="cloud-auth-subtitle" class="text-[10px] text-stone-400 mt-1">어느 기기에서나 같은 데이터를 불러옵니다.</p>
+                </div>
+                <button onclick="window.closeCloudAuthModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <div id="cloud-trainer-row" class="hidden">
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
+                    <input type="text" id="cloud-trainer-name" placeholder="예: 안병규" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">이메일</label>
+                    <input type="email" id="cloud-email" autocomplete="email" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">비밀번호</label>
+                    <input type="password" id="cloud-password" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.submitCloudAuth()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <button onclick="window.submitCloudAuth()" id="cloud-auth-submit-btn" class="w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
+                    로그인
+                </button>
+                <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                    새 클라우드 계정 만들기
+                </button>
+                <p class="text-[10px] leading-relaxed text-stone-400">
+                    클라우드 계정으로 로그인하면 회원, 예약, 수업 서명, 운동일지가 Firebase에 동기화됩니다.
+                </p>
             </div>
         </div>
     </div>
@@ -691,15 +753,40 @@
         var deferredInstallPrompt = null;
         var workoutSaveTimer = null;
         var pendingWorkoutSave = false;
+        var firebaseApp = null;
+        var firebaseAuth = null;
+        var firebaseDb = null;
+        var firebaseApi = {};
+        var cloudUser = null;
+        var cloudReady = false;
+        var cloudAuthInitialized = false;
+        var cloudAuthFlowActive = false;
+        var cloudUnsubscribers = [];
+        var cloudApplyingRemote = false;
+        var cloudFullSyncTimer = null;
+        var cloudLastSyncedAt = 0;
+        var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v20';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v21';
+        const FIREBASE_CONFIG = {
+            projectId: 'ptmanager-1552d',
+            appId: '1:615657179263:web:89830b25ed76468b90174a',
+            storageBucket: 'ptmanager-1552d.firebasestorage.app',
+            apiKey: 'AIzaSyCi4gVdwSIWgt5BYVBMo0P0PxzZBTNkSWU',
+            authDomain: 'ptmanager-1552d.firebaseapp.com',
+            messagingSenderId: '615657179263',
+            measurementId: 'G-XQMW29RNQL'
+        };
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
         const RESTORE_SAFETY_KEY_PREFIX = 'gofitgym_v11_restore_safety_';
         const BACKUP_FRESH_MS = 1000 * 60 * 60 * 24 * 7;
         const WORKOUT_SAVE_DELAY_MS = 450;
+        const FIREBASE_SDK_VERSION = '11.6.1';
+        const CLOUD_LOGIN_PREFIX = 'cloud:';
+        const CLOUD_SYNC_DELAY_MS = 800;
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -719,6 +806,7 @@
             }
             loadProfileStore();
             initSignaturePad();
+            await initializeCloudAuth();
             await initializeLoginGate();
             setTimeout(() => window.checkAppUpdate(false), 1500);
         };
@@ -806,6 +894,533 @@
             }
         };
 
+        // ================= FIREBASE CLOUD SYNC =================
+        async function loadFirebaseModules() {
+            if (window.firebaseApp && window.firebaseAuth && window.firebaseDb) return true;
+            try {
+                const sdkLoad = Promise.all([
+                    import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`),
+                    import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`),
+                    import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`)
+                ]);
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase SDK load timeout')), 5000));
+                const [appMod, authMod, firestoreMod] = await Promise.race([sdkLoad, timeout]);
+
+                window.firebaseApi = { ...appMod, ...authMod, ...firestoreMod };
+                window.firebaseApp = appMod.initializeApp(FIREBASE_CONFIG);
+                window.firebaseAuth = authMod.getAuth(window.firebaseApp);
+                window.firebaseDb = firestoreMod.getFirestore(window.firebaseApp);
+                await authMod.setPersistence(window.firebaseAuth, authMod.browserLocalPersistence);
+                firestoreMod.enableIndexedDbPersistence(window.firebaseDb).catch(() => {});
+                window.cloudReady = true;
+                window.cloudLastError = '';
+                renderCloudStatus();
+                return true;
+            } catch (err) {
+                console.error('Firebase load failed.', err);
+                window.cloudReady = false;
+                window.cloudLastError = 'Firebase 연결 준비 실패';
+                renderCloudStatus();
+                return false;
+            }
+        }
+
+        async function initializeCloudAuth() {
+            if (window.cloudAuthInitialized) return true;
+            const loaded = await loadFirebaseModules();
+            if (!loaded) return false;
+            window.cloudAuthInitialized = true;
+            return new Promise(resolve => {
+                let resolved = false;
+                window.firebaseApi.onAuthStateChanged(window.firebaseAuth, async user => {
+                    await handleCloudAuthStateChanged(user);
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(true);
+                    }
+                }, err => {
+                    console.error('Cloud auth state failed.', err);
+                    window.cloudLastError = '클라우드 로그인 확인 실패';
+                    renderCloudStatus();
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(false);
+                    }
+                });
+                setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve(false);
+                    }
+                }, 5000);
+            });
+        }
+
+        function getCloudLoginId(uid = window.cloudUser && window.cloudUser.uid) {
+            return uid ? `${CLOUD_LOGIN_PREFIX}${uid}` : '';
+        }
+
+        function isCloudProfile(profile = window.appProfile) {
+            return !!(profile && profile.cloudUid);
+        }
+
+        function isActiveCloudProfile() {
+            return !!(window.cloudUser && window.activeLoginId === getCloudLoginId(window.cloudUser.uid));
+        }
+
+        function getCloudCollection(name, uid = window.cloudUser && window.cloudUser.uid) {
+            if (!uid || !window.firebaseDb) return null;
+            return window.firebaseApi.collection(window.firebaseDb, 'users', uid, name);
+        }
+
+        function getCloudProfileRef(uid = window.cloudUser && window.cloudUser.uid) {
+            if (!uid || !window.firebaseDb) return null;
+            return window.firebaseApi.doc(window.firebaseDb, 'users', uid, 'meta', 'profile');
+        }
+
+        function getCloudTrainerName(user = window.cloudUser, remoteProfile = null) {
+            return (remoteProfile && remoteProfile.trainerName)
+                || (user && user.displayName)
+                || ((user && user.email) ? user.email.split('@')[0] : '')
+                || '클라우드 트레이너';
+        }
+
+        function stripCloudMeta(data) {
+            if (!data || typeof data !== 'object') return data;
+            const copy = { ...data };
+            delete copy.cloudUpdatedAt;
+            delete copy.cloudDeletedAt;
+            return copy;
+        }
+
+        function cleanForCloud(value) {
+            if (Array.isArray(value)) return value.map(item => cleanForCloud(item));
+            if (!value || typeof value !== 'object') return value;
+            const output = {};
+            Object.keys(value).forEach(key => {
+                if (key.startsWith('_')) return;
+                const val = value[key];
+                if (typeof val === 'undefined' || typeof val === 'function') return;
+                output[key] = cleanForCloud(val);
+            });
+            return output;
+        }
+
+        async function getRemoteCloudProfile(uid) {
+            try {
+                const ref = getCloudProfileRef(uid);
+                if (!ref) return null;
+                const snap = await window.firebaseApi.getDoc(ref);
+                return snap.exists() ? snap.data() : null;
+            } catch (err) {
+                console.error('Cloud profile read failed.', err);
+                return null;
+            }
+        }
+
+        async function saveRemoteCloudProfile(profile = window.appProfile) {
+            if (!window.cloudUser || !window.firebaseDb) return;
+            const ref = getCloudProfileRef(window.cloudUser.uid);
+            const trainerName = (profile && profile.trainerName) || getTrainerName();
+            await window.firebaseApi.setDoc(ref, {
+                trainerName,
+                email: window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            if (window.firebaseApi.updateProfile && window.cloudUser && window.cloudUser.displayName !== trainerName) {
+                window.firebaseApi.updateProfile(window.cloudUser, { displayName: trainerName }).catch(() => {});
+            }
+        }
+
+        async function ensureCloudLocalProfile(user, remoteProfile = null) {
+            if (!user) return null;
+            const loginId = getCloudLoginId(user.uid);
+            const trainerName = getCloudTrainerName(user, remoteProfile);
+            window.trainerProfiles[loginId] = {
+                ...(window.trainerProfiles[loginId] || {}),
+                trainerName,
+                loginId,
+                email: user.email || '',
+                cloudUid: user.uid,
+                cloudEmail: user.email || '',
+                cloudMode: true,
+                createdAt: (window.trainerProfiles[loginId] || {}).createdAt || new Date().toISOString()
+            };
+            saveProfileStore();
+            writeLoggedIds(sessionStorage, LOGGED_SESSION_KEY, [...readLoggedIds(), loginId]);
+            writeLoggedIds(localStorage, LOGGED_LOCAL_KEY, [...readLoggedIds(), loginId]);
+            return window.trainerProfiles[loginId];
+        }
+
+        async function handleCloudAuthStateChanged(user) {
+            window.cloudUser = user || null;
+            if (!user) {
+                stopCloudSync();
+                renderCloudStatus();
+                return;
+            }
+
+            const remoteProfile = await getRemoteCloudProfile(user.uid);
+            await ensureCloudLocalProfile(user, remoteProfile);
+            if (!remoteProfile) {
+                await saveRemoteCloudProfile(window.trainerProfiles[getCloudLoginId(user.uid)]).catch(() => {});
+            }
+            if (!window.cloudAuthFlowActive && !window.activeLoginId) {
+                addLoggedTrainer(getCloudLoginId(user.uid), true);
+            }
+            if (!window.cloudAuthFlowActive) startCloudSync();
+            renderCloudStatus();
+        }
+
+        function stopCloudSync() {
+            (window.cloudUnsubscribers || []).forEach(unsub => {
+                try { unsub(); } catch (err) {}
+            });
+            window.cloudUnsubscribers = [];
+            if (window.cloudFullSyncTimer) clearTimeout(window.cloudFullSyncTimer);
+            window.cloudFullSyncTimer = null;
+        }
+
+        function startCloudSync() {
+            if (!window.cloudUser || !window.firebaseDb) return;
+            stopCloudSync();
+            const uid = window.cloudUser.uid;
+            const loginId = getCloudLoginId(uid);
+            const attach = (name, applyItems) => {
+                const col = getCloudCollection(name, uid);
+                return window.firebaseApi.onSnapshot(col, snap => {
+                    const items = snap.docs
+                        .map(docSnap => stripCloudMeta({ id: docSnap.id, ...docSnap.data() }))
+                        .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+                    applyItems(items, loginId);
+                    window.cloudLastSyncedAt = Date.now();
+                    window.cloudLastError = '';
+                    renderCloudStatus();
+                }, err => {
+                    console.error(`Cloud ${name} snapshot failed.`, err);
+                    window.cloudLastError = '클라우드 수신 실패';
+                    renderCloudStatus();
+                });
+            };
+
+            window.cloudUnsubscribers = [
+                attach('members', applyCloudMembers),
+                attach('schedules', applyCloudSchedules)
+            ];
+        }
+
+        function applyCloudMembers(items, loginId) {
+            window.cloudApplyingRemote = true;
+            try {
+                if (window.activeLoginId === loginId) {
+                    window.members = Array.isArray(items) ? items : [];
+                    normalizeDatabase();
+                    localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(window.members));
+                    refreshCurrentViewAfterCloud();
+                } else {
+                    localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(items || []));
+                }
+            } finally {
+                window.cloudApplyingRemote = false;
+            }
+        }
+
+        function applyCloudSchedules(items, loginId) {
+            window.cloudApplyingRemote = true;
+            try {
+                if (window.activeLoginId === loginId) {
+                    window.schedules = Array.isArray(items) ? items : [];
+                    localStorage.setItem(getSchedulesStorageKey(loginId), JSON.stringify(window.schedules));
+                    refreshCurrentViewAfterCloud();
+                } else {
+                    localStorage.setItem(getSchedulesStorageKey(loginId), JSON.stringify(items || []));
+                }
+            } finally {
+                window.cloudApplyingRemote = false;
+            }
+        }
+
+        function refreshCurrentViewAfterCloud() {
+            const dashboard = document.getElementById('view-dashboard');
+            const schedule = document.getElementById('view-schedule');
+            const detail = document.getElementById('view-member-detail');
+            if (dashboard && !dashboard.classList.contains('hidden')) window.renderMemberList();
+            if (schedule && !schedule.classList.contains('hidden')) window.initCalendar();
+            if (detail && !detail.classList.contains('hidden') && window.activeMemberId) {
+                const member = window.members.find(m => m.id === window.activeMemberId);
+                if (member) window.openMemberDetail(window.activeMemberId);
+                else window.switchMainView('dashboard');
+            }
+        }
+
+        function queueCloudFullSync() {
+            if (window.cloudApplyingRemote || !isActiveCloudProfile()) return;
+            if (window.cloudFullSyncTimer) clearTimeout(window.cloudFullSyncTimer);
+            window.cloudFullSyncTimer = setTimeout(() => window.pushFullCloudSync(false), CLOUD_SYNC_DELAY_MS);
+        }
+
+        async function replaceCloudCollection(name, items) {
+            const col = getCloudCollection(name);
+            if (!col) return;
+            const safeItems = Array.isArray(items) ? items : [];
+            const snap = await window.firebaseApi.getDocs(col);
+            const localIds = new Set();
+            let batch = window.firebaseApi.writeBatch(window.firebaseDb);
+            let ops = 0;
+            const commitIfNeeded = async (force = false) => {
+                if (!ops && !force) return;
+                await batch.commit();
+                batch = window.firebaseApi.writeBatch(window.firebaseDb);
+                ops = 0;
+            };
+
+            for (const item of safeItems) {
+                if (!item || !item.id) continue;
+                localIds.add(String(item.id));
+                batch.set(window.firebaseApi.doc(col, String(item.id)), {
+                    ...cleanForCloud(item),
+                    cloudUpdatedAt: window.firebaseApi.serverTimestamp()
+                });
+                ops += 1;
+                if (ops >= 450) await commitIfNeeded();
+            }
+
+            for (const docSnap of snap.docs) {
+                if (localIds.has(docSnap.id)) continue;
+                batch.delete(docSnap.ref);
+                ops += 1;
+                if (ops >= 450) await commitIfNeeded();
+            }
+            await commitIfNeeded();
+        }
+
+        window.pushFullCloudSync = async function(manual = false) {
+            if (!window.cloudUser || !window.firebaseDb) {
+                if (manual) showToast('먼저 클라우드에 로그인해주세요.');
+                return false;
+            }
+            if (!isActiveCloudProfile()) {
+                if (manual) showToast('클라우드 트레이너를 선택한 뒤 동기화해주세요.');
+                return false;
+            }
+            try {
+                await saveRemoteCloudProfile();
+                await replaceCloudCollection('members', window.members);
+                await replaceCloudCollection('schedules', window.schedules);
+                window.cloudLastSyncedAt = Date.now();
+                window.cloudLastError = '';
+                renderCloudStatus();
+                if (manual) showToast('클라우드 동기화 완료');
+                return true;
+            } catch (err) {
+                console.error('Cloud full sync failed.', err);
+                window.cloudLastError = '클라우드 업로드 실패';
+                renderCloudStatus();
+                if (manual) showToast('클라우드 동기화에 실패했습니다.');
+                return false;
+            }
+        }
+
+        async function saveCloudDocument(name, item) {
+            if (window.cloudApplyingRemote || !isActiveCloudProfile() || !window.firebaseDb || !item || !item.id) return;
+            try {
+                const col = getCloudCollection(name);
+                if (!col) return;
+                await window.firebaseApi.setDoc(window.firebaseApi.doc(col, String(item.id)), {
+                    ...cleanForCloud(item),
+                    cloudUpdatedAt: window.firebaseApi.serverTimestamp()
+                });
+                window.cloudLastSyncedAt = Date.now();
+                window.cloudLastError = '';
+                renderCloudStatus();
+            } catch (err) {
+                console.error(`Cloud ${name} save failed.`, err);
+                window.cloudLastError = '클라우드 저장 실패';
+                renderCloudStatus();
+            }
+        }
+
+        async function deleteCloudDocument(name, id) {
+            if (window.cloudApplyingRemote || !isActiveCloudProfile() || !window.firebaseDb || !id) return;
+            try {
+                const col = getCloudCollection(name);
+                if (!col) return;
+                await window.firebaseApi.deleteDoc(window.firebaseApi.doc(col, String(id)));
+                window.cloudLastSyncedAt = Date.now();
+                window.cloudLastError = '';
+                renderCloudStatus();
+            } catch (err) {
+                console.error(`Cloud ${name} delete failed.`, err);
+                window.cloudLastError = '클라우드 삭제 실패';
+                renderCloudStatus();
+            }
+        }
+
+        function renderCloudStatus() {
+            const header = document.getElementById('cloud-status-text');
+            const profileStatus = document.getElementById('profile-cloud-status');
+            const badge = document.getElementById('profile-cloud-badge');
+            const loginBtn = document.getElementById('profile-cloud-login-btn');
+            const signupBtn = document.getElementById('profile-cloud-signup-btn');
+            const syncBtn = document.getElementById('profile-cloud-sync-btn');
+            const logoutBtn = document.getElementById('profile-cloud-logout-btn');
+            const signedIn = !!window.cloudUser;
+            const activeCloud = isActiveCloudProfile();
+            const label = signedIn
+                ? (window.cloudLastError || (activeCloud ? '클라우드 동기화' : '클라우드 로그인됨'))
+                : '백업 모드';
+
+            if (header) {
+                header.className = `text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center border ${activeCloud ? 'text-emerald-300 bg-emerald-950 border-emerald-800' : 'text-stone-400 bg-stone-800 border-stone-700'}`;
+                header.innerHTML = `<i class="fa-solid ${activeCloud ? 'fa-cloud-arrow-up' : 'fa-shield-halved'} mr-1"></i>${label}`;
+            }
+            if (profileStatus) {
+                if (signedIn) {
+                    const time = window.cloudLastSyncedAt ? ` · 최근 ${formatBackupTimestamp(window.cloudLastSyncedAt)}` : '';
+                    profileStatus.innerText = `${window.cloudUser.email || '클라우드 계정'}${time}`;
+                } else {
+                    profileStatus.innerText = window.cloudLastError || '로그인하면 데이터가 기기 간 동기화됩니다.';
+                }
+            }
+            if (badge) {
+                badge.innerText = activeCloud ? 'ON' : 'OFF';
+                badge.className = `shrink-0 px-2 py-1 rounded-full text-[9px] font-black ${activeCloud ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`;
+            }
+            if (loginBtn) loginBtn.classList.toggle('hidden', signedIn);
+            if (signupBtn) signupBtn.classList.toggle('hidden', signedIn);
+            if (syncBtn) syncBtn.classList.toggle('hidden', !signedIn);
+            if (logoutBtn) logoutBtn.classList.toggle('hidden', !signedIn);
+        }
+
+        function getCloudAuthMode() {
+            return window.cloudAuthMode || 'login';
+        }
+
+        window.openCloudAuthModal = function(mode = 'login') {
+            window.cloudAuthMode = mode === 'signup' ? 'signup' : 'login';
+            const modal = document.getElementById('modal-cloud-auth');
+            const isSignup = getCloudAuthMode() === 'signup';
+            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-cloud mr-1.5"></i>${isSignup ? '클라우드 계정 만들기' : '클라우드 로그인'}`;
+            document.getElementById('cloud-auth-subtitle').innerText = isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '로그인하면 저장된 클라우드 데이터를 불러옵니다.';
+            document.getElementById('cloud-trainer-row').classList.toggle('hidden', !isSignup);
+            document.getElementById('cloud-auth-submit-btn').innerText = isSignup ? '계정 만들고 동기화' : '로그인하고 동기화';
+            document.getElementById('cloud-auth-toggle-btn').innerText = isSignup ? '기존 클라우드 계정 로그인' : '새 클라우드 계정 만들기';
+            document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || '';
+            document.getElementById('cloud-password').value = '';
+            document.getElementById('cloud-trainer-name').value = getTrainerName();
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                const target = isSignup ? document.getElementById('cloud-trainer-name') : document.getElementById('cloud-email');
+                if (target) target.focus();
+            }, 10);
+        };
+
+        window.closeCloudAuthModal = function() {
+            const modal = document.getElementById('modal-cloud-auth');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        window.toggleCloudAuthMode = function() {
+            window.openCloudAuthModal(getCloudAuthMode() === 'signup' ? 'login' : 'signup');
+        };
+
+        function translateCloudAuthError(err) {
+            const code = err && err.code ? err.code : '';
+            if (code.includes('operation-not-allowed')) return 'Firebase 콘솔에서 Email/Password 로그인을 먼저 켜야 합니다.';
+            if (code.includes('invalid-email')) return '이메일 형식을 확인해주세요.';
+            if (code.includes('invalid-credential') || code.includes('wrong-password')) return '이메일 또는 비밀번호가 맞지 않습니다.';
+            if (code.includes('user-not-found')) return '등록되지 않은 클라우드 계정입니다.';
+            if (code.includes('email-already-in-use')) return '이미 가입된 이메일입니다.';
+            if (code.includes('weak-password')) return '비밀번호를 6자리 이상으로 입력해주세요.';
+            return '클라우드 로그인에 실패했습니다.';
+        }
+
+        window.submitCloudAuth = async function() {
+            const loaded = await loadFirebaseModules();
+            if (!loaded) return showToast('Firebase 연결 준비에 실패했습니다.');
+            const mode = getCloudAuthMode();
+            const isSignup = mode === 'signup';
+            const email = document.getElementById('cloud-email').value.trim();
+            const password = document.getElementById('cloud-password').value;
+            const trainerName = document.getElementById('cloud-trainer-name').value.trim() || getTrainerName();
+            if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
+            if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
+
+            const previousLoginId = window.activeLoginId;
+            const previousProfile = window.appProfile ? { ...window.appProfile } : null;
+            const previousMembers = JSON.parse(JSON.stringify(window.members || []));
+            const previousSchedules = JSON.parse(JSON.stringify(window.schedules || []));
+            const hasLocalData = !!(previousLoginId && !previousLoginId.startsWith(CLOUD_LOGIN_PREFIX) && (previousMembers.length || previousSchedules.length));
+
+            try {
+                window.cloudAuthFlowActive = true;
+                const credential = isSignup
+                    ? await window.firebaseApi.createUserWithEmailAndPassword(window.firebaseAuth, email, password)
+                    : await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+                window.cloudUser = credential.user;
+                if (isSignup && window.firebaseApi.updateProfile) {
+                    await window.firebaseApi.updateProfile(credential.user, { displayName: trainerName }).catch(() => {});
+                }
+                const remoteProfile = await getRemoteCloudProfile(credential.user.uid);
+                await ensureCloudLocalProfile(credential.user, remoteProfile || { trainerName });
+                const cloudLoginId = getCloudLoginId(credential.user.uid);
+                addLoggedTrainer(cloudLoginId, true);
+
+                if (hasLocalData) {
+                    const ok = confirm(`${previousProfile ? previousProfile.trainerName : '현재'} 트레이너의 로컬 데이터를 이 클라우드 계정으로 업로드할까요?\n\n회원 ${previousMembers.length}명, 예약 ${previousSchedules.length}건이 클라우드에 저장됩니다.`);
+                    if (ok) {
+                        window.members = previousMembers;
+                        window.schedules = previousSchedules;
+                        normalizeDatabase();
+                        localStorage.setItem(getMembersStorageKey(cloudLoginId), JSON.stringify(window.members));
+                        localStorage.setItem(getSchedulesStorageKey(cloudLoginId), JSON.stringify(window.schedules));
+                        if (trainerName) {
+                            window.appProfile.trainerName = trainerName;
+                            window.trainerProfiles[cloudLoginId] = window.appProfile;
+                            saveProfileStore();
+                        }
+                        await window.pushFullCloudSync(false);
+                    } else {
+                        loadDatabase();
+                    }
+                } else {
+                    loadDatabase();
+                    await saveRemoteCloudProfile().catch(() => {});
+                }
+
+                startCloudSync();
+                enterTrainerWorkspace();
+                window.closeCloudAuthModal();
+                showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '클라우드 로그인 완료');
+            } catch (err) {
+                console.error('Cloud auth failed.', err);
+                showToast(translateCloudAuthError(err));
+            } finally {
+                window.cloudAuthFlowActive = false;
+                renderCloudStatus();
+            }
+        };
+
+        window.logoutCloudUser = async function() {
+            if (!window.firebaseAuth) return;
+            const cloudLoginId = getCloudLoginId();
+            try {
+                stopCloudSync();
+                await window.firebaseApi.signOut(window.firebaseAuth);
+                if (cloudLoginId) removeLoggedTrainer(cloudLoginId);
+                window.cloudUser = null;
+                renderCloudStatus();
+                if (window.activeLoginId) enterTrainerWorkspace();
+                else showLoginOverlay('login');
+                showToast('클라우드에서 로그아웃했습니다.');
+            } catch (err) {
+                console.error('Cloud logout failed.', err);
+                showToast('클라우드 로그아웃에 실패했습니다.');
+            }
+        };
+
         function loadDatabase() {
             if (!window.activeLoginId) {
                 window.members = [];
@@ -862,7 +1477,10 @@
             try {
                 localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
                 localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
-                if (!options.silent) markDataChanged();
+                if (!options.silent) {
+                    markDataChanged();
+                    if (!options.skipCloud) queueCloudFullSync();
+                }
                 return true;
             } catch (err) {
                 console.error('Local save failed.', err);
@@ -990,6 +1608,21 @@
                 return;
             }
             panel.classList.remove('hidden');
+
+            if (isActiveCloudProfile()) {
+                if (window.cloudLastError) {
+                    panel.className = 'flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5';
+                    icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-red-500 text-white';
+                    title.innerText = '클라우드 확인 필요';
+                    detail.innerText = window.cloudLastError;
+                    return;
+                }
+                panel.className = 'flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5';
+                icon.className = 'w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-500 text-white';
+                title.innerText = '클라우드 동기화 사용 중';
+                detail.innerText = window.cloudLastSyncedAt ? `최근 동기화: ${formatBackupTimestamp(window.cloudLastSyncedAt)}` : '변경사항을 클라우드와 자동으로 맞춥니다.';
+                return;
+            }
 
             const lastBackup = getSavedTimestamp(LAST_BACKUP_KEY_PREFIX);
             const lastChange = getSavedTimestamp(LAST_DATA_CHANGE_KEY_PREFIX);
@@ -1222,6 +1855,7 @@
             const subtitle = document.getElementById('header-subtitle');
             if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
             renderBackupStatus();
+            renderCloudStatus();
             const detailTrainer = document.getElementById('detail-member-trainer');
             if (window.activeMemberId && detailTrainer) {
                 const m = window.members.find(x => x.id === window.activeMemberId);
@@ -1237,6 +1871,7 @@
             if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
             flushWorkoutSave();
             saveDatabase({ silent: true });
+            stopCloudSync();
             window.activeLoginId = loginId;
             sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
             localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
@@ -1245,6 +1880,7 @@
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
             loadDatabase();
+            if (isActiveCloudProfile()) startCloudSync();
             window.switchMainView('dashboard');
             showToast(`${getTrainerName()} 트레이너로 전환되었습니다.`);
         }
@@ -1301,6 +1937,10 @@
             if (!loginId || !password) return showToast('아이디와 비밀번호를 입력해주세요.');
             const profile = window.trainerProfiles[loginId];
             if (!profile) return showToast('등록되지 않은 아이디입니다.');
+            if (isCloudProfile(profile)) {
+                window.openCloudAuthModal('login');
+                return showToast('클라우드 계정은 이메일 로그인으로 접속해주세요.');
+            }
             const passwordHash = await hashPassword(password, profile.passwordSalt);
             if (passwordHash !== profile.passwordHash) {
                 return showToast('로그인 정보가 올바르지 않습니다.');
@@ -1315,6 +1955,9 @@
             document.getElementById('profile-login-id').value = (window.appProfile && window.appProfile.loginId) || '';
             document.getElementById('profile-current-password').value = '';
             document.getElementById('profile-new-password').value = '';
+            const passwordSection = document.getElementById('profile-password-section');
+            if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile());
+            renderCloudStatus();
             const modal = document.getElementById('modal-profile-settings');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -1332,6 +1975,20 @@
             if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const changingPassword = newPassword.length > 0;
+            if (isCloudProfile()) {
+                window.appProfile.trainerName = trainerName;
+                window.trainerProfiles[window.activeLoginId] = window.appProfile;
+                saveProfileStore();
+                await saveRemoteCloudProfile().catch(err => {
+                    console.error('Cloud profile update failed.', err);
+                    window.cloudLastError = '클라우드 프로필 저장 실패';
+                });
+                updateTrainerUi();
+                window.closeProfileSettingsModal();
+                showToast('클라우드 트레이너 설정이 저장되었습니다.');
+                return;
+            }
+
             if (changingPassword) {
                 const currentHash = await hashPassword(currentPassword, window.appProfile.passwordSalt);
                 if (currentHash !== window.appProfile.passwordHash) return showToast('현재 비밀번호를 확인해주세요.');
@@ -1357,6 +2014,10 @@
         }
 
         window.logoutLocalUser = function() {
+            if (isCloudProfile() && window.cloudUser) {
+                window.logoutCloudUser();
+                return;
+            }
             const loggedOutName = getTrainerName();
             flushWorkoutSave();
             removeLoggedTrainer(window.activeLoginId);
@@ -1372,10 +2033,25 @@
             showToast(`${loggedOutName} 트레이너가 로그아웃되었습니다.`);
         }
 
-        function localSaveMember(m) { saveDatabase(); }
-        function localDeleteMember(id) { saveDatabase(); }
-        function localSaveSchedule(s) { saveDatabase(); }
-        function localDeleteSchedule(id) { saveDatabase(); }
+        function localSaveMember(m) {
+            saveDatabase({ skipCloud: true });
+            saveCloudDocument('members', m);
+        }
+
+        function localDeleteMember(id) {
+            saveDatabase({ skipCloud: true });
+            deleteCloudDocument('members', id);
+        }
+
+        function localSaveSchedule(s) {
+            saveDatabase({ skipCloud: true });
+            saveCloudDocument('schedules', s);
+        }
+
+        function localDeleteSchedule(id) {
+            saveDatabase({ skipCloud: true });
+            deleteCloudDocument('schedules', id);
+        }
 
         // ================= BACKUP & RESTORE =================
         function getDataSummary(members = window.members, schedules = window.schedules) {
@@ -1677,12 +2353,14 @@
                     <button onclick="window.openNewMemberModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center shadow-sm active-scale transition-all"><i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span></button>
                 `;
                 window.renderMemberList();
+                renderCloudStatus();
             } else if (view === 'schedule') {
                 document.getElementById('view-schedule').classList.remove('hidden');
                 document.getElementById('header-subtitle').innerText = 'Class Schedule';
                 document.getElementById('nav-schedule').classList.replace('text-stone-400', 'text-amber-600');
                 document.getElementById('header-action-container').innerHTML = `${getTrainerSwitcherHtml()}<button onclick="window.goToToday()" class="border border-stone-600 hover:bg-stone-800 text-stone-300 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active-scale">오늘 이동</button>`;
                 window.initCalendar();
+                renderCloudStatus();
             }
         }
 
