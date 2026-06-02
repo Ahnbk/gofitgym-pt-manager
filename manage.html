@@ -693,7 +693,7 @@
         var pendingWorkoutSave = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v18';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v19';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1464,7 +1464,7 @@
         function supportsBackupNativeFileShare() {
             try {
                 if (!navigator.share || !navigator.canShare || typeof File === 'undefined') return false;
-                const testFile = new File(['{}'], 'gofitgym-backup.json', { type: 'application/json' });
+                const testFile = new File(['{}'], 'gofitgym-backup.json', { type: 'text/plain' });
                 return navigator.canShare({ files: [testFile] });
             } catch (err) {
                 return false;
@@ -1557,10 +1557,11 @@
 
         window.shareBackupFileNative = async function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-            const { blob, fileName } = createBackupFile();
+            const { blob, fileName, json } = createBackupFile();
             try {
                 if (supportsBackupNativeFileShare()) {
-                    const file = new File([blob], fileName, { type: 'application/json' });
+                    const shareBlob = new Blob([json], { type: 'text/plain' });
+                    const file = new File([shareBlob], fileName, { type: 'text/plain' });
                     await navigator.share({
                         title: 'GOFITGYM 백업',
                         text: `${getTrainerName()} 트레이너 백업 파일입니다.`,
