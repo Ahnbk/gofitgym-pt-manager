@@ -129,6 +129,26 @@
             padding-left: 0 !important;
             padding-right: 0 !important;
         }
+        .header-shell,
+        .header-brand {
+            align-items: flex-start;
+        }
+        .header-top-row {
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+        }
+        .header-actions-row {
+            height: 30px;
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            min-width: 0;
+        }
 
         #modal-box.signature-counter-side {
             transform: rotate(180deg) !important;
@@ -233,8 +253,8 @@
 
     <!-- 1. HEADER BANNER -->
     <header class="bg-stone-900 text-stone-100 shadow-md sticky top-0 z-40 px-4 py-2.5 h-[68px]">
-        <div class="max-w-5xl mx-auto flex justify-between items-center h-full">
-            <div class="flex items-center space-x-2.5 min-w-0">
+        <div class="header-shell max-w-5xl mx-auto flex justify-between h-full">
+            <div class="header-brand flex space-x-2.5 min-w-0">
                 <div class="bg-amber-500 p-1.5 rounded-lg text-stone-900 shadow-inner">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M4 11h2v2H4zm14 0h2v2h-2zM2 9h2v6H2zm18 0h2v6h-2zM7 11h10v2H7z"></path>
@@ -243,7 +263,7 @@
                     </svg>
                 </div>
                 <div class="min-w-0">
-                    <div class="flex items-center gap-1.5 flex-wrap">
+                    <div class="header-top-row">
                         <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
                         <div id="cloud-status-text" class="header-control text-[10px] font-black text-stone-300 bg-stone-800 px-2 rounded-lg border border-stone-700">
                             <i class="fa-solid fa-shield-halved mr-1"></i> 백업 모드
@@ -257,7 +277,7 @@
                 </div>
             </div>
             
-            <div id="header-action-container" class="flex items-center justify-end gap-2 min-w-0">
+            <div id="header-action-container" class="header-actions-row">
                 <button onclick="window.openNewMemberModal()" class="header-control bg-amber-500 hover:bg-amber-600 text-stone-950 px-3 rounded-xl text-xs font-black shadow-sm active-scale transition-all">
                     <i class="fa-solid fa-user-plus md:mr-1"></i><span class="hidden md:inline">회원 등록</span>
                 </button>
@@ -880,7 +900,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v39';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v40';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
