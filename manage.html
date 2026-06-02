@@ -520,6 +520,9 @@
                 <button onclick="window.openActionMemberDetail()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-user mr-1.5 text-amber-500"></i>회원 화면 열기
                 </button>
+                <button onclick="window.cancelActionMemberTodaySchedule()" id="member-action-cancel-schedule-btn" class="hidden w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 취소
+                </button>
                 <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-pause mr-1.5"></i>보류 탭으로 이동
                 </button>
@@ -798,7 +801,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v23';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v24';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1583,11 +1586,15 @@
             return !!(m && m.status === 'hold');
         }
 
-        function getTodayScheduleForMember(m) {
+        function getTodaySchedulesForMember(m) {
             const todayStr = formatDate(new Date());
             return (window.schedules || [])
                 .filter(s => s.date === todayStr && s.title && s.title.includes(m.name))
-                .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0] || null;
+                .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+        }
+
+        function getTodayScheduleForMember(m) {
+            return getTodaySchedulesForMember(m)[0] || null;
         }
 
         function formatDisplayDate(dateStr) {
@@ -2456,10 +2463,19 @@
             const hold = isMemberOnHold(m);
             const completed = isMemberCompleted(m);
             const comp = getCompletedCount(m);
+            const todaySchedules = getTodaySchedulesForMember(m);
             document.getElementById('member-action-title').innerText = m.name;
             document.getElementById('member-action-subtitle').innerText = hold
                 ? `보류 중 · ${comp}/${m.totalSessions || 0}회 완료`
                 : `${completed ? '완료' : '진행중'} · ${comp}/${m.totalSessions || 0}회 완료`;
+            const cancelBtn = document.getElementById('member-action-cancel-schedule-btn');
+            if (cancelBtn) {
+                cancelBtn.classList.toggle('hidden', todaySchedules.length === 0);
+                const times = todaySchedules.map(s => s.time).filter(Boolean).join(', ');
+                cancelBtn.innerHTML = todaySchedules.length > 1
+                    ? `<i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 ${todaySchedules.length}건 취소`
+                    : `<i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 취소${times ? ` (${times})` : ''}`;
+            }
             const holdBtn = document.getElementById('member-action-hold-btn');
             holdBtn.className = hold
                 ? 'w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black active-scale'
@@ -2485,6 +2501,29 @@
             const memberId = window.memberActionMemberId;
             window.closeMemberActionMenu();
             if (memberId) window.selectMember(memberId);
+        }
+
+        window.cancelActionMemberTodaySchedule = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m) return;
+            const todaySchedules = getTodaySchedulesForMember(m);
+            if (!todaySchedules.length) return showToast('오늘 예약된 수업이 없습니다.');
+
+            const times = todaySchedules.map(s => s.time).filter(Boolean).join(', ');
+            const ok = confirm(`${m.name} 회원의 오늘 수업${times ? ` (${times})` : ''}을 취소할까요?\n스케줄 예약관리에서도 삭제됩니다.`);
+            if (!ok) return;
+
+            const ids = new Set(todaySchedules.map(s => String(s.id)));
+            window.schedules = window.schedules.filter(s => !ids.has(String(s.id)));
+            todaySchedules.forEach(s => localDeleteSchedule(s.id));
+
+            const scheduleViewOpen = !document.getElementById('view-schedule').classList.contains('hidden');
+            if (scheduleViewOpen) window.initCalendar();
+            window.renderMemberList();
+            window.closeMemberActionMenu();
+            showToast(todaySchedules.length > 1
+                ? `${m.name} 회원의 오늘 수업 ${todaySchedules.length}건을 취소했습니다.`
+                : `${m.name} 회원의 오늘 수업을 취소했습니다.`);
         }
 
         window.toggleActionMemberHold = function() {
