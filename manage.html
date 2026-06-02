@@ -76,6 +76,18 @@
             border-right: 1px solid #57534e;
             border-bottom: 1px solid #57534e;
         }
+        .cal-now-cell {
+            background: #fffbeb;
+        }
+        .cal-now-cell::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border: 2px solid #f59e0b;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 20;
+        }
         .cal-grid-header {
             border-right: 1px solid #57534e;
         }
@@ -821,7 +833,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v32';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v33';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3368,17 +3380,6 @@
             return 'calc(8.7px * var(--cal-zoom))';
         }
 
-        function getScheduleAccentColor(colorClass) {
-            const source = String(colorClass || '');
-            if (source.includes('amber')) return '#f59e0b';
-            if (source.includes('emerald')) return '#10b981';
-            if (source.includes('red')) return '#ef4444';
-            if (source.includes('purple')) return '#8b5cf6';
-            if (source.includes('rose')) return '#f43f5e';
-            if (source.includes('sky')) return '#0ea5e9';
-            if (source.includes('slate')) return '#64748b';
-            return '#2563eb';
-        }
         window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
         window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
 
@@ -3394,7 +3395,11 @@
             header.innerHTML = '<div class="py-2 text-center cal-grid-header flex flex-col justify-end text-[8px] text-stone-800 pb-1 bg-white font-black">TIME</div>';
             body.innerHTML = '';
 
-            const todayStr = formatDate(window.currentDate);
+            const now = new Date();
+            const todayStr = formatDate(now);
+            const currentHour = now.getHours();
+            const currentHourStr = `${String(currentHour).padStart(2, '0')}:00`;
+            const showCurrentTimeCell = currentHour >= START_HOUR && currentHour < START_HOUR + HOURS;
 
             for (let i = 0; i < 7; i++) {
                 const d = new Date(s); d.setDate(d.getDate() + i);
@@ -3416,7 +3421,9 @@
                     const d = new Date(s); d.setDate(d.getDate() + i);
                     const tDate = formatDate(d);
                     const cell = document.createElement('div');
-                    cell.className = "cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full bg-white";
+                    const isCurrentTimeCell = showCurrentTimeCell && tDate === todayStr && tStr === currentHourStr;
+                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : 'bg-white'}`;
+                    if (isCurrentTimeCell) cell.title = '현재 시간';
                     cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
                     cell.id = `cell-${tDate}-${tStr}`;
                     row.appendChild(cell);
@@ -3428,9 +3435,8 @@
                 const cell = document.getElementById(`cell-${evt.date}-${evt.time}`);
                 if (cell) {
                     const b = document.createElement('div');
-                    b.className = 'absolute inset-[2px] bg-white rounded-md border border-stone-900 border-l-4 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10';
-                    b.style.borderLeftColor = getScheduleAccentColor(evt.color);
-                    b.innerHTML = `<span class="font-black text-stone-950 cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
+                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10`;
+                    b.innerHTML = `<span class="font-black text-white cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
                     b.onclick = (e) => { e.stopPropagation(); window.openScheduleModal(evt.date, evt.time, evt); };
                     cell.appendChild(b);
                 }
