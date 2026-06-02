@@ -916,7 +916,7 @@
         var dashboardToolsOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v43';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v44';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3225,11 +3225,12 @@
                 return originalCreatePoint(rect.left + rect.width - localX, rect.top + rect.height - localY, pressure);
             };
             pad._gofitCounterSideInput = true;
+        }
+
+        function setSignatureCounterSideMode(enabled) {
             const modalBox = document.getElementById('modal-box');
             if (modalBox) {
-                modalBox.classList.add('signature-counter-side');
-                modalBox.style.transform = 'rotate(180deg)';
-                modalBox.style.transformOrigin = 'center';
+                modalBox.classList.toggle('signature-counter-side', !!enabled);
             }
         }
 
@@ -3292,6 +3293,7 @@
 
             if (isSigned) {
                 // 서명 보기 모드 (View Mode)
+                setSignatureCounterSideMode(false);
                 canvasWrap.classList.add('hidden');
                 prevWrap.classList.remove('hidden');
                 document.getElementById('signature-preview-img').src = l.signature;
@@ -3304,6 +3306,7 @@
                 `;
             } else {
                 // 직접 서명 그리기 모드 (Drawing Mode)
+                setSignatureCounterSideMode(true);
                 canvasWrap.classList.remove('hidden');
                 prevWrap.classList.add('hidden');
                 if(window.signaturePad) window.signaturePad.clear();
@@ -3342,6 +3345,7 @@
             const btns = document.getElementById('sign-action-btns');
             const badge = document.getElementById('sign-status-badge');
 
+            setSignatureCounterSideMode(true);
             canvasWrap.classList.remove('hidden');
             prevWrap.classList.add('hidden');
             if(window.signaturePad) window.signaturePad.clear();
@@ -3368,7 +3372,7 @@
 
         window.closeSignModal = function() {
             const m = document.getElementById('sign-modal');
-            m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); if(window.signaturePad) window.signaturePad.clear(); }, 300);
+            m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); setSignatureCounterSideMode(false); if(window.signaturePad) window.signaturePad.clear(); }, 300);
         }
         window.clearCanvas = function() { if(window.signaturePad) window.signaturePad.clear(); }
         
