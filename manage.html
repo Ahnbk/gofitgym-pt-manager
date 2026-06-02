@@ -47,8 +47,8 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
         
-        .calendar-scroll::-webkit-scrollbar-track { background: #1c1917; }
-        .calendar-scroll::-webkit-scrollbar-thumb { background: #44403c; border-radius: 4px; }
+        .calendar-scroll::-webkit-scrollbar-track { background: #f5f5f4; }
+        .calendar-scroll::-webkit-scrollbar-thumb { background: #a8a29e; border-radius: 4px; }
 
         /* Hide scrollbar for preview slider */
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -73,11 +73,11 @@
             }
         }
         .cal-grid-cell {
-            border-right: 1px solid #292524;
-            border-bottom: 1px solid #292524;
+            border-right: 1px solid #57534e;
+            border-bottom: 1px solid #57534e;
         }
         .cal-grid-header {
-            border-right: 1px solid #292524;
+            border-right: 1px solid #57534e;
         }
         
         /* Font scaling based on zoom */
@@ -282,38 +282,38 @@
 
         <!-- ================= VIEW B: SCHEDULE CALENDAR ================= -->
         <div id="view-schedule" class="h-full flex flex-col hidden">
-            <div class="bg-stone-900 rounded-2xl shadow-xl overflow-hidden border border-stone-700 flex flex-col h-full">
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-stone-300 flex flex-col h-full">
                 
                 <!-- Calendar Toolbar -->
-                <div class="flex items-center justify-between p-3 lg:p-4 bg-stone-950 border-b border-stone-800 shrink-0">
-                    <button onclick="window.changeWeek(-1)" class="w-10 h-10 flex items-center justify-center text-stone-400 hover:text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-colors active-scale">
+                <div class="flex items-center justify-between p-3 lg:p-4 bg-white border-b border-stone-300 shrink-0">
+                    <button onclick="window.changeWeek(-1)" class="w-10 h-10 flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <div class="text-center flex-grow cursor-pointer" onclick="window.goToToday()">
-                        <h2 id="calendar-month-year" class="text-lg font-black text-stone-100 tracking-wide">2026년 6월</h2>
-                        <p id="calendar-week-range" class="text-[10px] text-stone-500 font-bold"><i class="fa-regular fa-calendar text-amber-500 mr-1"></i>00.00 - 00.00</p>
+                        <h2 id="calendar-month-year" class="text-lg font-black text-stone-950 tracking-wide">2026년 6월</h2>
+                        <p id="calendar-week-range" class="text-[10px] text-stone-600 font-bold"><i class="fa-regular fa-calendar text-amber-500 mr-1"></i>00.00 - 00.00</p>
                     </div>
-                    <button onclick="window.changeWeek(1)" class="w-10 h-10 flex items-center justify-center text-stone-400 hover:text-white bg-stone-900 hover:bg-stone-800 rounded-full transition-colors active-scale">
+                    <button onclick="window.changeWeek(1)" class="w-10 h-10 flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
                 
                 <!-- Zoom & Info Controls -->
-                <div class="px-3 py-2 bg-stone-950 flex justify-between items-center border-b border-stone-800 shrink-0">
-                    <span class="text-[10px] text-stone-500"><i class="fa-solid fa-circle-info text-stone-600 mr-1"></i>빈 칸 터치시 예약</span>
+                <div class="px-3 py-2 bg-stone-50 flex justify-between items-center border-b border-stone-300 shrink-0">
+                    <span class="text-[10px] text-stone-700 font-bold"><i class="fa-solid fa-circle-info text-stone-500 mr-1"></i>빈 칸 터치시 예약</span>
                     
-                    <div class="flex items-center space-x-1 bg-stone-900 p-1 rounded-lg border border-stone-800">
-                        <button onclick="window.zoomCalendar(-0.3)" class="w-7 h-7 flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 rounded active-scale"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
-                        <span id="zoom-level-text" class="text-[10px] font-bold text-stone-500 w-8 text-center">100%</span>
-                        <button onclick="window.zoomCalendar(0.3)" class="w-7 h-7 flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-700 rounded active-scale"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
+                    <div class="flex items-center space-x-1 bg-white p-1 rounded-lg border border-stone-300">
+                        <button onclick="window.zoomCalendar(-0.3)" class="w-7 h-7 flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
+                        <span id="zoom-level-text" class="text-[10px] font-bold text-stone-700 w-8 text-center">100%</span>
+                        <button onclick="window.zoomCalendar(0.3)" class="w-7 h-7 flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
                     </div>
                 </div>
 
                 <!-- Independent Scrollable Grid Wrapper for Sticky Header -->
-                <div class="overflow-auto calendar-scroll bg-stone-900 flex-grow relative" id="calendar-scroll-area">
+                <div class="overflow-auto calendar-scroll bg-white flex-grow relative" id="calendar-scroll-area">
                     <div class="cal-wrapper relative min-h-full">
-                        <div class="cal-grid bg-stone-900 border-b border-stone-700 sticky top-0 z-20 shadow-md" id="calendar-header"></div>
-                        <div id="calendar-body" class="relative text-stone-400 pb-10"></div>
+                        <div class="cal-grid bg-white border-b border-stone-600 sticky top-0 z-20 shadow-sm" id="calendar-header"></div>
+                        <div id="calendar-body" class="relative text-stone-900 pb-10 bg-white"></div>
                     </div>
                 </div>
             </div>
@@ -655,39 +655,39 @@
     </div>
 
     <!-- B. Schedule Event Modal -->
-    <div id="modal-schedule" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
-        <div class="bg-stone-900 border border-stone-700 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
-            <div class="bg-stone-950 text-stone-100 p-4 flex justify-between items-center border-b border-stone-800">
+    <div id="modal-schedule" class="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white border border-stone-300 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
+            <div class="bg-white text-stone-950 p-4 flex justify-between items-center border-b border-stone-300">
                 <h3 class="font-black text-amber-500 text-base" id="sched-modal-title"><i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록</h3>
-                <button onclick="window.closeScheduleModal()" class="text-stone-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeScheduleModal()" class="text-stone-500 hover:text-stone-950"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4">
                 <input type="hidden" id="sched-id">
                 <input type="hidden" id="sched-date">
                 <input type="hidden" id="sched-time">
 
-                <div class="flex items-center space-x-3 text-stone-300 text-sm font-bold bg-stone-800 p-3 rounded-xl border border-stone-700">
+                <div class="flex items-center space-x-3 text-stone-900 text-sm font-black bg-stone-50 p-3 rounded-xl border border-stone-300">
                     <i class="fa-regular fa-clock text-amber-500"></i>
                     <span id="sched-display-dt">0000.00.00 (월) 14:00</span>
                 </div>
 
                 <div>
-                    <label class="block text-xs text-stone-400 font-bold mb-1.5">예약 내용 (회원명 등)</label>
-                    <input type="text" id="sched-title" placeholder="회원명 또는 예약 내용을 입력" class="w-full text-sm bg-stone-800 text-white border border-stone-700 rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-bold">
+                    <label class="block text-xs text-stone-700 font-black mb-1.5">예약 내용 (회원명 등)</label>
+                    <input type="text" id="sched-title" placeholder="회원명 또는 예약 내용을 입력" class="w-full text-sm bg-white text-stone-950 border border-stone-300 rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-bold">
                     
                     <div class="flex items-center justify-between mt-3 mb-1.5">
-                        <p class="text-[10px] text-stone-500 font-bold">등록된 회원 바로 입력</p>
-                        <p class="text-[9px] text-amber-500/80 font-bold">해당 일자 예약자 우선 정렬</p>
+                        <p class="text-[10px] text-stone-600 font-bold">등록된 회원 바로 입력</p>
+                        <p class="text-[9px] text-amber-600 font-black">해당 일자 예약자 우선 정렬</p>
                     </div>
                     <div class="flex flex-wrap gap-1.5" id="sched-quick-members">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <div id="sched-recurring-block" class="flex items-center justify-between p-3 bg-stone-800 border border-stone-700 rounded-xl">
+                <div id="sched-recurring-block" class="flex items-center justify-between p-3 bg-stone-50 border border-stone-300 rounded-xl">
                     <div>
-                        <span class="block text-sm font-bold text-stone-200">매주 반복 예약</span>
-                        <span class="text-[10px] text-stone-500">향후 12주(3개월) 동안 자동 세팅</span>
+                        <span class="block text-sm font-black text-stone-900">매주 반복 예약</span>
+                        <span class="text-[10px] text-stone-600 font-bold">향후 12주(3개월) 동안 자동 세팅</span>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="sched-recurring" class="sr-only peer">
@@ -696,7 +696,7 @@
                 </div>
             </div>
 
-            <div class="p-4 bg-stone-950 flex space-x-2 border-t border-stone-800" id="sched-action-btns">
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-300" id="sched-action-btns">
                 <!-- Action Buttons Injected -->
             </div>
         </div>
@@ -821,7 +821,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v30';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v31';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3383,6 +3383,18 @@
             if (length <= 22) return 'calc(9.5px * var(--cal-zoom))';
             return 'calc(8.7px * var(--cal-zoom))';
         }
+
+        function getScheduleAccentColor(colorClass) {
+            const source = String(colorClass || '');
+            if (source.includes('amber')) return '#f59e0b';
+            if (source.includes('emerald')) return '#10b981';
+            if (source.includes('red')) return '#ef4444';
+            if (source.includes('purple')) return '#8b5cf6';
+            if (source.includes('rose')) return '#f43f5e';
+            if (source.includes('sky')) return '#0ea5e9';
+            if (source.includes('slate')) return '#64748b';
+            return '#2563eb';
+        }
         window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
         window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
 
@@ -3395,7 +3407,7 @@
 
             const header = document.getElementById('calendar-header');
             const body = document.getElementById('calendar-body');
-            header.innerHTML = '<div class="py-2 text-center cal-grid-header flex flex-col justify-end text-[8px] text-stone-500 pb-1 bg-stone-900">TIME</div>';
+            header.innerHTML = '<div class="py-2 text-center cal-grid-header flex flex-col justify-end text-[8px] text-stone-800 pb-1 bg-white font-black">TIME</div>';
             body.innerHTML = '';
 
             const todayStr = formatDate(window.currentDate);
@@ -3404,9 +3416,9 @@
                 const d = new Date(s); d.setDate(d.getDate() + i);
                 const isToday = formatDate(d) === todayStr;
                 header.innerHTML += `
-                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header bg-stone-900">
-                        <span class="text-[9px] font-bold ${isToday ? 'text-amber-500' : 'text-stone-500'} mb-0.5">${DAYS[i]}</span>
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${isToday ? 'bg-amber-500 text-stone-900' : 'text-stone-300'}">${d.getDate()}</div>
+                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header bg-white">
+                        <span class="text-[9px] font-black ${isToday ? 'text-amber-600' : 'text-stone-900'} mb-0.5">${DAYS[i]}</span>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${isToday ? 'bg-amber-400 text-stone-950 border border-stone-900' : 'text-stone-950'}">${d.getDate()}</div>
                     </div>`;
             }
 
@@ -3414,13 +3426,13 @@
                 const tStr = `${String(START_HOUR + h).padStart(2, '0')}:00`;
                 const row = document.createElement('div');
                 row.className = "cal-grid relative cal-grid-row";
-                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-bold text-stone-500 w-full cal-time-text">${tStr}</div>`;
+                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-black text-stone-900 w-full cal-time-text bg-stone-50">${tStr}</div>`;
                 
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(s); d.setDate(d.getDate() + i);
                     const tDate = formatDate(d);
                     const cell = document.createElement('div');
-                    cell.className = "cal-grid-cell relative cursor-pointer hover:bg-stone-800 transition-colors h-full";
+                    cell.className = "cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full bg-white";
                     cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
                     cell.id = `cell-${tDate}-${tStr}`;
                     row.appendChild(cell);
@@ -3432,8 +3444,9 @@
                 const cell = document.getElementById(`cell-${evt.date}-${evt.time}`);
                 if (cell) {
                     const b = document.createElement('div');
-                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10`;
-                    b.innerHTML = `<span class="font-black text-white cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
+                    b.className = 'absolute inset-[2px] bg-white rounded-md border border-stone-900 border-l-4 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10';
+                    b.style.borderLeftColor = getScheduleAccentColor(evt.color);
+                    b.innerHTML = `<span class="font-black text-stone-950 cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
                     b.onclick = (e) => { e.stopPropagation(); window.openScheduleModal(evt.date, evt.time, evt); };
                     cell.appendChild(b);
                 }
@@ -3467,7 +3480,7 @@
             memberItems.forEach(item => {
                 const isScheduled = item.time ? true : false;
                 const c = document.createElement('span');
-                c.className = `text-[10px] ${isScheduled ? 'bg-amber-500 text-stone-900 shadow-sm' : 'bg-stone-700 text-stone-300'} px-2 py-1 rounded cursor-pointer hover:opacity-80 font-bold transition-all`;
+                c.className = `text-[10px] ${isScheduled ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-sm' : 'bg-white text-stone-800 border-stone-300'} px-2 py-1 rounded cursor-pointer hover:bg-stone-100 font-black border transition-all`;
                 c.innerText = isScheduled ? `[${item.time}] ${item.name}` : item.name;
                 c.onclick = () => document.getElementById('sched-title').value = item.name;
                 chips.appendChild(c);
@@ -3478,13 +3491,13 @@
                 document.getElementById('sched-modal-title').innerHTML = '<i class="fa-solid fa-pen mr-1.5"></i>일정 수정';
                 document.getElementById('sched-id').value = evt.id;
                 document.getElementById('sched-recurring-block').classList.add('hidden');
-                btns.innerHTML = `<button onclick="window.deleteSchedule(${evt.id})" class="w-1/3 py-3 bg-red-500/20 text-red-400 font-bold rounded-xl text-xs active-scale">삭제</button><button onclick="window.saveSchedule()" class="w-2/3 py-3 bg-blue-500 text-white font-black rounded-xl text-xs active-scale">저장</button>`;
+                btns.innerHTML = `<button onclick="window.deleteSchedule(${evt.id})" class="w-1/3 py-3 bg-red-50 text-red-600 border border-red-200 font-black rounded-xl text-xs active-scale">삭제</button><button onclick="window.saveSchedule()" class="w-2/3 py-3 bg-stone-900 text-white font-black rounded-xl text-xs active-scale">저장</button>`;
             } else {
                 document.getElementById('sched-modal-title').innerHTML = '<i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록';
                 document.getElementById('sched-id').value = '';
                 document.getElementById('sched-recurring-block').classList.remove('hidden');
                 document.getElementById('sched-recurring').checked = false;
-                btns.innerHTML = `<button onclick="window.closeScheduleModal()" class="flex-1 py-3 bg-stone-800 text-stone-300 font-bold rounded-xl text-xs active-scale">취소</button><button onclick="window.saveSchedule()" class="flex-1 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs active-scale">등록</button>`;
+                btns.innerHTML = `<button onclick="window.closeScheduleModal()" class="flex-1 py-3 bg-stone-200 text-stone-800 font-black rounded-xl text-xs active-scale">취소</button><button onclick="window.saveSchedule()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs active-scale">등록</button>`;
             }
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
         }
