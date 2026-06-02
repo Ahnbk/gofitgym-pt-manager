@@ -693,7 +693,7 @@
         var pendingWorkoutSave = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v19';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v20';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1774,10 +1774,19 @@
             document.getElementById('stat-total-completed').innerText = `${totalComp}회`;
         }
 
-        window.openNewMemberModal = function() {
+        function resetNewMemberForm() {
+            document.getElementById('reg-name').value = '';
+            document.getElementById('reg-sessions').value = '10';
             document.getElementById('reg-date-input').value = new Date().toISOString().split('T')[0];
+            document.getElementById('reg-email').value = '';
+            document.getElementById('reg-telegram').value = '';
+        }
+
+        window.openNewMemberModal = function() {
+            resetNewMemberForm();
             const m = document.getElementById('modal-member');
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
+            setTimeout(() => document.getElementById('reg-name').focus(), 120);
         }
         window.closeNewMemberModal = function() {
             const m = document.getElementById('modal-member');
@@ -1792,13 +1801,14 @@
             const newM = {
                 id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
                 registrationDate: document.getElementById('reg-date-input').value,
-                email: document.getElementById('reg-email').value, telegram: document.getElementById('reg-telegram').value,
+                email: document.getElementById('reg-email').value.trim(), telegram: document.getElementById('reg-telegram').value.trim(),
                 lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: []
             };
             window.members.push(newM);
             localSaveMember(newM);
             window.renderMemberList();
             window.closeNewMemberModal();
+            resetNewMemberForm();
             showToast('신규 회원이 정상 등록되었습니다.');
         }
 
