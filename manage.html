@@ -347,8 +347,11 @@
                 </div>
 
                 <div class="pt-3 border-t border-stone-100">
-                    <div id="detail-progress-panel">
-                        <span class="block text-[10px] text-stone-400 font-black mb-1">전체 완료율</span>
+                    <button onclick="window.toggleDetailProgress()" class="w-full flex items-center justify-between text-left">
+                        <span class="block text-[10px] text-stone-400 font-black">전체 완료율</span>
+                        <i id="detail-progress-icon" class="fa-solid fa-chevron-down text-stone-400 text-xs transition-transform"></i>
+                    </button>
+                    <div id="detail-progress-panel" class="hidden mt-3">
                         <div class="flex justify-between items-end mb-2">
                             <span id="detail-progress-label" class="text-xl font-black text-stone-900">0%</span>
                             <span id="detail-progress-count" class="text-xs font-black text-amber-600">0 / 0회 완료</span>
@@ -784,6 +787,7 @@
         var memberActionMemberId = null;
         var detailProgressExpanded = false;
         var lessonEditMode = false;
+        var signedLessonsExpanded = false;
         var appProfile = null;
         var trainerProfiles = {};
         var loggedInTrainerIds = [];
@@ -808,7 +812,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v27';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v28';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1933,6 +1937,7 @@
             window.activeMemberId = null;
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
+            window.signedLessonsExpanded = false;
             loadDatabase();
             if (isActiveCloudProfile()) startCloudSync();
             window.switchMainView('dashboard');
@@ -2351,6 +2356,7 @@
                 window.activeMemberId = null;
                 window.setDetailProgressExpanded(false);
                 window.setLessonEditMode(false, false);
+                window.signedLessonsExpanded = false;
                 window.switchMainView('dashboard');
                 showToast('백업 데이터가 복원되었습니다.');
             } catch (err) {
@@ -2378,6 +2384,7 @@
                 window.activeMemberId = null;
                 window.setDetailProgressExpanded(false);
                 window.setLessonEditMode(false, false);
+                window.signedLessonsExpanded = false;
                 window.switchMainView('dashboard');
                 showToast('직전 복원 전 상태로 되돌렸습니다.');
             } catch (err) {
@@ -2755,6 +2762,7 @@
 
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
+            window.signedLessonsExpanded = false;
             window.switchDetailTab('lessons');
             window.renderMemberLessons();
             window.renderMemberWorkouts();
@@ -2787,13 +2795,16 @@
         }
 
         window.setDetailProgressExpanded = function(expanded) {
-            window.detailProgressExpanded = true;
+            window.detailProgressExpanded = expanded;
             const panel = document.getElementById('detail-progress-panel');
-            if (panel) panel.classList.remove('hidden');
+            const icon = document.getElementById('detail-progress-icon');
+            if (!panel || !icon) return;
+            panel.classList.toggle('hidden', !expanded);
+            icon.classList.toggle('rotate-180', expanded);
         }
 
         window.toggleDetailProgress = function() {
-            window.setDetailProgressExpanded(true);
+            window.setDetailProgressExpanded(!window.detailProgressExpanded);
         }
 
         window.setLessonEditMode = function(editing, shouldRender = false) {
@@ -2961,22 +2972,43 @@
             showToast('재등록 날짜가 수정되었습니다.');
         }
 
+        window.toggleSignedLessonsExpanded = function() {
+            window.signedLessonsExpanded = !window.signedLessonsExpanded;
+            window.renderMemberLessons();
+        }
+
         window.renderMemberLessons = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if(!m) return;
             const container = document.getElementById('lessons-rows-container'); container.innerHTML = '';
             container.classList.toggle('lesson-editing', window.lessonEditMode);
-            let comp = 0;
+            const comp = getCompletedCount(m);
+            const shouldCollapseSigned = comp >= 2;
+            const hideSigned = shouldCollapseSigned && !window.signedLessonsExpanded;
+
+            if (shouldCollapseSigned) {
+                const toggleRow = document.createElement('button');
+                toggleRow.type = 'button';
+                toggleRow.onclick = () => window.toggleSignedLessonsExpanded();
+                toggleRow.className = "w-full flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100 text-left active-scale";
+                toggleRow.innerHTML = `
+                    <div>
+                        <p class="text-xs font-black text-amber-700">서명 완료 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
+                        <p class="text-[9px] font-bold text-amber-600">${hideSigned ? '대기 수업을 찾기 쉽게 완료 회차를 숨겼습니다.' : '터치하면 완료 회차를 다시 접습니다.'}</p>
+                    </div>
+                    <i class="fa-solid ${hideSigned ? 'fa-chevron-down' : 'fa-chevron-up'} text-amber-600 text-xs"></i>
+                `;
+                container.appendChild(toggleRow);
+            }
 
             m.lessons.forEach((l, i) => {
                 const isSigned = l.signature && l.signature !== 'LATER';
+                if (isSigned && hideSigned) return;
                 const isLater = l.signature === 'LATER';
                 const isRenewalStart = isRenewalStartLesson(m, l, i);
                 const renewalBadge = isRenewalStart ? `<button onclick="event.stopPropagation(); window.editLessonRenewalDate(${i})" class="inline-flex items-center text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 ml-1 align-middle"><i class="fa-solid fa-rotate-right mr-1"></i>재등록추가</button>` : '';
                 const renewalDateText = isRenewalStart ? `재등록일: ${formatDisplayDate(l.renewalDate)} · ` : '';
                 const deleteLessonButton = !isSigned ? `<span class="lesson-delete-slot"><button onclick="event.stopPropagation(); window.deleteLessonAt(${i})" class="inline-flex items-center justify-center w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full align-middle shadow-sm active-scale" aria-label="수업 삭제"><i class="fa-solid fa-minus text-[10px]"></i></button></span>` : '';
-                
-                if(isSigned) comp++;
                 
                 let statusText = '수업 대기';
                 let subText = '터치하여 서명';
