@@ -922,12 +922,13 @@
         var cloudUnsubscribers = [];
         var cloudApplyingRemote = false;
         var cloudFullSyncTimer = null;
+        var cloudPendingWrites = { members: {}, schedules: {} };
         var cloudLastSyncedAt = 0;
         var cloudLastError = '';
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v47';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v49';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1176,6 +1177,59 @@
             return output;
         }
 
+        function markLocalItemUpdated(item, timestamp = Date.now()) {
+            if (item && typeof item === 'object') item.localUpdatedAt = timestamp;
+            return item;
+        }
+
+        function getLocalUpdateStamp(item) {
+            return Number(item && item.localUpdatedAt) || 0;
+        }
+
+        function markCloudWritePending(name, item) {
+            if (!item || !item.id) return;
+            if (!window.cloudPendingWrites[name]) window.cloudPendingWrites[name] = {};
+            window.cloudPendingWrites[name][String(item.id)] = getLocalUpdateStamp(item) || Date.now();
+        }
+
+        function clearCloudWritePending(name, id, stamp = 0) {
+            const pendingGroup = window.cloudPendingWrites[name];
+            if (!pendingGroup || !id) return;
+            const key = String(id);
+            if (!pendingGroup[key]) return;
+            if (!stamp || Number(pendingGroup[key]) <= Number(stamp)) delete pendingGroup[key];
+        }
+
+        function shouldKeepPendingLocalItem(name, localItem, remoteItem) {
+            if (!localItem || !localItem.id) return false;
+            const pendingStamp = Number(window.cloudPendingWrites[name] && window.cloudPendingWrites[name][String(localItem.id)]) || 0;
+            if (!pendingStamp) return false;
+            const localStamp = getLocalUpdateStamp(localItem);
+            const remoteStamp = getLocalUpdateStamp(remoteItem);
+            return localStamp >= pendingStamp && localStamp > remoteStamp;
+        }
+
+        function mergeCloudItemsWithPendingLocal(name, remoteItems, localItems) {
+            const remoteMap = new Map((Array.isArray(remoteItems) ? remoteItems : [])
+                .filter(item => item && item.id)
+                .map(item => [String(item.id), item]));
+            const localMap = new Map((Array.isArray(localItems) ? localItems : [])
+                .filter(item => item && item.id)
+                .map(item => [String(item.id), item]));
+            const ids = new Set(remoteMap.keys());
+            localMap.forEach((localItem, id) => {
+                if (shouldKeepPendingLocalItem(name, localItem, remoteMap.get(id))) ids.add(id);
+            });
+            return [...ids]
+                .map(id => {
+                    const remoteItem = remoteMap.get(id);
+                    const localItem = localMap.get(id);
+                    return shouldKeepPendingLocalItem(name, localItem, remoteItem) ? localItem : remoteItem;
+                })
+                .filter(Boolean)
+                .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+        }
+
         async function getRemoteCloudProfile(uid) {
             try {
                 const ref = getCloudProfileRef(uid);
@@ -1286,18 +1340,21 @@
                 attach('members', applyCloudMembers),
                 attach('schedules', applyCloudSchedules)
             ];
+            retryPendingCloudWrites();
         }
 
         function applyCloudMembers(items, loginId) {
             window.cloudApplyingRemote = true;
             try {
                 if (window.activeLoginId === loginId) {
-                    window.members = Array.isArray(items) ? items : [];
+                    window.members = mergeCloudItemsWithPendingLocal('members', items, window.members);
                     normalizeDatabase();
                     localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(window.members));
                     refreshCurrentViewAfterCloud();
                 } else {
-                    localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(items || []));
+                    let localItems = [];
+                    try { localItems = JSON.parse(localStorage.getItem(getMembersStorageKey(loginId)) || '[]'); } catch (err) {}
+                    localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(mergeCloudItemsWithPendingLocal('members', items, localItems)));
                 }
             } finally {
                 window.cloudApplyingRemote = false;
@@ -1308,11 +1365,13 @@
             window.cloudApplyingRemote = true;
             try {
                 if (window.activeLoginId === loginId) {
-                    window.schedules = Array.isArray(items) ? items : [];
+                    window.schedules = mergeCloudItemsWithPendingLocal('schedules', items, window.schedules);
                     localStorage.setItem(getSchedulesStorageKey(loginId), JSON.stringify(window.schedules));
                     refreshCurrentViewAfterCloud();
                 } else {
-                    localStorage.setItem(getSchedulesStorageKey(loginId), JSON.stringify(items || []));
+                    let localItems = [];
+                    try { localItems = JSON.parse(localStorage.getItem(getSchedulesStorageKey(loginId)) || '[]'); } catch (err) {}
+                    localStorage.setItem(getSchedulesStorageKey(loginId), JSON.stringify(mergeCloudItemsWithPendingLocal('schedules', items, localItems)));
                 }
             } finally {
                 window.cloudApplyingRemote = false;
@@ -1338,6 +1397,25 @@
             window.cloudFullSyncTimer = setTimeout(() => window.pushFullCloudSync(false), CLOUD_SYNC_DELAY_MS);
         }
 
+        async function readCloudCollection(name) {
+            const col = getCloudCollection(name);
+            if (!col) return [];
+            const snap = await window.firebaseApi.getDocs(col);
+            return snap.docs
+                .map(docSnap => stripCloudMeta({ id: docSnap.id, ...docSnap.data() }))
+                .sort((a, b) => String(a.id || '').localeCompare(String(b.id || '')));
+        }
+
+        async function pullLatestCloudData() {
+            const loginId = getCloudLoginId();
+            const [remoteMembers, remoteSchedules] = await Promise.all([
+                readCloudCollection('members'),
+                readCloudCollection('schedules')
+            ]);
+            applyCloudMembers(remoteMembers, loginId);
+            applyCloudSchedules(remoteSchedules, loginId);
+        }
+
         async function replaceCloudCollection(name, items) {
             const col = getCloudCollection(name);
             if (!col) return;
@@ -1356,8 +1434,12 @@
             for (const item of safeItems) {
                 if (!item || !item.id) continue;
                 localIds.add(String(item.id));
+                const itemForCloud = {
+                    ...item,
+                    localUpdatedAt: Number(item.localUpdatedAt) || Date.now()
+                };
                 batch.set(window.firebaseApi.doc(col, String(item.id)), {
-                    ...cleanForCloud(item),
+                    ...cleanForCloud(itemForCloud),
                     cloudUpdatedAt: window.firebaseApi.serverTimestamp()
                 });
                 ops += 1;
@@ -1373,7 +1455,7 @@
             await commitIfNeeded();
         }
 
-        window.pushFullCloudSync = async function(manual = false) {
+        window.pushFullCloudSync = async function(manual = false, options = {}) {
             if (!window.cloudUser || !window.firebaseDb) {
                 if (manual) showToast('먼저 클라우드에 로그인해주세요.');
                 return false;
@@ -1384,16 +1466,21 @@
             }
             try {
                 await saveRemoteCloudProfile();
-                await replaceCloudCollection('members', window.members);
-                await replaceCloudCollection('schedules', window.schedules);
+                if (options.forceUpload) {
+                    await replaceCloudCollection('members', window.members);
+                    await replaceCloudCollection('schedules', window.schedules);
+                } else {
+                    await pullLatestCloudData();
+                    startCloudSync();
+                }
                 window.cloudLastSyncedAt = Date.now();
                 window.cloudLastError = '';
                 renderCloudStatus();
-                if (manual) showToast('클라우드 동기화 완료');
+                if (manual) showToast(options.forceUpload ? '클라우드 업로드 완료' : '최신 클라우드 데이터를 확인했습니다.');
                 return true;
             } catch (err) {
                 console.error('Cloud full sync failed.', err);
-                window.cloudLastError = '클라우드 업로드 실패';
+                window.cloudLastError = options.forceUpload ? '클라우드 업로드 실패' : '클라우드 수신 실패';
                 renderCloudStatus();
                 if (manual) showToast('클라우드 동기화에 실패했습니다.');
                 return false;
@@ -1405,10 +1492,16 @@
             try {
                 const col = getCloudCollection(name);
                 if (!col) return;
+                const itemStamp = getLocalUpdateStamp(item);
+                const itemForCloud = {
+                    ...item,
+                    localUpdatedAt: itemStamp || Date.now()
+                };
                 await window.firebaseApi.setDoc(window.firebaseApi.doc(col, String(item.id)), {
-                    ...cleanForCloud(item),
+                    ...cleanForCloud(itemForCloud),
                     cloudUpdatedAt: window.firebaseApi.serverTimestamp()
                 });
+                clearCloudWritePending(name, item.id, itemForCloud.localUpdatedAt);
                 window.cloudLastSyncedAt = Date.now();
                 window.cloudLastError = '';
                 renderCloudStatus();
@@ -1434,6 +1527,24 @@
                 renderCloudStatus();
             }
         }
+
+        async function retryPendingCloudWrites() {
+            if (!isActiveCloudProfile() || !window.firebaseDb) return;
+            const pendingMembers = Object.keys(window.cloudPendingWrites.members || {});
+            const pendingSchedules = Object.keys(window.cloudPendingWrites.schedules || {});
+            for (const id of pendingMembers) {
+                const member = window.members.find(item => String(item.id) === id);
+                if (member) await saveCloudDocument('members', member);
+            }
+            for (const id of pendingSchedules) {
+                const schedule = window.schedules.find(item => String(item.id) === id);
+                if (schedule) await saveCloudDocument('schedules', schedule);
+            }
+        }
+
+        window.addEventListener('online', () => {
+            retryPendingCloudWrites();
+        });
 
         function renderCloudStatus() {
             const header = document.getElementById('cloud-status-text');
@@ -1574,7 +1685,7 @@
                             window.trainerProfiles[cloudLoginId] = window.appProfile;
                             saveProfileStore();
                         }
-                        await window.pushFullCloudSync(false);
+                        await window.pushFullCloudSync(false, { forceUpload: true });
                     } else {
                         loadDatabase();
                     }
@@ -1672,7 +1783,7 @@
                 localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
                 if (!options.silent) {
                     markDataChanged();
-                    if (!options.skipCloud) queueCloudFullSync();
+                    if (options.fullCloudSync) queueCloudFullSync();
                 }
                 return true;
             } catch (err) {
@@ -2289,6 +2400,8 @@
         }
 
         function localSaveMember(m) {
+            markLocalItemUpdated(m);
+            if (isActiveCloudProfile()) markCloudWritePending('members', m);
             saveDatabase({ skipCloud: true });
             saveCloudDocument('members', m);
         }
@@ -2299,6 +2412,8 @@
         }
 
         function localSaveSchedule(s) {
+            markLocalItemUpdated(s);
+            if (isActiveCloudProfile()) markCloudWritePending('schedules', s);
             saveDatabase({ skipCloud: true });
             saveCloudDocument('schedules', s);
         }
@@ -2547,6 +2662,7 @@
                 window.schedules = backup.schedules;
                 normalizeDatabase();
                 saveDatabase();
+                await window.pushFullCloudSync(false, { forceUpload: true });
                 markBackupSaved();
 
                 window.activeMemberId = null;
@@ -2561,7 +2677,7 @@
             }
         }
 
-        window.restoreLastSafetySnapshot = function() {
+        window.restoreLastSafetySnapshot = async function() {
             try {
                 if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
                 const raw = localStorage.getItem(getRestoreSafetyKey());
@@ -2575,6 +2691,7 @@
                 window.schedules = backup.schedules;
                 normalizeDatabase();
                 saveDatabase();
+                await window.pushFullCloudSync(false, { forceUpload: true });
                 localStorage.removeItem(getRestoreSafetyKey());
                 window.closeBackupChoiceModal();
                 window.activeMemberId = null;
@@ -3477,7 +3594,9 @@
             clearTimeout(workoutSaveTimer);
             workoutSaveTimer = null;
             pendingWorkoutSave = false;
-            saveDatabase();
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (m) localSaveMember(m);
+            else saveDatabase({ skipCloud: true });
         }
 
         window.addEventListener('beforeunload', flushWorkoutSave);
@@ -3497,6 +3616,8 @@
             const workout = m && m.workouts.find(w => w.id === id);
             if (!workout) return;
             workout[k] = v;
+            markLocalItemUpdated(m);
+            if (isActiveCloudProfile()) markCloudWritePending('members', m);
             queueWorkoutSave();
         }
         window.delW = function(id) { 
