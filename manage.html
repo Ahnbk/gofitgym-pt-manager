@@ -109,9 +109,25 @@
         }
         .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
 
-        .signature-counter-side #signature-canvas {
-            transform: rotate(180deg);
-            transform-origin: center;
+        #signature-canvas-wrapper.signature-counter-side {
+            transform: rotate(180deg) !important;
+            transform-origin: center !important;
+        }
+        .signature-counter-guide {
+            position: absolute;
+            top: 0.75rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid #e7e5e4;
+            color: #78716c;
+            border-radius: 999px;
+            padding: 0.25rem 0.65rem;
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 900;
         }
 
         .lesson-row {
@@ -737,6 +753,7 @@
                 
                 <!-- CANVAS WRAPPER (그리기 모드) -->
                 <div id="signature-canvas-wrapper" class="relative bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl overflow-hidden w-full h-[min(42dvh,360px)] min-h-[220px] md:min-h-[300px] flex items-center justify-center">
+                    <div class="signature-counter-guide"><i class="fa-solid fa-signature mr-1 text-amber-500"></i>서명</div>
                     <canvas id="signature-canvas" class="absolute inset-0 w-full h-full touch-none cursor-crosshair" width="0" height="0" style="touch-action: none; user-select: none;"></canvas>
                 </div>
                 
@@ -842,7 +859,7 @@
         var cloudLastError = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v35';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v36';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3116,7 +3133,12 @@
                 return originalCreatePoint(rect.left + rect.width - localX, rect.top + rect.height - localY, pressure);
             };
             pad._gofitCounterSideInput = true;
-            document.getElementById('signature-canvas-wrapper')?.classList.add('signature-counter-side');
+            const wrapper = document.getElementById('signature-canvas-wrapper');
+            if (wrapper) {
+                wrapper.classList.add('signature-counter-side');
+                wrapper.style.transform = 'rotate(180deg)';
+                wrapper.style.transformOrigin = 'center';
+            }
         }
 
         function initSignaturePad() {
