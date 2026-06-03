@@ -76,6 +76,33 @@
             border-right: 1px solid #57534e;
             border-bottom: 1px solid #57534e;
         }
+        .cal-time-sticky {
+            position: sticky;
+            left: 0;
+            z-index: 16;
+            box-shadow: 1px 0 0 #57534e;
+        }
+        #calendar-header .cal-time-sticky {
+            z-index: 35;
+        }
+        .cal-day-off {
+            background: #fff1f2;
+        }
+        .cal-day-off-text {
+            color: #dc2626 !important;
+        }
+        .cal-holiday-name {
+            max-width: 100%;
+            padding: 0 3px;
+            color: #dc2626;
+            font-size: 8px;
+            font-weight: 900;
+            line-height: 1.05;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .cal-now-cell {
             background: #fffbeb;
         }
@@ -939,7 +966,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v60';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v61';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -963,6 +990,52 @@
         const HOURS = 16; 
         const START_HOUR = 8;
         const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+        const KOREAN_HOLIDAYS = {
+            '2026-01-01': '신정',
+            '2026-02-16': '설 연휴',
+            '2026-02-17': '설날',
+            '2026-02-18': '설 연휴',
+            '2026-03-01': '삼일절',
+            '2026-03-02': '삼일절 대체',
+            '2026-05-01': '근로자의 날',
+            '2026-05-05': '어린이날',
+            '2026-05-24': '부처님오신날',
+            '2026-05-25': '부처님 대체',
+            '2026-06-03': '지방선거',
+            '2026-06-06': '현충일',
+            '2026-07-17': '제헌절',
+            '2026-08-15': '광복절',
+            '2026-08-17': '광복절 대체',
+            '2026-09-24': '추석 연휴',
+            '2026-09-25': '추석',
+            '2026-09-26': '추석 연휴',
+            '2026-10-03': '개천절',
+            '2026-10-05': '개천절 대체',
+            '2026-10-09': '한글날',
+            '2026-12-25': '성탄절',
+            '2027-01-01': '신정',
+            '2027-02-06': '설 연휴',
+            '2027-02-07': '설날',
+            '2027-02-08': '설 연휴',
+            '2027-02-09': '설날 대체',
+            '2027-03-01': '삼일절',
+            '2027-05-01': '근로자의 날',
+            '2027-05-05': '어린이날',
+            '2027-05-13': '부처님오신날',
+            '2027-06-06': '현충일',
+            '2027-07-17': '제헌절',
+            '2027-08-15': '광복절',
+            '2027-08-16': '광복절 대체',
+            '2027-09-14': '추석 연휴',
+            '2027-09-15': '추석',
+            '2027-09-16': '추석 연휴',
+            '2027-10-03': '개천절',
+            '2027-10-04': '개천절 대체',
+            '2027-10-09': '한글날',
+            '2027-10-11': '한글날 대체',
+            '2027-12-25': '성탄절',
+            '2027-12-27': '성탄절 대체'
+        };
         const LEGACY_PROFILE_KEY = 'gofitgym_v10_profile';
         const PROFILES_KEY = 'gofitgym_v11_profiles';
         const LOGGED_SESSION_KEY = 'gofitgym_v11_logged_in_session';
@@ -3864,6 +3937,16 @@
             document.getElementById('zoom-level-text').innerText = `${Math.round(window.currentZoom * 100)}%`;
         }
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function getKoreanHolidayInfo(date) {
+            const key = formatDate(date);
+            const name = KOREAN_HOLIDAYS[key] || '';
+            return {
+                name,
+                isHoliday: !!name,
+                isSunday: date.getDay() === 0,
+                isDayOff: date.getDay() === 0 || !!name
+            };
+        }
         function parseScheduleDate(dateStr) {
             const parts = String(dateStr || '').trim().split(/[-./]/).map(Number);
             if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
@@ -3924,7 +4007,7 @@
 
             const header = document.getElementById('calendar-header');
             const body = document.getElementById('calendar-body');
-            header.innerHTML = '<div class="py-2 text-center cal-grid-header flex flex-col justify-end text-[8px] text-stone-800 pb-1 bg-white font-black">TIME</div>';
+            header.innerHTML = '<div class="py-2 text-center cal-grid-header cal-time-sticky flex flex-col justify-end text-[8px] text-stone-800 pb-1 bg-white font-black">TIME</div>';
             body.innerHTML = '';
 
             const now = new Date();
@@ -3936,10 +4019,19 @@
             for (let i = 0; i < 7; i++) {
                 const d = new Date(s); d.setDate(d.getDate() + i);
                 const isToday = formatDate(d) === todayStr;
+                const holiday = getKoreanHolidayInfo(d);
+                const dayTextClass = holiday.isDayOff ? 'cal-day-off-text' : (isToday ? 'text-amber-600' : 'text-stone-900');
+                const dateClass = isToday
+                    ? 'bg-amber-400 text-stone-950 border border-stone-900'
+                    : (holiday.isDayOff ? 'text-red-600' : 'text-stone-950');
+                const holidayName = holiday.name
+                    ? `<span class="cal-holiday-name" title="${escapeHtml(holiday.name)}">${escapeHtml(holiday.name)}</span>`
+                    : '';
                 header.innerHTML += `
-                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header bg-white">
-                        <span class="text-[9px] font-black ${isToday ? 'text-amber-600' : 'text-stone-900'} mb-0.5">${DAYS[i]}</span>
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${isToday ? 'bg-amber-400 text-stone-950 border border-stone-900' : 'text-stone-950'}">${d.getDate()}</div>
+                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header ${holiday.isDayOff ? 'cal-day-off' : 'bg-white'}" title="${holiday.name ? escapeHtml(holiday.name) : ''}">
+                        <span class="text-[9px] font-black ${dayTextClass} mb-0.5">${DAYS[i]}</span>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${dateClass}">${d.getDate()}</div>
+                        ${holidayName}
                     </div>`;
             }
 
@@ -3947,15 +4039,17 @@
                 const tStr = `${String(START_HOUR + h).padStart(2, '0')}:00`;
                 const row = document.createElement('div');
                 row.className = "cal-grid relative cal-grid-row";
-                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell font-black text-stone-900 w-full cal-time-text bg-stone-50">${tStr}</div>`;
+                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell cal-time-sticky font-black text-stone-900 w-full cal-time-text bg-stone-50">${tStr}</div>`;
                 
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(s); d.setDate(d.getDate() + i);
                     const tDate = formatDate(d);
+                    const holiday = getKoreanHolidayInfo(d);
                     const cell = document.createElement('div');
                     const isCurrentTimeCell = showCurrentTimeCell && tDate === todayStr && tStr === currentHourStr;
-                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : 'bg-white'}`;
-                    if (isCurrentTimeCell) cell.title = '현재 시간';
+                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white')}`;
+                    if (isCurrentTimeCell) cell.title = holiday.name ? `현재 시간 · ${holiday.name}` : '현재 시간';
+                    else if (holiday.name) cell.title = holiday.name;
                     cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
                     cell.id = `cell-${tDate}-${tStr}`;
                     row.appendChild(cell);
