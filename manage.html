@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v56';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v57';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3618,16 +3618,16 @@
                 const div = document.createElement('div');
                 div.className = "bg-white border border-stone-200 p-3 rounded-xl";
                 div.innerHTML = `
-                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" oninput="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-16 bg-transparent outline-none border-b border-stone-300">
-                        <div class="flex items-center gap-1">
-                            <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale" aria-label="운동일지 복사">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" oninput="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-20 bg-transparent outline-none border-b border-stone-300">
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <button onclick="window.shareWorkoutLog(${w.id})" class="inline-flex flex-1 sm:flex-none items-center justify-center h-9 px-3 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-lg active-scale text-[11px] font-black" aria-label="운동일지 공유">
+                                <i class="fa-solid fa-share-nodes text-xs mr-1.5"></i>공유
+                            </button>
+                            <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-9 h-9 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale border border-stone-200" aria-label="운동일지 복사">
                                 <i class="fa-regular fa-copy text-xs"></i>
                             </button>
-                            <button onclick="window.shareWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-lg active-scale" aria-label="운동일지 공유">
-                                <i class="fa-solid fa-share-nodes text-xs"></i>
-                            </button>
-                            <button onclick="window.delW(${w.id})" class="inline-flex items-center justify-center w-8 h-8 bg-stone-100 hover:bg-red-50 text-stone-400 hover:text-red-500 rounded-lg active-scale" aria-label="운동일지 삭제">
+                            <button onclick="window.delW(${w.id})" class="inline-flex items-center justify-center w-9 h-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg active-scale border border-red-100 ml-1" aria-label="운동일지 삭제">
                                 <i class="fa-solid fa-trash-can text-[10px]"></i>
                             </button>
                         </div>
@@ -3697,6 +3697,10 @@
         }
         window.delW = function(id) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
+            const workout = m && m.workouts.find(w => w.id === id);
+            if (!workout) return;
+            const ok = confirm(`${workout.date || '날짜 미입력'} 운동일지를 삭제할까요?`);
+            if (!ok) return;
             m.workouts = m.workouts.filter(w => w.id !== id); 
             localSaveMember(m);
             window.renderMemberWorkouts();
@@ -3722,7 +3726,7 @@
 
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
-            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}`;
+            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
             return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
         }
 
