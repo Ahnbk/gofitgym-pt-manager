@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v53';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v54';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1844,6 +1844,35 @@
 
         function getTodayScheduleForMember(m) {
             return getTodaySchedulesForMember(m)[0] || null;
+        }
+
+        function getScheduleDateTime(schedule) {
+            const date = parseScheduleDate(schedule && schedule.date);
+            if (!date) return null;
+            const parts = String((schedule && schedule.time) || '00:00').split(':').map(Number);
+            const hour = Number.isFinite(parts[0]) ? parts[0] : 0;
+            const minute = Number.isFinite(parts[1]) ? parts[1] : 0;
+            date.setHours(hour, minute, 0, 0);
+            return date;
+        }
+
+        function getNextScheduleForMember(m) {
+            if (!m || !m.name) return null;
+            const now = new Date();
+            const matches = (window.schedules || [])
+                .filter(s => s && s.date && s.title && s.title.includes(m.name))
+                .map(s => ({ schedule: s, startsAt: getScheduleDateTime(s) }))
+                .filter(item => item.startsAt && item.startsAt >= now)
+                .sort((a, b) => a.startsAt - b.startsAt);
+            return matches[0] ? matches[0].schedule : null;
+        }
+
+        function formatScheduleForShare(schedule) {
+            if (!schedule) return '';
+            const date = parseScheduleDate(schedule.date);
+            const dayText = date ? ` (${DAYS[date.getDay()]})` : '';
+            const timeText = schedule.time ? ` ${schedule.time}` : '';
+            return `${formatDisplayDate(schedule.date)}${dayText}${timeText}`.trim();
         }
 
         function formatDisplayDate(dateStr) {
@@ -3677,7 +3706,9 @@
                 return null;
             }
 
-            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}\n\n${w.content}`;
+            const nextSchedule = getNextScheduleForMember(m);
+            const nextScheduleText = nextSchedule ? `\n다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
+            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}`;
             return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
         }
 
