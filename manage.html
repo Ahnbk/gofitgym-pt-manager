@@ -486,7 +486,6 @@
                                 <span id="detail-member-trainer" class="text-[10px] bg-stone-800 text-amber-500 px-2 py-0.5 rounded-md font-bold">트레이너</span>
                             </div>
                             <p class="text-[10px] text-stone-500">등록일: <span id="detail-reg-date">2026-06-01</span> · 총 <span id="detail-total-sessions">30</span>회 세션</p>
-                            <p class="text-[9px] text-amber-600 font-bold mt-0.5" id="detail-member-contacts">이메일: 없음 | 텔레그램: 없음</p>
                         </div>
                     </div>
 
@@ -786,14 +785,6 @@
                         <input type="date" id="reg-date-input" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
                 </div>
-                <div class="border-t border-stone-100 pt-3 space-y-3">
-                    <h4 class="text-[10px] font-black text-stone-400 uppercase">공유 연동 설정 (선택)</h4>
-                    <input type="email" id="reg-email" placeholder="이메일 주소" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
-                    <div class="flex">
-                        <span class="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-stone-200 bg-stone-100 text-stone-500 text-sm">@</span>
-                        <input type="text" id="reg-telegram" placeholder="텔레그램 아이디" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-r-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
-                    </div>
-                </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeNewMemberModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs">취소</button>
@@ -942,7 +933,7 @@
                         <span class="text-[10px] font-black">복사</span>
                     </button>
                 </div>
-                <p class="text-[10px] text-stone-400 leading-relaxed">카카오톡, 문자, 이메일 전송은 기기 공유 화면에서 선택하는 방식이 가장 안정적입니다.</p>
+                <p class="text-[10px] text-stone-400 leading-relaxed">카카오톡, 문자 등 전송은 기기 공유 화면에서 선택하는 방식이 가장 안정적입니다.</p>
             </div>
         </div>
     </div>
@@ -1014,7 +1005,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v63';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v64';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3187,8 +3178,6 @@
             document.getElementById('reg-name').value = '';
             document.getElementById('reg-sessions').value = '10';
             document.getElementById('reg-date-input').value = new Date().toISOString().split('T')[0];
-            document.getElementById('reg-email').value = '';
-            document.getElementById('reg-telegram').value = '';
         }
 
         window.openNewMemberModal = function() {
@@ -3210,7 +3199,6 @@
             const newM = {
                 id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
                 registrationDate: document.getElementById('reg-date-input').value,
-                email: document.getElementById('reg-email').value.trim(), telegram: document.getElementById('reg-telegram').value.trim(),
                 lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: []
             };
             window.members.push(newM);
@@ -3274,7 +3262,6 @@
             document.getElementById('detail-member-trainer').innerText = formatTrainerLabel(m.trainer || getTrainerName());
             document.getElementById('detail-reg-date').innerText = m.registrationDate;
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
-            document.getElementById('detail-member-contacts').innerText = `이메일: ${m.email||'없음'} | 텔레그램: ${m.telegram ? '@'+m.telegram : '없음'}`;
         }
 
         function isWorkoutFieldFocused() {
