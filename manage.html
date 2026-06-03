@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v52';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v53';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1364,7 +1364,7 @@
             if (schedule && !schedule.classList.contains('hidden')) window.initCalendar();
             if (detail && !detail.classList.contains('hidden') && window.activeMemberId) {
                 const member = window.members.find(m => m.id === window.activeMemberId);
-                if (member) window.refreshActiveMemberDetail();
+                if (member) window.refreshActiveMemberDetail({ preserveWorkoutFocus: true });
                 else window.switchMainView('dashboard');
             }
         }
@@ -3049,12 +3049,20 @@
             document.getElementById('detail-member-contacts').innerText = `이메일: ${m.email||'없음'} | 텔레그램: ${m.telegram ? '@'+m.telegram : '없음'}`;
         }
 
-        window.refreshActiveMemberDetail = function() {
+        function isWorkoutFieldFocused() {
+            const active = document.activeElement;
+            if (!active || !active.id) return false;
+            return active.id.startsWith('workout-date-') || active.id.startsWith('workout-content-');
+        }
+
+        window.refreshActiveMemberDetail = function(options = {}) {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m) return;
             populateMemberDetail(m);
             window.renderMemberLessons();
-            window.renderMemberWorkouts();
+            if (!options.preserveWorkoutFocus || !isWorkoutFieldFocused()) {
+                window.renderMemberWorkouts();
+            }
         }
 
         window.selectMember = function(id) {
