@@ -29,6 +29,7 @@
             --cal-zoom: 1;
             --cal-base-min-width: 650px;
             --cal-base-row-height: 45px;
+            --cal-time-col: 50px;
         }
 
         body {
@@ -59,31 +60,45 @@
             min-width: calc(var(--cal-base-min-width) * var(--cal-zoom));
             transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        .calendar-scroll {
+            isolation: isolate;
+        }
         .cal-grid-row {
             height: calc(var(--cal-base-row-height) * var(--cal-zoom));
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .cal-grid {
             display: grid;
-            grid-template-columns: 50px repeat(7, minmax(0, 1fr));
+            grid-template-columns: var(--cal-time-col) repeat(7, minmax(0, 1fr));
         }
         @media (min-width: 1024px) {
+            :root {
+                --cal-time-col: 60px;
+            }
             .cal-grid {
-                grid-template-columns: 60px repeat(7, minmax(0, 1fr));
+                grid-template-columns: var(--cal-time-col) repeat(7, minmax(0, 1fr));
             }
         }
         .cal-grid-cell {
             border-right: 1px solid #57534e;
             border-bottom: 1px solid #57534e;
         }
+        .cal-time-col {
+            grid-column: 1;
+            width: var(--cal-time-col);
+            min-width: var(--cal-time-col);
+        }
         .cal-time-sticky {
             position: sticky;
             left: 0;
-            z-index: 16;
-            box-shadow: 1px 0 0 #57534e;
+            z-index: 30;
+            background: #fafaf9;
+            box-shadow: 1px 0 0 #57534e, 6px 0 8px rgba(28, 25, 23, 0.08);
+            transform: translateZ(0);
         }
         #calendar-header .cal-time-sticky {
-            z-index: 35;
+            z-index: 45;
+            background: #ffffff;
         }
         .cal-day-off {
             background: #fff1f2;
@@ -966,7 +981,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v61';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v62';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4007,7 +4022,7 @@
 
             const header = document.getElementById('calendar-header');
             const body = document.getElementById('calendar-body');
-            header.innerHTML = '<div class="py-2 text-center cal-grid-header cal-time-sticky flex flex-col justify-end text-[8px] text-stone-800 pb-1 bg-white font-black">TIME</div>';
+            header.innerHTML = '<div class="py-2 text-center cal-grid-header cal-time-col cal-time-sticky flex flex-col justify-end text-[8px] text-stone-800 pb-1 font-black">TIME</div>';
             body.innerHTML = '';
 
             const now = new Date();
@@ -4039,7 +4054,7 @@
                 const tStr = `${String(START_HOUR + h).padStart(2, '0')}:00`;
                 const row = document.createElement('div');
                 row.className = "cal-grid relative cal-grid-row";
-                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell cal-time-sticky font-black text-stone-900 w-full cal-time-text bg-stone-50">${tStr}</div>`;
+                row.innerHTML = `<div class="flex items-center justify-center cal-grid-cell cal-time-col cal-time-sticky font-black text-stone-900 cal-time-text">${tStr}</div>`;
                 
                 for (let i = 0; i < 7; i++) {
                     const d = new Date(s); d.setDate(d.getDate() + i);
