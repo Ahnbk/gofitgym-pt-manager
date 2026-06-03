@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>GOFITGYM 트레이너 통합 시스템</title>
     <meta name="theme-color" content="#1c1917">
     <meta name="application-name" content="GOFITGYM">
@@ -30,13 +30,16 @@
             --cal-base-min-width: 650px;
             --cal-base-row-height: 45px;
             --cal-time-col: 50px;
+            --app-header-height: 68px;
+            --app-nav-height: 70px;
+            --app-safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         body {
             font-family: 'Noto Sans KR', sans-serif;
             background-color: #f5f5f4;
             -webkit-tap-highlight-color: transparent;
-            padding-bottom: 70px;
+            padding-bottom: calc(var(--app-nav-height) + var(--app-safe-bottom));
         }
         
         .active-scale:active {
@@ -184,6 +187,23 @@
             align-items: flex-end;
             flex: 0 0 auto;
         }
+        .header-home-button {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            display: flex;
+            align-items: flex-end;
+            gap: 0.625rem;
+            min-width: 0;
+            text-align: left;
+            cursor: pointer;
+        }
+        .header-home-button:focus-visible {
+            outline: 2px solid #f59e0b;
+            outline-offset: 4px;
+            border-radius: 12px;
+        }
         .header-brand-copy {
             display: flex;
             flex-direction: column;
@@ -257,6 +277,19 @@
         .lesson-editing .lesson-row {
             cursor: default !important;
         }
+        .touch-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .pb-safe {
+            padding-bottom: var(--app-safe-bottom);
+        }
+        .app-main {
+            height: calc(100dvh - var(--app-header-height) - var(--app-nav-height) - var(--app-safe-bottom));
+        }
+        .app-bottom-nav {
+            height: calc(var(--app-nav-height) + var(--app-safe-bottom));
+        }
     </style>
 </head>
 <body class="text-stone-800 flex flex-col min-h-screen relative overflow-hidden">
@@ -310,7 +343,7 @@
     <!-- 1. HEADER BANNER -->
     <header class="bg-stone-900 text-stone-100 shadow-md sticky top-0 z-40 px-4 py-2.5 h-[68px]">
         <div class="header-shell max-w-5xl mx-auto flex justify-between h-full">
-            <div class="header-brand flex space-x-2.5 min-w-0">
+            <button onclick="window.goHome()" class="header-brand header-home-button flex space-x-2.5 min-w-0" aria-label="홈으로 이동">
                 <div class="bg-amber-500 p-1.5 rounded-lg text-stone-900 shadow-inner">
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M4 11h2v2H4zm14 0h2v2h-2zM2 9h2v6H2zm18 0h2v6h-2zM7 11h10v2H7z"></path>
@@ -324,7 +357,7 @@
                     </div>
                     <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
                 </div>
-            </div>
+            </button>
 
             <div class="header-cloud-row no-scrollbar">
                 <div id="cloud-status-text" class="header-control header-control-icon text-[10px] font-black text-stone-300 bg-stone-800 rounded-lg border border-stone-700" title="백업 모드" aria-label="백업 모드">
@@ -345,7 +378,7 @@
     </header>
 
     <!-- 2. MAIN WORKSPACE -->
-    <main class="flex-grow max-w-5xl w-full mx-auto p-4 h-[calc(100vh-138px)] overflow-y-auto" id="main-scroll-area">
+    <main class="app-main flex-grow max-w-5xl w-full mx-auto p-4 overflow-y-auto" id="main-scroll-area">
         
         <!-- ================= VIEW A: CRM DASHBOARD ================= -->
         <div id="view-dashboard" class="space-y-4 pb-10">
@@ -405,14 +438,14 @@
                 
                 <!-- Calendar Toolbar -->
                 <div class="flex items-center justify-between p-3 lg:p-4 bg-white border-b border-stone-300 shrink-0">
-                    <button onclick="window.changeWeek(-1)" class="w-10 h-10 flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale">
+                    <button onclick="window.changeWeek(-1)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale" aria-label="이전 주">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>
                     <div class="text-center flex-grow cursor-pointer" onclick="window.goToToday()">
                         <h2 id="calendar-month-year" class="text-lg font-black text-stone-950 tracking-wide">2026년 6월</h2>
                         <p id="calendar-week-range" class="text-[10px] text-stone-600 font-bold"><i class="fa-regular fa-calendar text-amber-500 mr-1"></i>00.00 - 00.00</p>
                     </div>
-                    <button onclick="window.changeWeek(1)" class="w-10 h-10 flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale">
+                    <button onclick="window.changeWeek(1)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors active-scale" aria-label="다음 주">
                         <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -422,9 +455,9 @@
                     <span class="text-[10px] text-stone-700 font-bold"><i class="fa-solid fa-circle-info text-stone-500 mr-1"></i>빈 칸 터치시 예약</span>
                     
                     <div class="flex items-center space-x-1 bg-white p-1 rounded-lg border border-stone-300">
-                        <button onclick="window.zoomCalendar(-0.3)" class="w-7 h-7 flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
+                        <button onclick="window.zoomCalendar(-0.3)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 축소"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
                         <span id="zoom-level-text" class="text-[10px] font-bold text-stone-700 w-8 text-center">100%</span>
-                        <button onclick="window.zoomCalendar(0.3)" class="w-7 h-7 flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
+                        <button onclick="window.zoomCalendar(0.3)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 확대"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
                     </div>
                 </div>
 
@@ -444,7 +477,7 @@
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 space-y-4">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div class="flex items-center space-x-3">
-                        <button onclick="window.backToDashboard()" class="w-9 h-9 flex items-center justify-center bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl active-scale transition-colors">
+                        <button onclick="window.backToDashboard()" class="touch-target flex items-center justify-center bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl active-scale transition-colors" aria-label="회원 목록으로 돌아가기">
                             <i class="fa-solid fa-arrow-left text-sm"></i>
                         </button>
                         <div>
@@ -541,7 +574,7 @@
     </main>
 
     <!-- 3. BOTTOM NAVIGATION -->
-    <nav class="fixed bottom-0 w-full bg-white border-t border-stone-200 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] h-[70px]">
+    <nav class="app-bottom-nav fixed bottom-0 w-full bg-white border-t border-stone-200 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <div class="max-w-md mx-auto flex justify-around p-2 h-full items-center">
             <button onclick="window.switchMainView('dashboard')" id="nav-dashboard" class="flex-1 flex flex-col items-center py-2 text-amber-600 hover:text-stone-600 transition-colors">
                 <i class="fa-solid fa-users text-lg mb-1"></i>
@@ -981,7 +1014,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v62';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v63';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2868,6 +2901,15 @@
         }
 
         // ================= NAVIGATION =================
+        window.goHome = function() {
+            if (!window.activeLoginId) return;
+            window.activeMemberId = null;
+            window.setDetailProgressExpanded(false);
+            window.setLessonEditMode(false, false);
+            window.signedLessonsExpanded = false;
+            window.switchMainView('dashboard');
+        }
+
         window.switchMainView = function(view) {
             document.getElementById('view-dashboard').classList.add('hidden');
             document.getElementById('view-schedule').classList.add('hidden');
@@ -4110,8 +4152,9 @@
             const chips = document.getElementById('sched-quick-members'); chips.innerHTML = '';
             memberItems.forEach(item => {
                 const isScheduled = item.time ? true : false;
-                const c = document.createElement('span');
-                c.className = `text-[10px] ${isScheduled ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-sm' : 'bg-white text-stone-800 border-stone-300'} px-2 py-1 rounded cursor-pointer hover:bg-stone-100 font-black border transition-all`;
+                const c = document.createElement('button');
+                c.type = 'button';
+                c.className = `min-h-[36px] text-[10px] ${isScheduled ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-sm' : 'bg-white text-stone-800 border-stone-300'} px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-stone-100 font-black border transition-all active-scale`;
                 c.innerText = isScheduled ? `[${item.time}] ${item.name}` : item.name;
                 c.onclick = () => document.getElementById('sched-title').value = item.name;
                 chips.appendChild(c);
