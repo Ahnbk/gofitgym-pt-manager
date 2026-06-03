@@ -281,6 +281,20 @@
             min-height: 44px;
             min-width: 44px;
         }
+        .modal-close-btn {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+        .modal-close-btn:focus-visible,
+        .touch-target:focus-visible {
+            outline: 2px solid #f59e0b;
+            outline-offset: 2px;
+        }
         .pb-safe {
             padding-bottom: var(--app-safe-bottom);
         }
@@ -333,7 +347,7 @@
                 <button onclick="window.openCloudAuthModal('login')" id="auth-cloud-login-btn" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-cloud mr-1 text-amber-500"></i>클라우드 로그인 / 복원
                 </button>
-                <p class="text-[10px] leading-relaxed text-stone-400">
+                <p class="text-[11px] leading-relaxed text-stone-500">
                     비밀번호는 이 기기에 해시로 저장됩니다. 백업 파일에는 로그인 비밀번호가 포함되지 않습니다.
                 </p>
             </div>
@@ -355,7 +369,7 @@
                     <div class="min-h-[24px] flex items-center">
                         <h1 class="text-base font-black tracking-widest text-amber-500">GOFITGYM</h1>
                     </div>
-                    <p class="text-[10px] text-stone-400 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
+                    <p class="text-[11px] text-stone-300 font-bold uppercase tracking-wider" id="header-subtitle">CRM Dashboard</p>
                 </div>
             </button>
 
@@ -401,15 +415,15 @@
 
                 <div class="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100">
                     <div class="bg-amber-500/10 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-amber-800 font-bold block">오늘 예약</span>
+                        <span class="text-[11px] text-amber-800 font-bold block">오늘 예약</span>
                         <span id="stat-today-schedules" class="text-base font-black text-amber-600">0건</span>
                     </div>
                     <div class="bg-stone-50 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-stone-400 font-bold block">관리 회원 수</span>
+                        <span class="text-[11px] text-stone-500 font-bold block">관리 회원 수</span>
                         <span id="stat-total-members" class="text-base font-black text-stone-800">0명</span>
                     </div>
                     <div class="bg-stone-100 p-3 rounded-xl text-center">
-                        <span class="text-[10px] text-amber-800 font-bold block">이번 주 예약</span>
+                        <span class="text-[11px] text-amber-800 font-bold block">이번 주 예약</span>
                         <span id="stat-week-schedules" class="text-base font-black text-amber-600">0건</span>
                     </div>
                 </div>
@@ -485,7 +499,7 @@
                                 <h2 id="detail-member-name" class="text-base font-black text-stone-900">회원명</h2>
                                 <span id="detail-member-trainer" class="text-[10px] bg-stone-800 text-amber-500 px-2 py-0.5 rounded-md font-bold">트레이너</span>
                             </div>
-                            <p class="text-[10px] text-stone-500">등록일: <span id="detail-reg-date">2026-06-01</span> · 총 <span id="detail-total-sessions">30</span>회 세션</p>
+                            <p class="text-[11px] text-stone-600">등록일: <span id="detail-reg-date">2026-06-01</span> · 총 <span id="detail-total-sessions">30</span>회 세션</p>
                         </div>
                     </div>
 
@@ -508,7 +522,7 @@
 
                 <div class="pt-3 border-t border-stone-100">
                     <button onclick="window.toggleDetailProgress()" class="w-full flex items-center justify-between text-left">
-                        <span class="block text-[10px] text-stone-400 font-black">전체 완료율</span>
+                        <span class="block text-[11px] text-stone-500 font-black">전체 완료율</span>
                         <i id="detail-progress-icon" class="fa-solid fa-chevron-down text-stone-400 text-xs transition-transform"></i>
                     </button>
                     <div id="detail-progress-panel" class="hidden mt-3">
@@ -596,7 +610,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] shadow-2xl overflow-y-auto">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-gear mr-1.5"></i>트레이너 설정</h3>
-                <button onclick="window.closeProfileSettingsModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeProfileSettingsModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
                 <div>
@@ -610,7 +624,7 @@
                 <div id="profile-trainer-switch-section" class="hidden rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div>
                         <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-users-gear text-amber-500 mr-1"></i>트레이너 전환</p>
-                        <p class="text-[10px] font-bold text-stone-400">로그인된 트레이너 기준으로 회원 목록과 일정을 전환합니다.</p>
+                        <p class="text-[11px] font-bold text-stone-500">로그인된 트레이너 기준으로 회원 목록과 일정을 전환합니다.</p>
                     </div>
                     <div id="profile-trainer-switch-list" class="grid grid-cols-1 gap-1.5"></div>
                 </div>
@@ -618,7 +632,7 @@
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>클라우드 동기화</p>
-                            <p id="profile-cloud-status" class="text-[10px] font-bold text-stone-400 truncate">상태 확인 중</p>
+                            <p id="profile-cloud-status" class="text-[11px] font-bold text-stone-500 truncate">상태 확인 중</p>
                         </div>
                         <span id="profile-cloud-badge" class="shrink-0 px-2 py-1 rounded-full bg-stone-200 text-stone-500 text-[9px] font-black">OFF</span>
                     </div>
@@ -640,7 +654,7 @@
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div>
                         <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-database text-amber-500 mr-1"></i>백업 관리</p>
-                        <p class="text-[10px] font-bold text-stone-400">로컬 백업 저장과 복원은 여기서 관리합니다.</p>
+                        <p class="text-[11px] font-bold text-stone-500">로컬 백업 저장과 복원은 여기서 관리합니다.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="window.openBackupChoiceModal()" class="py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
@@ -660,7 +674,7 @@
                         </div>
                         <div class="min-w-0">
                             <p id="backup-status-title" class="text-[11px] font-black text-stone-700">백업 상태 확인 중</p>
-                            <p id="backup-status-detail" class="text-[10px] font-bold text-stone-400 truncate">저장된 백업 기록을 확인하고 있습니다.</p>
+                            <p id="backup-status-detail" class="text-[11px] font-bold text-stone-500 truncate">저장된 백업 기록을 확인하고 있습니다.</p>
                         </div>
                     </div>
                 </div>
@@ -683,9 +697,9 @@
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div>
                     <h3 id="cloud-auth-title" class="font-black text-amber-500 text-base"><i class="fa-solid fa-cloud mr-1.5"></i>클라우드 로그인</h3>
-                    <p id="cloud-auth-subtitle" class="text-[10px] text-stone-400 mt-1">어느 기기에서나 같은 데이터를 불러옵니다.</p>
+                    <p id="cloud-auth-subtitle" class="text-[11px] text-stone-400 mt-1">어느 기기에서나 같은 데이터를 불러옵니다.</p>
                 </div>
-                <button onclick="window.closeCloudAuthModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeCloudAuthModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
                 <div id="cloud-trainer-row" class="hidden">
@@ -706,7 +720,7 @@
                 <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
                     새 클라우드 계정 만들기
                 </button>
-                <p class="text-[10px] leading-relaxed text-stone-400">
+                <p class="text-[11px] leading-relaxed text-stone-500">
                     클라우드 계정으로 로그인하면 회원, 예약, 수업 서명, 운동일지가 Firebase에 동기화됩니다.
                 </p>
             </div>
@@ -719,9 +733,9 @@
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div class="min-w-0">
                     <h3 id="member-action-title" class="font-black text-amber-500 text-base truncate">회원명</h3>
-                    <p id="member-action-subtitle" class="text-[10px] text-stone-400 mt-1">회원 상태 변경</p>
+                    <p id="member-action-subtitle" class="text-[11px] text-stone-400 mt-1">회원 상태 변경</p>
                 </div>
-                <button onclick="window.closeMemberActionMenu()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeMemberActionMenu()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-2">
                 <button onclick="window.openActionMemberDetail()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
@@ -745,7 +759,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-shield-halved mr-1.5"></i>백업 저장</h3>
-                <button onclick="window.closeBackupChoiceModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeBackupChoiceModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-2">
                 <button onclick="window.saveBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
@@ -758,7 +772,7 @@
                     <i class="fa-solid fa-rotate-left mr-1.5"></i>직전 복원 되돌리기
                 </button>
                 <button onclick="window.closeBackupChoiceModal()" class="w-full py-3 bg-white text-stone-400 rounded-xl text-xs font-black active-scale">취소</button>
-                <p class="text-[10px] text-stone-400 leading-relaxed pt-1">카카오톡 전송은 모바일 공유창에 카카오톡이 표시되는 기기에서만 가능합니다. 공유가 안 보이면 백업 파일을 저장한 뒤 카카오톡에서 파일 첨부로 보내주세요.</p>
+                <p class="text-[11px] text-stone-500 leading-relaxed pt-1">카카오톡 전송은 모바일 공유창에 카카오톡이 표시되는 기기에서만 가능합니다. 공유가 안 보이면 백업 파일을 저장한 뒤 카카오톡에서 파일 첨부로 보내주세요.</p>
             </div>
         </div>
     </div>
@@ -768,7 +782,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-member-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
-                <button onclick="window.closeNewMemberModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeNewMemberModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>
@@ -798,7 +812,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
-                <button onclick="window.closeAddSessionModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeAddSessionModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4">
                 <div>
@@ -839,7 +853,7 @@
         <div class="bg-white border border-stone-300 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
             <div class="bg-white text-stone-950 p-4 flex justify-between items-center border-b border-stone-300">
                 <h3 class="font-black text-amber-500 text-base" id="sched-modal-title"><i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록</h3>
-                <button onclick="window.closeScheduleModal()" class="text-stone-500 hover:text-stone-950"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeScheduleModal()" class="modal-close-btn text-stone-500 hover:text-stone-950"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4">
                 <input type="hidden" id="sched-id">
@@ -887,7 +901,7 @@
         <div class="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden" id="modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base" id="sign-modal-title">01회차 레슨 서명</h3>
-                <button onclick="window.closeSignModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeSignModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3">
                 <div class="text-center" id="sign-status-badge">
@@ -918,7 +932,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="share-modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-share-nodes mr-1.5"></i>운동일지 스마트 전송</h3>
-                <button onclick="window.closeShareModal()" class="text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeShareModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-4">
                 <textarea id="share-text-preview" class="w-full text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 focus:outline-none min-h-[120px] leading-relaxed" readonly></textarea>
@@ -933,7 +947,7 @@
                         <span class="text-[10px] font-black">복사</span>
                     </button>
                 </div>
-                <p class="text-[10px] text-stone-400 leading-relaxed">카카오톡, 문자 등 전송은 기기 공유 화면에서 선택하는 방식이 가장 안정적입니다.</p>
+                <p class="text-[11px] text-stone-500 leading-relaxed">카카오톡, 문자 등 전송은 기기 공유 화면에서 선택하는 방식이 가장 안정적입니다.</p>
             </div>
         </div>
     </div>
@@ -941,7 +955,7 @@
     <!-- E. PDF Preview Modal -->
     <div id="pdf-preview-modal" class="fixed inset-0 h-[100dvh] bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
         <div class="flex justify-between items-center p-4 text-white shrink-0">
-            <button onclick="window.closePdfPreviewModal()" class="text-stone-300 text-xl px-2 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="window.closePdfPreviewModal()" class="modal-close-btn text-stone-300 text-xl hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
             <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
         </div>
@@ -1005,7 +1019,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v64';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v65';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
