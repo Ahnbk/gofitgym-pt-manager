@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v58';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v59';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2948,7 +2948,7 @@
                 if (a._todayTime && b._todayTime) return a._todayTime.localeCompare(b._todayTime);
                 if (a._todayTime) return -1;
                 if (b._todayTime) return 1;
-                return b.totalSessions - a.totalSessions;
+                return String(a.name || '').localeCompare(String(b.name || ''), 'ko-KR', { sensitivity: 'base' });
             });
 
             filtered.forEach(m => {
@@ -2960,9 +2960,12 @@
                 const remaining = getRemainingLessonCount(m, comp);
                 
                 const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
+                const remainingBadgeClass = remaining <= 3
+                    ? 'bg-amber-500 text-stone-950 font-black'
+                    : 'bg-stone-100 text-stone-500 font-bold';
                 const statusBadge = hold
                     ? `<span class="text-[9px] bg-stone-800 text-amber-400 font-black px-2 py-0.5 rounded-full">보류</span>`
-                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] bg-stone-100 text-stone-500 font-bold px-2 py-0.5 rounded-full">잔여 ${remaining}회</span>`);
+                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] ${remainingBadgeClass} px-2 py-0.5 rounded-full">잔여 ${remaining}회</span>`);
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? 'border-stone-400 bg-stone-50' : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
