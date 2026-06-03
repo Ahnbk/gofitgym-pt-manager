@@ -1,7 +1,8 @@
-const CACHE_NAME = 'gofitgym-pt-v65';
+const CACHE_NAME = 'gofitgym-pt-v66';
 const APP_SHELL = [
   './index.html',
   './manage.html',
+  './privacy.html',
   './manifest.webmanifest?v=32',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -51,14 +52,16 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode === 'navigate') {
+    const isPrivacyPage = requestUrl.pathname.endsWith('/privacy.html');
+    const fallbackPage = isPrivacyPage ? './privacy.html' : './manage.html';
     event.respondWith(
       fetch(createFreshRequest(request))
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('./manage.html', copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put(fallbackPage, copy));
           return response;
         })
-        .catch(() => caches.match('./manage.html'))
+        .catch(() => caches.match(fallbackPage))
     );
     return;
   }
