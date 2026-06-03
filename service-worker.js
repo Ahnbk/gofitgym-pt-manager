@@ -1,13 +1,13 @@
-const CACHE_NAME = 'gofitgym-pt-v66';
+const CACHE_NAME = 'gofitgym-pt-v67';
 const APP_SHELL = [
   './index.html',
   './manage.html',
   './privacy.html',
-  './manifest.webmanifest?v=32',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/maskable-512.png',
-  './icons/apple-touch-icon.png'
+  './manifest.webmanifest?v=33',
+  './icons/icon-192.png?v=2',
+  './icons/icon-512.png?v=2',
+  './icons/maskable-512.png?v=2',
+  './icons/apple-touch-icon.png?v=2'
 ];
 
 self.addEventListener('install', (event) => {
