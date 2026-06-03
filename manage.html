@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v55';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v56';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4014,16 +4014,22 @@
         }
 
         // ================= SMART SHARE =================
+        function formatMemberHonorificName(name) {
+            const base = String(name || '').trim().replace(/\s*님$/, '');
+            return base ? `${base}님` : '회원님';
+        }
+
         window.openShareModal = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             const comp = m.lessons.filter(l => l.signature && l.signature !== 'LATER').length;
+            const memberName = formatMemberHonorificName(m.name);
             const latestWorkout = m.workouts[0] || null;
             const latestWorkoutText = latestWorkout
                 ? `[${latestWorkout.date || '날짜 미입력'}]\n${latestWorkout.content || ''}`
                 : '기록 없음';
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n- 다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
-            document.getElementById('share-text-preview').value = `[GOFITGYM] ${m.name} 회원님 피트니스 리포트\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지:\n${latestWorkoutText}${nextScheduleText}\n\n오늘도 고생하셨습니다!`;
+            document.getElementById('share-text-preview').value = `[GOFITGYM] ${memberName}\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지:\n${latestWorkoutText}${nextScheduleText}\n\n오늘도 고생하셨습니다!`;
             const sm = document.getElementById('share-modal');
             sm.classList.remove('hidden'); setTimeout(() => sm.classList.remove('opacity-0'), 10);
         }
@@ -4040,7 +4046,7 @@
             if (!text) return showToast('공유할 내용이 없습니다.');
             if (navigator.share) {
                 try {
-                    await navigator.share({ title: 'GOFITGYM 피트니스 리포트', text });
+                    await navigator.share({ text });
                     showToast('공유창을 열었습니다.');
                     return;
                 } catch (err) {
