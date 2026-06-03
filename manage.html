@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v54';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v55';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1835,10 +1835,24 @@
             return !!(m && m.status === 'hold');
         }
 
+        function normalizeScheduleMatchText(value) {
+            return String(value || '')
+                .replace(/\s+/g, '')
+                .replace(/님/g, '')
+                .replace(/[^0-9a-zA-Z가-힣]/g, '')
+                .toLowerCase();
+        }
+
+        function scheduleMatchesMember(schedule, member) {
+            const memberName = normalizeScheduleMatchText(member && member.name);
+            const title = normalizeScheduleMatchText(schedule && schedule.title);
+            return !!(memberName && title && title.includes(memberName));
+        }
+
         function getTodaySchedulesForMember(m) {
             const todayStr = formatDate(new Date());
             return (window.schedules || [])
-                .filter(s => s.date === todayStr && s.title && s.title.includes(m.name))
+                .filter(s => s.date === todayStr && scheduleMatchesMember(s, m))
                 .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         }
 
@@ -1860,7 +1874,7 @@
             if (!m || !m.name) return null;
             const now = new Date();
             const matches = (window.schedules || [])
-                .filter(s => s && s.date && s.title && s.title.includes(m.name))
+                .filter(s => s && s.date && scheduleMatchesMember(s, m))
                 .map(s => ({ schedule: s, startsAt: getScheduleDateTime(s) }))
                 .filter(item => item.startsAt && item.startsAt >= now)
                 .sort((a, b) => a.startsAt - b.startsAt);
@@ -3768,7 +3782,7 @@
         }
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
         function parseScheduleDate(dateStr) {
-            const parts = String(dateStr || '').split('-').map(Number);
+            const parts = String(dateStr || '').trim().split(/[-./]/).map(Number);
             if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
             return new Date(parts[0], parts[1] - 1, parts[2]);
         }
@@ -4003,8 +4017,13 @@
         window.openShareModal = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             const comp = m.lessons.filter(l => l.signature && l.signature !== 'LATER').length;
-            const lw = m.workouts[0] ? `[${m.workouts[0].date}] ${m.workouts[0].content}` : '기록 없음';
-            document.getElementById('share-text-preview').value = `[GOFITGYM] ${m.name} 회원님 피트니스 리포트\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지: ${lw}\n\n오늘도 고생하셨습니다!`;
+            const latestWorkout = m.workouts[0] || null;
+            const latestWorkoutText = latestWorkout
+                ? `[${latestWorkout.date || '날짜 미입력'}]\n${latestWorkout.content || ''}`
+                : '기록 없음';
+            const nextSchedule = getNextScheduleForMember(m);
+            const nextScheduleText = nextSchedule ? `\n- 다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
+            document.getElementById('share-text-preview').value = `[GOFITGYM] ${m.name} 회원님 피트니스 리포트\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지:\n${latestWorkoutText}${nextScheduleText}\n\n오늘도 고생하셨습니다!`;
             const sm = document.getElementById('share-modal');
             sm.classList.remove('hidden'); setTimeout(() => sm.classList.remove('opacity-0'), 10);
         }
