@@ -906,7 +906,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v57';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v58';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3706,6 +3706,28 @@
             window.renderMemberWorkouts();
         }
 
+        function formatWorkoutDateForShare(dateStr) {
+            const raw = String(dateStr || '').trim();
+            if (!raw) return '날짜 미입력';
+
+            let date = null;
+            const full = raw.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+            const short = raw.match(/^(\d{1,2})[./-](\d{1,2})$/);
+
+            if (full) {
+                date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]));
+            } else if (short) {
+                const today = new Date();
+                date = new Date(today.getFullYear(), Number(short[1]) - 1, Number(short[2]));
+            }
+
+            if (!date || Number.isNaN(date.getTime())) return raw;
+            const displayDate = short
+                ? `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`
+                : formatDisplayDate(formatDate(date));
+            return `${displayDate} ${DAYS[date.getDay()]}요일`;
+        }
+
         function getWorkoutSharePayload(id) {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m) return null;
@@ -3726,7 +3748,9 @@
 
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
-            const text = `[GOFITGYM 개인운동일지]\n회원: ${m.name}\n날짜: ${w.date || '날짜 미입력'}\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
+            const memberName = formatMemberHonorificName(m.name);
+            const workoutDate = formatWorkoutDateForShare(w.date);
+            const text = `[GOFITGYM]\n${memberName} ${workoutDate} 운동일지\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
             return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
         }
 
@@ -3763,7 +3787,7 @@
             if (!payload) return;
             if (navigator.share) {
                 try {
-                    await navigator.share(payload);
+                    await navigator.share({ text: payload.text });
                     showToast('공유창을 열었습니다.');
                     return;
                 } catch (err) {
@@ -4019,8 +4043,8 @@
 
         // ================= SMART SHARE =================
         function formatMemberHonorificName(name) {
-            const base = String(name || '').trim().replace(/\s*님$/, '');
-            return base ? `${base}님` : '회원님';
+            const base = String(name || '').trim().replace(/\s*회원님$/, '').replace(/\s*님$/, '');
+            return base ? `${base} 회원님` : '회원님';
         }
 
         window.openShareModal = function() {
