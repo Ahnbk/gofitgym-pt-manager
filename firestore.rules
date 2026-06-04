@@ -18,5 +18,28 @@ service cloud.firestore {
           && request.auth.token.email == resource.data.email);
       allow write: if isAllowedCloudEmail();
     }
+
+    match /accessRequests/{requestId} {
+      allow read: if isAllowedCloudEmail()
+        || (request.auth != null && request.auth.uid == requestId);
+
+      allow create: if request.auth != null
+        && request.auth.uid == requestId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.active == false;
+
+      allow update: if isAllowedCloudEmail()
+        || (request.auth != null
+          && request.auth.uid == requestId
+          && resource.data.status != 'approved'
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.status == 'pending'
+          && request.resource.data.active == false);
+
+      allow delete: if isAllowedCloudEmail();
+    }
   }
 }

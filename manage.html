@@ -649,6 +649,9 @@
                         <button onclick="window.logoutCloudUser()" id="profile-cloud-logout-btn" class="hidden py-2.5 bg-stone-100 text-stone-600 rounded-xl text-[10px] font-black active-scale">
                             클라우드 로그아웃
                         </button>
+                        <button onclick="window.openAccessRequestsModal()" id="profile-access-requests-btn" class="hidden col-span-2 py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                            <i class="fa-solid fa-user-check mr-1"></i>사용 허가 요청 관리 <span id="profile-access-requests-count" class="ml-1">0</span>
+                        </button>
                     </div>
                 </div>
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
@@ -747,6 +750,27 @@
         </div>
     </div>
 
+    <!-- 0-B. Access Request Admin Modal -->
+    <div id="modal-access-requests" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-md max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-check mr-1.5"></i>사용 허가 요청 관리</h3>
+                    <p id="access-requests-subtitle" class="text-[11px] text-stone-400 mt-1">대기 요청을 승인하거나 거절합니다.</p>
+                </div>
+                <button onclick="window.closeAccessRequestsModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-3 overflow-y-auto">
+                <button onclick="window.refreshAccessRequests(true)" class="w-full py-2.5 bg-stone-100 text-stone-700 rounded-xl text-[10px] font-black active-scale">
+                    <i class="fa-solid fa-rotate mr-1 text-amber-500"></i>새로고침
+                </button>
+                <div id="access-requests-list" class="space-y-2">
+                    <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-xs font-bold text-stone-500 text-center">요청을 불러오는 중입니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 0-0. Cloud Auth Modal -->
     <div id="modal-cloud-auth" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -758,18 +782,22 @@
                 <button onclick="window.closeCloudAuthModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
-                <div id="cloud-trainer-row">
+                <div id="cloud-trainer-row" class="hidden">
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">이름</label>
-                    <input type="text" id="cloud-trainer-name" autocomplete="name" placeholder="예: 홍길동" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                    <input type="text" id="cloud-trainer-name" name="name" autocomplete="name" placeholder="예: 홍길동" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">이메일</label>
-                    <input type="email" id="cloud-email" autocomplete="email" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                    <input type="email" id="cloud-email" name="email" autocomplete="email" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">비밀번호</label>
-                    <input type="password" id="cloud-password" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.submitCloudAuth()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                    <input type="password" id="cloud-password" name="password" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.submitCloudAuth()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
+                <label id="cloud-remember-row" class="flex items-center justify-between p-3 bg-stone-50 border border-stone-100 rounded-xl">
+                    <span class="text-xs font-bold text-stone-600">이메일 저장 및 자동 로그인 유지</span>
+                    <input type="checkbox" id="cloud-remember-email" class="w-4 h-4 accent-amber-500">
+                </label>
                 <label class="flex items-start gap-2.5 p-3 bg-stone-50 border border-stone-200 rounded-xl">
                     <input type="checkbox" id="cloud-privacy-consent" class="mt-0.5 w-4 h-4 accent-amber-500 shrink-0">
                     <span class="text-[11px] leading-relaxed text-stone-600 font-bold">
@@ -780,8 +808,8 @@
                 <button onclick="window.submitCloudAuth()" id="cloud-auth-submit-btn" class="w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
                     로그인
                 </button>
-                <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="hidden w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
-                    새 클라우드 계정 만들기
+                <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                    사용 허가 요청하기
                 </button>
                 <p class="text-[11px] leading-relaxed text-stone-500">
                     허가 사용자는 회원, 예약, 서명, 운동일지가 이 기기에만 저장됩니다. 관리자 이메일로 로그인한 경우에만 Firebase 클라우드 동기화가 켜집니다.
@@ -1080,10 +1108,11 @@
         var cloudPendingWrites = { members: {}, schedules: {} };
         var cloudLastSyncedAt = 0;
         var cloudLastError = '';
+        var accessRequests = [];
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v72';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v73';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1097,6 +1126,7 @@
         const CLOUD_SIGNUP_ENABLED = false;
         const LICENSE_LOGIN_PREFIX = 'license:';
         const PRIVACY_CONSENT_VERSION = '2026-06-04';
+        const SAVED_CLOUD_EMAIL_KEY = 'gofitgym_v11_saved_login_email';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1376,6 +1406,16 @@
             return window.firebaseApi.doc(window.firebaseDb, 'localLicenses', normalized);
         }
 
+        function getAccessRequestRef(uid) {
+            if (!uid || !window.firebaseDb) return null;
+            return window.firebaseApi.doc(window.firebaseDb, 'accessRequests', uid);
+        }
+
+        function getAccessRequestsCollection() {
+            if (!window.firebaseDb) return null;
+            return window.firebaseApi.collection(window.firebaseDb, 'accessRequests');
+        }
+
         function getCloudTrainerName(user = window.cloudUser, remoteProfile = null) {
             return (remoteProfile && remoteProfile.trainerName)
                 || (user && user.displayName)
@@ -1484,6 +1524,25 @@
             }
         }
 
+        async function createAccessRequest(user, trainerName, consentMeta) {
+            const ref = getAccessRequestRef(user && user.uid);
+            if (!ref) throw new Error('No access request ref.');
+            const email = String(user.email || '').trim();
+            await window.firebaseApi.setDoc(ref, {
+                uid: user.uid,
+                email,
+                normalizedEmail: normalizeCloudEmail(email),
+                trainerName: String(trainerName || '').trim(),
+                normalizedName: normalizePersonName(trainerName),
+                status: 'pending',
+                active: false,
+                privacyConsentAt: consentMeta.privacyConsentAt,
+                privacyConsentVersion: consentMeta.privacyConsentVersion,
+                requestedAt: window.firebaseApi.serverTimestamp(),
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+        }
+
         async function saveRemoteCloudProfile(profile = window.appProfile) {
             if (!window.cloudUser || !window.firebaseDb) return;
             const ref = getCloudProfileRef(window.cloudUser.uid);
@@ -1562,8 +1621,27 @@
             }
             if (!isAllowedCloudEmail(user.email)) {
                 stopCloudSync();
-                window.licenseUser = user;
                 window.cloudLastError = '';
+                if (window.cloudAuthFlowActive) {
+                    window.licenseUser = user;
+                    renderCloudStatus();
+                    return;
+                }
+                const license = await getLocalLicense(user);
+                if (!license) {
+                    window.licenseUser = null;
+                    renderCloudStatus();
+                    return;
+                }
+                window.licenseUser = user;
+                await ensureLicensedLocalProfile(user, license);
+                const licenseLoginId = getLicenseLoginId(user.email);
+                if (!window.activeLoginId) {
+                    addLoggedTrainer(licenseLoginId, true);
+                    enterTrainerWorkspace();
+                } else {
+                    refreshActiveProfile();
+                }
                 renderCloudStatus();
                 return;
             }
@@ -1832,7 +1910,9 @@
             const signupBtn = document.getElementById('profile-cloud-signup-btn');
             const syncBtn = document.getElementById('profile-cloud-sync-btn');
             const logoutBtn = document.getElementById('profile-cloud-logout-btn');
+            const requestsBtn = document.getElementById('profile-access-requests-btn');
             const signedIn = !!window.cloudUser;
+            const firebaseSignedIn = !!(window.cloudUser || window.licenseUser);
             const activeCloud = isActiveCloudProfile();
             const activeLicense = isActiveLicenseProfile();
             const label = activeLicense
@@ -1877,10 +1957,197 @@
                 badge.innerText = activeCloud ? 'ON' : (activeLicense ? 'LOCAL' : 'OFF');
                 badge.className = `shrink-0 px-2 py-1 rounded-full text-[9px] font-black ${activeCloud ? 'bg-emerald-500 text-white' : (activeLicense ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-500')}`;
             }
-            if (loginBtn) loginBtn.classList.toggle('hidden', signedIn);
+            if (loginBtn) loginBtn.classList.toggle('hidden', firebaseSignedIn);
             if (signupBtn) signupBtn.classList.toggle('hidden', signedIn || !CLOUD_SIGNUP_ENABLED);
             if (syncBtn) syncBtn.classList.toggle('hidden', !signedIn);
             if (logoutBtn) logoutBtn.classList.toggle('hidden', !signedIn);
+            if (requestsBtn) requestsBtn.classList.toggle('hidden', !activeCloud);
+            const requestCount = document.getElementById('profile-access-requests-count');
+            if (requestCount) {
+                const pending = (window.accessRequests || []).filter(req => req.status === 'pending').length;
+                requestCount.innerText = pending ? `(${pending})` : '';
+            }
+        }
+
+        async function fetchAccessRequests() {
+            if (!isActiveCloudProfile()) return [];
+            const col = getAccessRequestsCollection();
+            if (!col) return [];
+            let snap;
+            try {
+                snap = await window.firebaseApi.getDocs(window.firebaseApi.query(col, window.firebaseApi.orderBy('requestedAt', 'desc')));
+            } catch (err) {
+                snap = await window.firebaseApi.getDocs(col);
+            }
+            window.accessRequests = snap.docs.map(docSnap => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
+                .sort((a, b) => {
+                    const statusRank = { pending: 0, approved: 1, revoked: 2, rejected: 3 };
+                    const ar = statusRank[a.status] ?? 9;
+                    const br = statusRank[b.status] ?? 9;
+                    if (ar !== br) return ar - br;
+                    return String(b.updatedAt && b.updatedAt.seconds || b.requestedAt && b.requestedAt.seconds || '').localeCompare(String(a.updatedAt && a.updatedAt.seconds || a.requestedAt && a.requestedAt.seconds || ''));
+                });
+            return window.accessRequests;
+        }
+
+        function formatRequestStatus(status) {
+            if (status === 'approved') return '승인됨';
+            if (status === 'rejected') return '거절됨';
+            if (status === 'revoked') return '차단됨';
+            return '대기';
+        }
+
+        function formatAccessRequestDate(value) {
+            if (!value) return '';
+            const date = value.seconds ? new Date(value.seconds * 1000) : new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleString('ko-KR', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+
+        function renderAccessRequests() {
+            const list = document.getElementById('access-requests-list');
+            const subtitle = document.getElementById('access-requests-subtitle');
+            if (!list) return;
+            const requests = window.accessRequests || [];
+            const pendingCount = requests.filter(req => req.status === 'pending').length;
+            if (subtitle) subtitle.innerText = pendingCount ? `대기 요청 ${pendingCount}건` : '대기 중인 요청이 없습니다.';
+            const count = document.getElementById('profile-access-requests-count');
+            if (count) count.innerText = pendingCount ? `(${pendingCount})` : '';
+            if (!requests.length) {
+                list.innerHTML = '<div class="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-xs font-bold text-stone-500 text-center">사용 허가 요청이 없습니다.</div>';
+                return;
+            }
+            list.innerHTML = requests.map(req => {
+                const status = req.status || 'pending';
+                const email = escapeHtml(req.email || '');
+                const name = escapeHtml(req.trainerName || '이름 없음');
+                const requestedAt = formatAccessRequestDate(req.requestedAt || req.updatedAt);
+                const statusClass = status === 'pending' ? 'bg-amber-500 text-stone-950' : (status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-stone-300 text-stone-700');
+                const approvedActions = status === 'approved'
+                    ? `<button onclick="window.revokeAccessRequest('${encodeURIComponent(req.id)}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black active-scale">사용 차단</button>`
+                    : '';
+                const pendingActions = status === 'pending'
+                    ? `<button onclick="window.approveAccessRequest('${encodeURIComponent(req.id)}')" class="flex-1 py-2 rounded-xl bg-amber-500 text-stone-950 text-[10px] font-black active-scale">승인</button>
+                       <button onclick="window.rejectAccessRequest('${encodeURIComponent(req.id)}')" class="flex-1 py-2 rounded-xl bg-stone-100 text-stone-600 text-[10px] font-black active-scale">거절</button>`
+                    : approvedActions;
+                return `<div class="rounded-2xl border border-stone-200 bg-white p-3 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-black text-stone-900 truncate">${name}</p>
+                            <p class="text-[11px] font-bold text-stone-500 truncate">${email}</p>
+                            ${requestedAt ? `<p class="text-[10px] font-bold text-stone-400 mt-0.5">요청 ${requestedAt}</p>` : ''}
+                        </div>
+                        <span class="shrink-0 px-2 py-1 rounded-full text-[9px] font-black ${statusClass}">${formatRequestStatus(status)}</span>
+                    </div>
+                    <div class="flex gap-2">${pendingActions}</div>
+                </div>`;
+            }).join('');
+        }
+
+        window.refreshAccessRequests = async function(manual = false) {
+            if (!isActiveCloudProfile()) {
+                if (manual) showToast('관리자 클라우드 로그인 후 사용할 수 있습니다.');
+                return;
+            }
+            await fetchAccessRequests().catch(err => {
+                console.error('Access request load failed.', err);
+                if (manual) showToast('사용 허가 요청을 불러오지 못했습니다.');
+            });
+            renderAccessRequests();
+        }
+
+        window.openAccessRequestsModal = async function() {
+            if (!isActiveCloudProfile()) return showToast('관리자 클라우드 로그인 후 사용할 수 있습니다.');
+            const modal = document.getElementById('modal-access-requests');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            await window.refreshAccessRequests(false);
+        }
+
+        window.closeAccessRequestsModal = function() {
+            const modal = document.getElementById('modal-access-requests');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function findAccessRequest(encodedId) {
+            const id = decodeURIComponent(encodedId);
+            return (window.accessRequests || []).find(req => req.id === id);
+        }
+
+        window.approveAccessRequest = async function(encodedId) {
+            const req = findAccessRequest(encodedId);
+            if (!req || !req.email || !req.trainerName) return showToast('요청 정보가 올바르지 않습니다.');
+            const email = normalizeCloudEmail(req.email);
+            const ok = confirm(`${req.trainerName} (${email}) 사용을 허가할까요?\n이 사용자는 로컬 저장만 사용할 수 있습니다.`);
+            if (!ok) return;
+            await window.firebaseApi.setDoc(getLocalLicenseRef(email), {
+                email: req.email,
+                normalizedEmail: email,
+                active: true,
+                trainerName: req.trainerName,
+                sourceRequestId: req.id,
+                approvedAt: window.firebaseApi.serverTimestamp(),
+                approvedBy: window.cloudUser && window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
+                status: 'approved',
+                active: true,
+                approvedAt: window.firebaseApi.serverTimestamp(),
+                approvedBy: window.cloudUser && window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            showToast('사용을 허가했습니다.');
+            await window.refreshAccessRequests(false);
+        }
+
+        window.rejectAccessRequest = async function(encodedId) {
+            const req = findAccessRequest(encodedId);
+            if (!req) return;
+            const ok = confirm(`${req.trainerName || req.email} 요청을 거절할까요?`);
+            if (!ok) return;
+            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
+                status: 'rejected',
+                active: false,
+                rejectedAt: window.firebaseApi.serverTimestamp(),
+                rejectedBy: window.cloudUser && window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            showToast('요청을 거절했습니다.');
+            await window.refreshAccessRequests(false);
+        }
+
+        window.revokeAccessRequest = async function(encodedId) {
+            const req = findAccessRequest(encodedId);
+            if (!req || !req.email) return;
+            const email = normalizeCloudEmail(req.email);
+            const ok = confirm(`${req.trainerName || email} 사용 권한을 차단할까요?`);
+            if (!ok) return;
+            await window.firebaseApi.setDoc(getLocalLicenseRef(email), {
+                email: req.email,
+                normalizedEmail: email,
+                active: false,
+                trainerName: req.trainerName || '',
+                revokedAt: window.firebaseApi.serverTimestamp(),
+                revokedBy: window.cloudUser && window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
+                status: 'revoked',
+                active: false,
+                revokedAt: window.firebaseApi.serverTimestamp(),
+                revokedBy: window.cloudUser && window.cloudUser.email || '',
+                updatedAt: window.firebaseApi.serverTimestamp()
+            }, { merge: true });
+            showToast('사용 권한을 차단했습니다.');
+            await window.refreshAccessRequests(false);
         }
 
         function getCloudAuthMode() {
@@ -1892,25 +2159,39 @@
                 showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
                 mode = 'login';
             }
-            window.cloudAuthMode = mode === 'signup' ? 'signup' : 'login';
+            window.cloudAuthMode = mode === 'request' ? 'request' : (mode === 'signup' ? 'signup' : 'login');
             const modal = document.getElementById('modal-cloud-auth');
             const isSignup = getCloudAuthMode() === 'signup';
-            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isSignup ? '클라우드 계정 만들기' : '사용 허가 로그인'}`;
-            document.getElementById('cloud-auth-subtitle').innerText = isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '허가 사용자는 로컬 전용, 관리자 이메일은 클라우드 동기화로 로그인합니다.';
-            document.getElementById('cloud-trainer-row').classList.remove('hidden');
-            document.getElementById('cloud-auth-submit-btn').innerText = isSignup ? '계정 만들고 동기화' : '로그인';
+            const isRequest = getCloudAuthMode() === 'request';
+            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isRequest ? '사용 허가 요청' : (isSignup ? '클라우드 계정 만들기' : '사용 허가 로그인')}`;
+            document.getElementById('cloud-auth-subtitle').innerText = isRequest
+                ? '이름과 이메일로 사용 허가를 요청합니다. 승인 전에는 앱에 들어갈 수 없습니다.'
+                : (isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '이메일과 비밀번호로 로그인합니다.');
+            document.getElementById('cloud-trainer-row').classList.toggle('hidden', !(isRequest || isSignup));
+            document.getElementById('cloud-auth-submit-btn').innerText = isRequest ? '허가 요청 보내기' : (isSignup ? '계정 만들고 동기화' : '로그인');
             const toggleBtn = document.getElementById('cloud-auth-toggle-btn');
-            toggleBtn.classList.toggle('hidden', !CLOUD_SIGNUP_ENABLED);
-            toggleBtn.innerText = isSignup ? '기존 클라우드 계정 로그인' : '새 클라우드 계정 만들기';
-            document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || '';
-            document.getElementById('cloud-password').value = '';
+            toggleBtn.classList.remove('hidden');
+            toggleBtn.innerText = isRequest ? '이미 허가받은 계정 로그인' : '사용 허가 요청하기';
+            const savedEmail = localStorage.getItem(SAVED_CLOUD_EMAIL_KEY) || '';
+            document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || savedEmail;
+            const passwordInput = document.getElementById('cloud-password');
+            passwordInput.value = '';
+            passwordInput.setAttribute('autocomplete', (isRequest || isSignup) ? 'new-password' : 'current-password');
             document.getElementById('cloud-trainer-name').value = '';
+            const rememberRow = document.getElementById('cloud-remember-row');
+            if (rememberRow) rememberRow.classList.toggle('hidden', isRequest);
+            const rememberEmail = document.getElementById('cloud-remember-email');
+            if (rememberEmail) rememberEmail.checked = !!savedEmail;
             const consent = document.getElementById('cloud-privacy-consent');
-            if (consent) consent.checked = false;
+            if (consent) {
+                consent.checked = false;
+                const consentBox = consent.closest('label');
+                if (consentBox) consentBox.classList.toggle('hidden', !isRequest);
+            }
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
-                const target = document.getElementById('cloud-trainer-name');
+                const target = isRequest ? document.getElementById('cloud-trainer-name') : document.getElementById('cloud-email');
                 if (target) target.focus();
             }, 10);
         };
@@ -1922,8 +2203,7 @@
         };
 
         window.toggleCloudAuthMode = function() {
-            if (!CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
-            window.openCloudAuthModal(getCloudAuthMode() === 'signup' ? 'login' : 'signup');
+            window.openCloudAuthModal(getCloudAuthMode() === 'request' ? 'login' : 'request');
         };
 
         function translateCloudAuthError(err) {
@@ -1942,19 +2222,21 @@
             if (!loaded) return showToast('Firebase 연결 준비에 실패했습니다.');
             const mode = getCloudAuthMode();
             const isSignup = mode === 'signup';
+            const isRequest = mode === 'request';
             const email = document.getElementById('cloud-email').value.trim();
             const password = document.getElementById('cloud-password').value;
             const trainerName = document.getElementById('cloud-trainer-name').value.trim();
             const consentChecked = !!(document.getElementById('cloud-privacy-consent') && document.getElementById('cloud-privacy-consent').checked);
-            if (!trainerName) return showToast('이름을 입력해주세요.');
+            if (isRequest && !trainerName) return showToast('이름을 입력해주세요.');
             if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
-            if (!consentChecked) return showToast('개인정보 수집 및 이용 동의가 필요합니다.');
+            if (isRequest && !consentChecked) return showToast('개인정보 수집 및 이용 동의가 필요합니다.');
             if (isSignup && !CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
             if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
             const consentMeta = {
                 privacyConsentAt: new Date().toISOString(),
                 privacyConsentVersion: PRIVACY_CONSENT_VERSION
             };
+            const rememberEmail = !!(document.getElementById('cloud-remember-email') && document.getElementById('cloud-remember-email').checked);
 
             const previousLoginId = window.activeLoginId;
             const previousProfile = window.appProfile ? { ...window.appProfile } : null;
@@ -1964,10 +2246,37 @@
 
             try {
                 window.cloudAuthFlowActive = true;
-                const credential = isSignup
+                let credential;
+                if (isRequest) {
+                    try {
+                        credential = await window.firebaseApi.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
+                    } catch (err) {
+                        const code = err && err.code ? err.code : '';
+                        if (!code.includes('email-already-in-use')) throw err;
+                        credential = await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+                    }
+                    const requestUser = credential.user;
+                    if (isAllowedCloudEmail(requestUser.email)) {
+                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                        showToast('관리자 이메일은 허가 요청 대상이 아닙니다. 로그인으로 접속해주세요.');
+                        return;
+                    }
+                    await createAccessRequest(requestUser, trainerName, consentMeta);
+                    await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                    window.licenseUser = null;
+                    window.cloudUser = null;
+                    window.closeCloudAuthModal();
+                    renderCloudStatus();
+                    showToast('사용 허가 요청을 보냈습니다. 관리자 승인 후 로그인할 수 있습니다.');
+                    return;
+                }
+
+                credential = isSignup
                     ? await window.firebaseApi.createUserWithEmailAndPassword(window.firebaseAuth, email, password)
                     : await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, email, password);
                 const signedUser = credential.user;
+                if (rememberEmail) localStorage.setItem(SAVED_CLOUD_EMAIL_KEY, normalizeCloudEmail(signedUser.email || email));
+                else localStorage.removeItem(SAVED_CLOUD_EMAIL_KEY);
                 if (!isAllowedCloudEmail(signedUser.email)) {
                     const license = await getLocalLicense(signedUser);
                     if (!license) {
@@ -1987,18 +2296,10 @@
                         showToast('허가 정보에 이름이 등록되어 있지 않습니다. 관리자에게 확인해주세요.');
                         return;
                     }
-                    if (normalizePersonName(approvedName) !== normalizePersonName(trainerName)) {
-                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
-                        window.licenseUser = null;
-                        window.cloudUser = null;
-                        renderCloudStatus();
-                        showToast('이름과 이메일 허가 정보가 일치하지 않습니다.');
-                        return;
-                    }
                     stopCloudSync();
                     window.cloudUser = null;
                     window.licenseUser = signedUser;
-                    await ensureLicensedLocalProfile(signedUser, license, consentMeta, trainerName);
+                    await ensureLicensedLocalProfile(signedUser, license, null, approvedName);
                     const licenseLoginId = getLicenseLoginId(signedUser.email);
                     addLoggedTrainer(licenseLoginId, true);
                     loadDatabase();
@@ -2740,6 +3041,9 @@
             renderCloudStatus();
             const modal = document.getElementById('modal-profile-settings');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            if (isActiveCloudProfile()) {
+                window.refreshAccessRequests(false).catch(() => {});
+            }
         }
 
         window.closeProfileSettingsModal = function() {
