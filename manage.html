@@ -287,6 +287,38 @@
             line-height: 1;
             font-weight: 900;
         }
+        @media (orientation: landscape) and (max-height: 480px) {
+            #sign-modal {
+                align-items: stretch;
+                padding: 0.5rem;
+            }
+            #modal-box {
+                max-width: none;
+                height: calc(100dvh - 1rem);
+                display: flex;
+                flex-direction: column;
+            }
+            #modal-box > .p-4.space-y-3 {
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                padding: 0.75rem;
+            }
+            #sign-status-badge {
+                display: none;
+            }
+            #signature-canvas-wrapper,
+            #signature-preview-wrapper {
+                flex: 1 1 auto;
+                min-height: 0;
+                height: auto;
+            }
+            #sign-action-btns {
+                padding: 0.75rem;
+            }
+        }
 
         .lesson-row {
             cursor: pointer;
@@ -1027,6 +1059,9 @@
                 <div class="text-center" id="sign-status-badge">
                     <span class="text-[10px] text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen text-amber-500 mr-1"></i>사인 패드</span>
                 </div>
+                <p id="sign-orientation-hint" class="hidden text-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    휴대폰에서는 가로 화면으로 돌려 서명하면 더 넓게 쓸 수 있습니다.
+                </p>
                 
                 <!-- CANVAS WRAPPER (그리기 모드) -->
                 <div id="signature-canvas-wrapper" class="relative bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl overflow-hidden w-full h-[min(42dvh,360px)] min-h-[220px] md:min-h-[300px] flex items-center justify-center">
@@ -1104,6 +1139,7 @@
         var currentZoom = 1;
         var currentDate = new Date();
         var signaturePad = null;
+        var signatureOrientationLocked = false;
         var currentPdfElementToExport = null;
         var memberStatusFilter = 'active';
         var memberLongPressTimer = null;
@@ -1141,7 +1177,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v84';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v85';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4389,6 +4425,60 @@
             }
         }
 
+        function shouldPreferLandscapeSignature() {
+            return window.matchMedia
+                && window.matchMedia('(max-width: 640px) and (orientation: portrait)').matches
+                && window.innerHeight > window.innerWidth;
+        }
+
+        function setSignatureOrientationHint(visible) {
+            const hint = document.getElementById('sign-orientation-hint');
+            if (!hint) return;
+            hint.classList.toggle('hidden', !visible);
+        }
+
+        function resizeSignaturePadSoon(delay = 180) {
+            setTimeout(() => window.dispatchEvent(new Event('resize')), delay);
+        }
+
+        function requestSignatureLandscapeIfUseful() {
+            setSignatureOrientationHint(false);
+            if (!shouldPreferLandscapeSignature()) return;
+
+            const orientation = window.screen && window.screen.orientation;
+            if (!orientation || typeof orientation.lock !== 'function') {
+                setSignatureOrientationHint(true);
+                return;
+            }
+
+            try {
+                orientation.lock('landscape')
+                    .then(() => {
+                        signatureOrientationLocked = true;
+                        setSignatureOrientationHint(false);
+                        resizeSignaturePadSoon(320);
+                    })
+                    .catch(err => {
+                        console.info('Signature landscape lock skipped.', err);
+                        setSignatureOrientationHint(true);
+                    });
+            } catch (err) {
+                console.info('Signature landscape lock skipped.', err);
+                setSignatureOrientationHint(true);
+            }
+        }
+
+        function releaseSignatureOrientationLock() {
+            setSignatureOrientationHint(false);
+            if (!signatureOrientationLocked) return;
+            signatureOrientationLocked = false;
+            const orientation = window.screen && window.screen.orientation;
+            if (orientation && typeof orientation.unlock === 'function') {
+                try { orientation.unlock(); } catch (err) { console.info('Signature orientation unlock skipped.', err); }
+            }
+            resizeSignaturePadSoon(320);
+        }
+
         function initSignaturePad() {
             const canvas = document.getElementById('signature-canvas');
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -4449,6 +4539,7 @@
             if (isSigned) {
                 // 서명 보기 모드 (View Mode)
                 setSignatureCounterSideMode(false);
+                releaseSignatureOrientationLock();
                 canvasWrap.classList.add('hidden');
                 prevWrap.classList.remove('hidden');
                 document.getElementById('signature-preview-img').src = l.signature;
@@ -4462,6 +4553,7 @@
             } else {
                 // 직접 서명 그리기 모드 (Drawing Mode)
                 setSignatureCounterSideMode(true);
+                requestSignatureLandscapeIfUseful();
                 canvasWrap.classList.remove('hidden');
                 prevWrap.classList.add('hidden');
                 if(window.signaturePad) window.signaturePad.clear();
@@ -4501,6 +4593,7 @@
             const badge = document.getElementById('sign-status-badge');
 
             setSignatureCounterSideMode(true);
+            requestSignatureLandscapeIfUseful();
             canvasWrap.classList.remove('hidden');
             prevWrap.classList.add('hidden');
             if(window.signaturePad) window.signaturePad.clear();
@@ -4527,6 +4620,7 @@
 
         window.closeSignModal = function() {
             const m = document.getElementById('sign-modal');
+            releaseSignatureOrientationLock();
             m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); setSignatureCounterSideMode(false); if(window.signaturePad) window.signaturePad.clear(); }, 300);
         }
         window.clearCanvas = function() { if(window.signaturePad) window.signaturePad.clear(); }
