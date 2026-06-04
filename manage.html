@@ -30,7 +30,9 @@
             --cal-base-min-width: 650px;
             --cal-base-row-height: 45px;
             --cal-time-col: 50px;
-            --app-header-height: 68px;
+            --app-safe-top: env(safe-area-inset-top, 0px);
+            --app-header-base-height: 68px;
+            --app-header-height: calc(var(--app-header-base-height) + var(--app-safe-top));
             --app-nav-height: 70px;
             --app-safe-bottom: env(safe-area-inset-bottom, 0px);
         }
@@ -177,6 +179,12 @@
         }
         .header-control-icon i {
             margin-right: 0 !important;
+        }
+        .app-header {
+            height: var(--app-header-height);
+            padding-top: calc(0.625rem + var(--app-safe-top));
+            padding-bottom: 0.625rem;
+            box-sizing: border-box;
         }
         .header-shell {
             align-items: flex-end;
@@ -355,7 +363,7 @@
     </div>
 
     <!-- 1. HEADER BANNER -->
-    <header class="bg-stone-900 text-stone-100 shadow-md sticky top-0 z-40 px-4 py-2.5 h-[68px]">
+    <header class="app-header bg-stone-900 text-stone-100 shadow-md sticky top-0 z-40 px-4">
         <div class="header-shell max-w-5xl mx-auto flex justify-between h-full">
             <button onclick="window.goHome()" class="header-brand header-home-button flex space-x-2.5 min-w-0" aria-label="홈으로 이동">
                 <div class="bg-amber-500 p-1.5 rounded-lg text-stone-900 shadow-inner">
@@ -1120,7 +1128,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v79';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v80';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
