@@ -770,6 +770,13 @@
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">비밀번호</label>
                     <input type="password" id="cloud-password" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.submitCloudAuth()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
+                <label class="flex items-start gap-2.5 p-3 bg-stone-50 border border-stone-200 rounded-xl">
+                    <input type="checkbox" id="cloud-privacy-consent" class="mt-0.5 w-4 h-4 accent-amber-500 shrink-0">
+                    <span class="text-[11px] leading-relaxed text-stone-600 font-bold">
+                        이메일, 로그인 식별값, 트레이너명, 사용 허가 상태를 앱 사용 허가 확인 및 계정 관리 목적으로 처리하는 것에 동의합니다.
+                        <a href="./privacy.html" target="_blank" rel="noopener" class="text-amber-600 underline underline-offset-2">개인정보 처리방침</a>
+                    </span>
+                </label>
                 <button onclick="window.submitCloudAuth()" id="cloud-auth-submit-btn" class="w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
                     로그인
                 </button>
@@ -1076,7 +1083,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v70';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v71';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1089,6 +1096,7 @@
         const ALLOWED_CLOUD_EMAILS = ['rebirth1013@gmail.com'];
         const CLOUD_SIGNUP_ENABLED = false;
         const LICENSE_LOGIN_PREFIX = 'license:';
+        const PRIVACY_CONSENT_VERSION = '2026-06-04';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1476,29 +1484,37 @@
             if (!window.cloudUser || !window.firebaseDb) return;
             const ref = getCloudProfileRef(window.cloudUser.uid);
             const trainerName = (profile && profile.trainerName) || getTrainerName();
-            await window.firebaseApi.setDoc(ref, {
+            const payload = {
                 trainerName,
                 email: window.cloudUser.email || '',
                 updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
+            };
+            if (profile && profile.privacyConsentAt) {
+                payload.privacyConsentAt = profile.privacyConsentAt;
+                payload.privacyConsentVersion = profile.privacyConsentVersion || PRIVACY_CONSENT_VERSION;
+            }
+            await window.firebaseApi.setDoc(ref, payload, { merge: true });
             if (window.firebaseApi.updateProfile && window.cloudUser && window.cloudUser.displayName !== trainerName) {
                 window.firebaseApi.updateProfile(window.cloudUser, { displayName: trainerName }).catch(() => {});
             }
         }
 
-        async function ensureCloudLocalProfile(user, remoteProfile = null) {
+        async function ensureCloudLocalProfile(user, remoteProfile = null, consentMeta = null) {
             if (!user) return null;
             const loginId = getCloudLoginId(user.uid);
             const trainerName = getCloudTrainerName(user, remoteProfile);
+            const existing = window.trainerProfiles[loginId] || {};
             window.trainerProfiles[loginId] = {
-                ...(window.trainerProfiles[loginId] || {}),
+                ...existing,
                 trainerName,
                 loginId,
                 email: user.email || '',
                 cloudUid: user.uid,
                 cloudEmail: user.email || '',
                 cloudMode: true,
-                createdAt: (window.trainerProfiles[loginId] || {}).createdAt || new Date().toISOString()
+                privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || (remoteProfile && remoteProfile.privacyConsentAt) || '',
+                privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || (remoteProfile && remoteProfile.privacyConsentVersion) || '',
+                createdAt: existing.createdAt || new Date().toISOString()
             };
             saveProfileStore();
             writeLoggedIds(sessionStorage, LOGGED_SESSION_KEY, [...readLoggedIds(), loginId]);
@@ -1506,20 +1522,23 @@
             return window.trainerProfiles[loginId];
         }
 
-        async function ensureLicensedLocalProfile(user, license = null) {
+        async function ensureLicensedLocalProfile(user, license = null, consentMeta = null) {
             if (!user) return null;
             const loginId = getLicenseLoginId(user.email);
             const fallbackName = normalizeCloudEmail(user.email).split('@')[0] || '허가 사용자';
             const trainerName = (license && license.trainerName) || user.displayName || fallbackName;
+            const existing = window.trainerProfiles[loginId] || {};
             window.trainerProfiles[loginId] = {
-                ...(window.trainerProfiles[loginId] || {}),
+                ...existing,
                 trainerName,
                 loginId,
                 email: user.email || '',
                 licenseEmail: normalizeCloudEmail(user.email),
                 licenseMode: true,
                 localOnly: true,
-                createdAt: (window.trainerProfiles[loginId] || {}).createdAt || new Date().toISOString()
+                privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || '',
+                privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || '',
+                createdAt: existing.createdAt || new Date().toISOString()
             };
             saveProfileStore();
             return window.trainerProfiles[loginId];
@@ -1878,6 +1897,8 @@
             document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || '';
             document.getElementById('cloud-password').value = '';
             document.getElementById('cloud-trainer-name').value = getTrainerName();
+            const consent = document.getElementById('cloud-privacy-consent');
+            if (consent) consent.checked = false;
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
@@ -1916,9 +1937,15 @@
             const email = document.getElementById('cloud-email').value.trim();
             const password = document.getElementById('cloud-password').value;
             const trainerName = document.getElementById('cloud-trainer-name').value.trim() || getTrainerName();
+            const consentChecked = !!(document.getElementById('cloud-privacy-consent') && document.getElementById('cloud-privacy-consent').checked);
             if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
+            if (!consentChecked) return showToast('개인정보 수집 및 이용 동의가 필요합니다.');
             if (isSignup && !CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
             if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
+            const consentMeta = {
+                privacyConsentAt: new Date().toISOString(),
+                privacyConsentVersion: PRIVACY_CONSENT_VERSION
+            };
 
             const previousLoginId = window.activeLoginId;
             const previousProfile = window.appProfile ? { ...window.appProfile } : null;
@@ -1945,7 +1972,7 @@
                     stopCloudSync();
                     window.cloudUser = null;
                     window.licenseUser = signedUser;
-                    await ensureLicensedLocalProfile(signedUser, license);
+                    await ensureLicensedLocalProfile(signedUser, license, consentMeta);
                     const licenseLoginId = getLicenseLoginId(signedUser.email);
                     addLoggedTrainer(licenseLoginId, true);
                     loadDatabase();
@@ -1961,7 +1988,7 @@
                     await window.firebaseApi.updateProfile(signedUser, { displayName: trainerName }).catch(() => {});
                 }
                 const remoteProfile = await getRemoteCloudProfile(signedUser.uid);
-                await ensureCloudLocalProfile(signedUser, remoteProfile || { trainerName });
+                await ensureCloudLocalProfile(signedUser, remoteProfile || { trainerName }, consentMeta);
                 const cloudLoginId = getCloudLoginId(signedUser.uid);
                 addLoggedTrainer(cloudLoginId, true);
 
