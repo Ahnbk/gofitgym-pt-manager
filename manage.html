@@ -818,6 +818,7 @@
                 <button onclick="window.sendCloudPasswordReset()" id="cloud-password-reset-btn" class="w-full py-2.5 bg-white text-stone-500 border border-stone-200 rounded-xl text-[11px] font-black active-scale">
                     비밀번호 재설정 메일 보내기
                 </button>
+                <p id="cloud-auth-message" class="hidden text-[11px] leading-relaxed font-bold rounded-xl px-3 py-2"></p>
                 <p class="text-[11px] leading-relaxed text-stone-500">
                     허가 사용자는 회원, 예약, 서명, 운동일지가 이 기기에만 저장됩니다. 관리자 이메일로 로그인한 경우에만 Firebase 클라우드 동기화가 켜집니다.
                 </p>
@@ -1119,7 +1120,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v77';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v79';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2194,6 +2195,7 @@
             toggleBtn.innerText = isRequest ? '이미 허가받은 계정 로그인' : '사용 허가 요청하기';
             const resetBtn = document.getElementById('cloud-password-reset-btn');
             if (resetBtn) resetBtn.classList.toggle('hidden', isRequest || isSignup);
+            setCloudAuthMessage('');
             const savedEmail = localStorage.getItem(SAVED_CLOUD_EMAIL_KEY) || '';
             document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || savedEmail;
             const passwordInput = document.getElementById('cloud-password');
@@ -2232,6 +2234,15 @@
             window.openCloudAuthModal(getCloudAuthMode() === 'request' ? 'login' : 'request');
         };
 
+        function setCloudAuthMessage(message = '', type = 'info') {
+            const el = document.getElementById('cloud-auth-message');
+            if (!el) return;
+            el.innerText = message;
+            el.className = message
+                ? `text-[11px] leading-relaxed font-bold rounded-xl px-3 py-2 ${type === 'error' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`
+                : 'hidden text-[11px] leading-relaxed font-bold rounded-xl px-3 py-2';
+        }
+
         async function getCloudEmailStatus(email) {
             if (!window.firebaseApi || !window.firebaseApi.fetchSignInMethodsForEmail) return 'unknown';
             try {
@@ -2250,10 +2261,11 @@
             if (code.includes('operation-not-allowed')) return 'Firebase 콘솔에서 Email/Password 로그인을 먼저 켜야 합니다.';
             if (code.includes('invalid-email')) return '이메일 형식을 확인해주세요.';
             if (code.includes('wrong-password')) return '비밀번호가 맞지 않습니다.';
-            if (code.includes('user-not-found') || context.emailStatus === 'missing') return '가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.';
+            if (code.includes('user-not-found')) return '가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.';
             if (code.includes('invalid-credential')) {
                 if (context.emailStatus === 'exists') return '비밀번호가 맞지 않습니다.';
                 if (context.mode === 'request') return '이미 가입된 이메일입니다. 비밀번호가 맞지 않으면 비밀번호 재설정 메일을 사용해주세요.';
+                if (context.emailStatus === 'missing') return '가입되지 않았거나 이메일 주소가 틀렸습니다. 이메일을 다시 확인해주세요.';
                 return '이메일 또는 비밀번호가 맞지 않습니다. 이메일을 확인하거나 비밀번호 재설정을 사용해주세요.';
             }
             if (code.includes('email-already-in-use')) return '이미 가입된 이메일입니다.';
@@ -2263,21 +2275,34 @@
 
         window.sendCloudPasswordReset = async function() {
             const loaded = await loadFirebaseModules();
-            if (!loaded) return showToast('Firebase 연결 준비에 실패했습니다.');
+            if (!loaded) {
+                setCloudAuthMessage('Firebase 연결 준비에 실패했습니다.', 'error');
+                return showToast('Firebase 연결 준비에 실패했습니다.');
+            }
             const email = document.getElementById('cloud-email').value.trim();
-            if (!email) return showToast('비밀번호를 재설정할 이메일을 입력해주세요.');
+            if (!email) {
+                setCloudAuthMessage('비밀번호를 재설정할 이메일을 입력해주세요.', 'error');
+                return showToast('비밀번호를 재설정할 이메일을 입력해주세요.');
+            }
             try {
                 await window.firebaseApi.sendPasswordResetEmail(window.firebaseAuth, email);
-                showToast('비밀번호 재설정 메일을 보냈습니다.');
+                const message = '요청을 처리했습니다. Firebase에 가입된 이메일이면 재설정 메일이 발송됩니다. 메일함과 스팸함을 확인해주세요.';
+                setCloudAuthMessage(message, 'info');
+                showToast('비밀번호 재설정 요청을 처리했습니다.');
             } catch (err) {
                 console.error('Password reset failed.', err);
-                showToast(translateCloudAuthError(err));
+                const message = translateCloudAuthError(err);
+                setCloudAuthMessage(message, 'error');
+                showToast(message);
             }
         }
 
         window.submitCloudAuth = async function() {
             const loaded = await loadFirebaseModules();
-            if (!loaded) return showToast('Firebase 연결 준비에 실패했습니다.');
+            if (!loaded) {
+                setCloudAuthMessage('Firebase 연결 준비에 실패했습니다.', 'error');
+                return showToast('Firebase 연결 준비에 실패했습니다.');
+            }
             const mode = getCloudAuthMode();
             const isSignup = mode === 'signup';
             const isRequest = mode === 'request';
@@ -2286,12 +2311,16 @@
             const passwordConfirm = document.getElementById('cloud-password-confirm').value;
             const trainerName = document.getElementById('cloud-trainer-name').value.trim();
             const consentChecked = !!(document.getElementById('cloud-privacy-consent') && document.getElementById('cloud-privacy-consent').checked);
-            if (isRequest && !trainerName) return showToast('이름을 입력해주세요.');
-            if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
-            if ((isRequest || isSignup) && password !== passwordConfirm) return showToast('비밀번호 확인이 일치하지 않습니다.');
-            if (isRequest && !consentChecked) return showToast('개인정보 수집 및 이용 동의가 필요합니다.');
-            if (isSignup && !CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
-            if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
+            const failAuthForm = message => {
+                setCloudAuthMessage(message, 'error');
+                showToast(message);
+            };
+            if (isRequest && !trainerName) return failAuthForm('이름을 입력해주세요.');
+            if (!email || !password) return failAuthForm('이메일과 비밀번호를 입력해주세요.');
+            if ((isRequest || isSignup) && password !== passwordConfirm) return failAuthForm('비밀번호 확인이 일치하지 않습니다.');
+            if (isRequest && !consentChecked) return failAuthForm('개인정보 수집 및 이용 동의가 필요합니다.');
+            if (isSignup && !CLOUD_SIGNUP_ENABLED) return failAuthForm('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
+            if (isSignup && !trainerName) return failAuthForm('트레이너 이름을 입력해주세요.');
             const consentMeta = {
                 privacyConsentAt: new Date().toISOString(),
                 privacyConsentVersion: PRIVACY_CONSENT_VERSION
@@ -2310,8 +2339,7 @@
                 let credential;
                 if (!isRequest && !isSignup) {
                     emailStatus = await getCloudEmailStatus(email);
-                    if (emailStatus === 'invalid') return showToast('이메일 형식을 확인해주세요.');
-                    if (emailStatus === 'missing') return showToast('가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.');
+                    if (emailStatus === 'invalid') return failAuthForm('이메일 형식을 확인해주세요.');
                 }
                 if (isRequest) {
                     try {
@@ -2332,9 +2360,11 @@
                     await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
                     window.licenseUser = null;
                     window.cloudUser = null;
-                    window.closeCloudAuthModal();
                     renderCloudStatus();
-                    showToast('사용 허가 요청을 보냈습니다. 관리자 승인 후 로그인할 수 있습니다.');
+                    const message = '사용 허가 요청을 보냈습니다. 관리자 승인 후 로그인할 수 있습니다.';
+                    setCloudAuthMessage(message, 'info');
+                    showToast(message);
+                    setTimeout(() => window.closeCloudAuthModal(), 1400);
                     return;
                 }
 
@@ -2414,7 +2444,9 @@
                 showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '클라우드 로그인 완료');
             } catch (err) {
                 console.error('Cloud auth failed.', err);
-                showToast(translateCloudAuthError(err, { mode, emailStatus }));
+                const message = translateCloudAuthError(err, { mode, emailStatus });
+                setCloudAuthMessage(message, 'error');
+                showToast(message);
             } finally {
                 window.cloudAuthFlowActive = false;
                 renderCloudStatus();
