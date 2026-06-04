@@ -1131,7 +1131,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v81';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v82';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2254,6 +2254,21 @@
                 : 'hidden text-[11px] leading-relaxed font-bold rounded-xl px-3 py-2';
         }
 
+        function setCloudAuthBusy(buttonId, busy, busyText = '처리 중') {
+            const btn = document.getElementById(buttonId);
+            if (!btn) return () => {};
+            const original = btn.innerHTML;
+            btn.disabled = !!busy;
+            btn.classList.toggle('opacity-70', !!busy);
+            btn.classList.toggle('pointer-events-none', !!busy);
+            if (busy) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>${busyText}`;
+            return () => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'pointer-events-none');
+                btn.innerHTML = original;
+            };
+        }
+
         async function getCloudEmailStatus(email) {
             if (!window.firebaseApi || !window.firebaseApi.fetchSignInMethodsForEmail) return 'unknown';
             try {
@@ -2295,6 +2310,8 @@
                 setCloudAuthMessage('비밀번호를 재설정할 이메일을 입력해주세요.', 'error');
                 return showToast('비밀번호를 재설정할 이메일을 입력해주세요.');
             }
+            const releaseBusy = setCloudAuthBusy('cloud-password-reset-btn', true, '메일 요청 중');
+            setCloudAuthMessage('비밀번호 재설정 메일을 요청하는 중입니다.', 'info');
             try {
                 await window.firebaseApi.sendPasswordResetEmail(window.firebaseAuth, email);
                 const message = '요청을 처리했습니다. Firebase에 가입된 이메일이면 재설정 메일이 발송됩니다. 메일함과 스팸함을 확인해주세요.';
@@ -2305,6 +2322,8 @@
                 const message = translateCloudAuthError(err);
                 setCloudAuthMessage(message, 'error');
                 showToast(message);
+            } finally {
+                releaseBusy();
             }
         }
 
@@ -2344,6 +2363,9 @@
             const previousSchedules = JSON.parse(JSON.stringify(window.schedules || []));
             const hasLocalData = !!(previousLoginId && !previousLoginId.startsWith(CLOUD_LOGIN_PREFIX) && (previousMembers.length || previousSchedules.length));
             let emailStatus = 'unknown';
+            const busyText = isRequest ? '요청 보내는 중' : (isSignup ? '계정 만드는 중' : '로그인 중');
+            const releaseBusy = setCloudAuthBusy('cloud-auth-submit-btn', true, busyText);
+            setCloudAuthMessage(isRequest ? '사용 허가 요청을 전송하는 중입니다.' : '로그인 정보를 확인하는 중입니다.', 'info');
 
             try {
                 window.cloudAuthFlowActive = true;
@@ -2392,7 +2414,9 @@
                         window.licenseUser = null;
                         window.cloudUser = null;
                         renderCloudStatus();
-                        showToast('사용 허가가 없거나 해제된 계정입니다.');
+                        const message = '사용 허가가 없거나 해제된 계정입니다. 관리자 승인 후 다시 로그인해주세요.';
+                        setCloudAuthMessage(message, 'error');
+                        showToast(message);
                         return;
                     }
                     const approvedName = String(license.trainerName || '').trim();
@@ -2401,7 +2425,9 @@
                         window.licenseUser = null;
                         window.cloudUser = null;
                         renderCloudStatus();
-                        showToast('허가 정보에 이름이 등록되어 있지 않습니다. 관리자에게 확인해주세요.');
+                        const message = '허가 정보에 이름이 등록되어 있지 않습니다. 관리자에게 확인해주세요.';
+                        setCloudAuthMessage(message, 'error');
+                        showToast(message);
                         return;
                     }
                     stopCloudSync();
@@ -2413,7 +2439,7 @@
                     loadDatabase();
                     enterTrainerWorkspace();
                     window.closeCloudAuthModal();
-                    showToast('사용 허가 로그인 완료. 데이터는 이 기기에만 저장됩니다.');
+                    showToast('로그인되었습니다. 데이터는 이 기기에만 저장됩니다.');
                     return;
                 }
 
@@ -2452,7 +2478,7 @@
                 startCloudSync();
                 enterTrainerWorkspace();
                 window.closeCloudAuthModal();
-                showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '클라우드 로그인 완료');
+                showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '로그인되었습니다. 클라우드 동기화가 켜졌습니다.');
             } catch (err) {
                 console.error('Cloud auth failed.', err);
                 const message = translateCloudAuthError(err, { mode, emailStatus });
@@ -2460,6 +2486,7 @@
                 showToast(message);
             } finally {
                 window.cloudAuthFlowActive = false;
+                releaseBusy();
                 renderCloudStatus();
             }
         };
