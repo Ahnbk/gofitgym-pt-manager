@@ -421,14 +421,14 @@
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <h2 class="text-lg font-black text-stone-800">회원 관리 대시보드</h2>
-                        <p class="text-xs text-stone-500">클라우드 로그인 시 자동 동기화되고, 로컬 사용 시 백업 파일로 보관할 수 있습니다.</p>
+                        <p class="text-xs text-stone-500">관리자 이메일은 클라우드 동기화, 허가 사용자는 로컬 저장과 백업을 사용합니다.</p>
                     </div>
                     <div class="flex items-center justify-end gap-1 shrink-0">
                         <input type="text" id="member-search" oninput="window.renderMemberList()" onkeydown="if(event.key === 'Escape') window.closeDashboardSearch(true)" placeholder="검색" class="hidden w-32 sm:w-44 bg-stone-50 border border-stone-200 rounded-xl py-2.5 px-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-amber-500">
-                        <button onclick="window.toggleDashboardSearch()" id="dashboard-search-toggle" aria-expanded="false" aria-label="회원 이름 검색" class="w-10 h-10 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-600 active-scale flex items-center justify-center transition-all">
+                        <button onclick="window.toggleDashboardSearch()" id="dashboard-search-toggle" aria-expanded="false" aria-label="회원 이름 검색" class="w-11 h-11 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-600 active-scale flex items-center justify-center transition-all">
                             <i class="fa-solid fa-magnifying-glass text-sm"></i>
                         </button>
-                        <button onclick="window.openNewMemberModal()" aria-label="회원 등록" class="w-10 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 border border-amber-500 text-stone-950 active-scale flex items-center justify-center transition-all shadow-sm">
+                        <button onclick="window.openNewMemberModal()" aria-label="회원 등록" class="w-11 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 border border-amber-500 text-stone-950 active-scale flex items-center justify-center transition-all shadow-sm">
                             <i class="fa-solid fa-user-plus text-sm"></i>
                         </button>
                     </div>
@@ -631,7 +631,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] shadow-2xl overflow-y-auto">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-gear mr-1.5"></i>트레이너 설정</h3>
-                <button onclick="window.closeProfileSettingsModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeProfileSettingsModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
                 <div>
@@ -658,19 +658,19 @@
                         <span id="profile-cloud-badge" class="shrink-0 px-2 py-1 rounded-full bg-stone-200 text-stone-500 text-[9px] font-black">OFF</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="window.openCloudAuthModal('login')" id="profile-cloud-login-btn" class="col-span-2 py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.openCloudAuthModal('login')" id="profile-cloud-login-btn" class="col-span-2 min-h-[44px] py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
                             관리자 클라우드 로그인
                         </button>
-                        <button onclick="window.openCloudAuthModal('signup')" id="profile-cloud-signup-btn" class="hidden py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.openCloudAuthModal('signup')" id="profile-cloud-signup-btn" class="hidden min-h-[44px] py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
                             새 계정 만들기
                         </button>
-                        <button onclick="window.pushFullCloudSync(true)" id="profile-cloud-sync-btn" class="hidden py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.pushFullCloudSync(true)" id="profile-cloud-sync-btn" class="hidden min-h-[44px] py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
                             지금 동기화
                         </button>
-                        <button onclick="window.logoutCloudUser()" id="profile-cloud-logout-btn" class="hidden py-2.5 bg-stone-100 text-stone-600 rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.logoutCloudUser()" id="profile-cloud-logout-btn" class="hidden min-h-[44px] py-2.5 bg-stone-100 text-stone-600 rounded-xl text-[10px] font-black active-scale">
                             클라우드 로그아웃
                         </button>
-                        <button onclick="window.openAccessRequestsModal()" id="profile-access-requests-btn" class="hidden col-span-2 py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.openAccessRequestsModal()" id="profile-access-requests-btn" class="hidden col-span-2 min-h-[44px] py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
                             <i class="fa-solid fa-user-check mr-1"></i>사용 허가 요청 관리 <span id="profile-access-requests-count" class="ml-1">0</span>
                         </button>
                     </div>
@@ -681,13 +681,13 @@
                         <p class="text-[11px] font-bold text-stone-500">로컬 백업 저장과 복원은 여기서 관리합니다.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="window.openBackupChoiceModal()" class="py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
+                        <button onclick="window.openBackupChoiceModal()" class="min-h-[44px] py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
                             <i class="fa-solid fa-download mr-1.5 text-amber-500"></i>백업 저장
                         </button>
-                        <button onclick="window.openBackupRestorePicker()" class="py-2.5 bg-white text-stone-700 rounded-xl text-[10px] font-black active-scale flex items-center justify-center border border-stone-200">
+                        <button onclick="window.openBackupRestorePicker()" class="min-h-[44px] py-2.5 bg-white text-stone-700 rounded-xl text-[10px] font-black active-scale flex items-center justify-center border border-stone-200">
                             <i class="fa-solid fa-folder-open mr-1.5 text-stone-500"></i>백업 복원
                         </button>
-                        <button onclick="window.installPwaApp()" id="install-app-btn" class="hidden col-span-2 py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
+                        <button onclick="window.installPwaApp()" id="install-app-btn" class="hidden col-span-2 min-h-[44px] py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
                             <i class="fa-solid fa-mobile-screen-button mr-1.5"></i>앱 설치
                         </button>
                         <input type="file" id="backup-restore-input" accept=".json,application/json" class="hidden" onchange="window.restoreBackupFile(this)">
@@ -706,12 +706,12 @@
                     <input type="password" id="profile-current-password" autocomplete="current-password" placeholder="현재 비밀번호" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                     <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
-                <button onclick="window.saveProfileSettings()" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
-                <button onclick="window.openAdditionalLogin()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
-                <button onclick="window.checkStorageProtection(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>저장 보호 확인</button>
-                <button onclick="window.checkAppUpdate(true)" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
-                <button onclick="window.openAppInfoModal()" class="w-full py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>앱 정보 / 개인정보 처리방침</button>
-                <button onclick="window.logoutLocalUser()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
+                <button onclick="window.saveProfileSettings()" class="w-full min-h-[44px] py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
+                <button onclick="window.openAdditionalLogin()" class="w-full min-h-[44px] py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
+                <button onclick="window.checkStorageProtection(true)" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>저장 보호 확인</button>
+                <button onclick="window.checkAppUpdate(true)" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
+                <button onclick="window.openAppInfoModal()" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>앱 정보 / 개인정보 처리방침</button>
+                <button onclick="window.logoutLocalUser()" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
             </div>
         </div>
     </div>
@@ -724,7 +724,7 @@
                     <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-circle-info mr-1.5"></i>앱 정보</h3>
                     <p class="text-[11px] text-stone-400 mt-1">GOFITGYM PT Manager</p>
                 </div>
-                <button onclick="window.closeAppInfoModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeAppInfoModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4 overflow-y-auto text-xs leading-relaxed text-stone-600">
                 <section class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-1">
@@ -779,7 +779,7 @@
                     <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-check mr-1.5"></i>사용 허가 요청 관리</h3>
                     <p id="access-requests-subtitle" class="text-[11px] text-stone-400 mt-1">대기 요청을 승인하거나 거절합니다.</p>
                 </div>
-                <button onclick="window.closeAccessRequestsModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeAccessRequestsModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3 overflow-y-auto">
                 <button onclick="window.refreshAccessRequests(true)" class="w-full py-2.5 bg-stone-100 text-stone-700 rounded-xl text-[10px] font-black active-scale">
@@ -800,7 +800,7 @@
                     <h3 id="cloud-auth-title" class="font-black text-amber-500 text-base"><i class="fa-solid fa-cloud mr-1.5"></i>클라우드 로그인</h3>
                     <p id="cloud-auth-subtitle" class="text-[11px] text-stone-400 mt-1">허가 여부를 확인합니다. 일반 사용자의 데이터는 로컬에만 저장됩니다.</p>
                 </div>
-                <button onclick="window.closeCloudAuthModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeCloudAuthModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
                 <div id="cloud-trainer-row" class="hidden">
@@ -820,7 +820,7 @@
                     <input type="password" id="cloud-password-confirm" name="password-confirm" autocomplete="new-password" onkeydown="if(event.key === 'Enter') window.submitCloudAuth()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <label id="cloud-remember-row" class="flex items-center justify-between p-3 bg-stone-50 border border-stone-100 rounded-xl">
-                    <span class="text-xs font-bold text-stone-600">이메일 저장 및 자동 로그인 유지</span>
+                    <span class="text-xs font-bold text-stone-600">이메일 주소 저장</span>
                     <input type="checkbox" id="cloud-remember-email" class="w-4 h-4 accent-amber-500">
                 </label>
                 <label class="flex items-start gap-2.5 p-3 bg-stone-50 border border-stone-200 rounded-xl">
@@ -841,7 +841,7 @@
                 </button>
                 <p id="cloud-auth-message" class="hidden text-[11px] leading-relaxed font-bold rounded-xl px-3 py-2"></p>
                 <p class="text-[11px] leading-relaxed text-stone-500">
-                    허가 사용자는 회원, 예약, 서명, 운동일지가 이 기기에만 저장됩니다. 관리자 이메일로 로그인한 경우에만 Firebase 클라우드 동기화가 켜집니다.
+                    허가 사용자는 회원, 예약, 서명, 운동일지가 이 기기에만 저장됩니다. 관리자 이메일로 로그인한 경우에만 Firebase 클라우드 동기화가 켜집니다. 로그인 상태는 기기에 유지될 수 있습니다.
                 </p>
             </div>
         </div>
@@ -855,7 +855,7 @@
                     <h3 id="member-action-title" class="font-black text-amber-500 text-base truncate">회원명</h3>
                     <p id="member-action-subtitle" class="text-[11px] text-stone-400 mt-1">회원 상태 변경</p>
                 </div>
-                <button onclick="window.closeMemberActionMenu()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeMemberActionMenu()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-2">
                 <button onclick="window.openActionMemberDetail()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
@@ -879,7 +879,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-shield-halved mr-1.5"></i>백업 저장</h3>
-                <button onclick="window.closeBackupChoiceModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeBackupChoiceModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-2">
                 <button onclick="window.saveBackupFile()" class="w-full py-3.5 bg-stone-900 text-white rounded-xl text-xs font-black active-scale flex items-center justify-center">
@@ -902,7 +902,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-member-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
-                <button onclick="window.closeNewMemberModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeNewMemberModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>
@@ -932,7 +932,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
-                <button onclick="window.closeAddSessionModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeAddSessionModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4">
                 <div>
@@ -973,7 +973,7 @@
         <div class="bg-white border border-stone-300 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
             <div class="bg-white text-stone-950 p-4 flex justify-between items-center border-b border-stone-300">
                 <h3 class="font-black text-amber-500 text-base" id="sched-modal-title"><i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록</h3>
-                <button onclick="window.closeScheduleModal()" class="modal-close-btn text-stone-500 hover:text-stone-950"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeScheduleModal()" aria-label="닫기" class="modal-close-btn text-stone-500 hover:text-stone-950"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4">
                 <input type="hidden" id="sched-id">
@@ -1021,7 +1021,7 @@
         <div class="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden" id="modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base" id="sign-modal-title">01회차 레슨 서명</h3>
-                <button onclick="window.closeSignModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeSignModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3">
                 <div class="text-center" id="sign-status-badge">
@@ -1052,7 +1052,7 @@
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="share-modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-share-nodes mr-1.5"></i>운동일지 스마트 전송</h3>
-                <button onclick="window.closeShareModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeShareModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-4">
                 <textarea id="share-text-preview" class="w-full text-[11px] text-stone-700 bg-stone-50 border border-stone-200 rounded-xl p-3 focus:outline-none min-h-[120px] leading-relaxed" readonly></textarea>
@@ -1075,7 +1075,7 @@
     <!-- E. PDF Preview Modal -->
     <div id="pdf-preview-modal" class="fixed inset-0 h-[100dvh] bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
         <div class="flex justify-between items-center p-4 text-white shrink-0">
-            <button onclick="window.closePdfPreviewModal()" class="modal-close-btn text-stone-300 text-xl hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="window.closePdfPreviewModal()" aria-label="닫기" class="modal-close-btn text-stone-300 text-xl hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
             <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
         </div>
@@ -1141,7 +1141,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v83';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v84';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1239,6 +1239,7 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 window.checkAppUpdate(false);
+                revalidateActiveLicenseSession().catch(err => console.warn('License revalidation failed.', err));
             }
         });
 
@@ -1551,6 +1552,41 @@
                 console.error('Local license read failed.', err);
                 return null;
             }
+        }
+
+        async function checkLocalLicenseAccess(user) {
+            try {
+                const ref = getLocalLicenseRef(user && user.email);
+                if (!ref) return { checked: false, active: true };
+                const snap = await window.firebaseApi.getDoc(ref);
+                if (!snap.exists()) return { checked: true, active: false };
+                const data = snap.data() || {};
+                const sameEmail = normalizeCloudEmail(data.email || user.email) === normalizeCloudEmail(user.email);
+                return { checked: true, active: sameEmail && data.active !== false, license: data };
+            } catch (err) {
+                console.warn('Local license revalidation skipped.', err);
+                return { checked: false, active: true };
+            }
+        }
+
+        async function revalidateActiveLicenseSession() {
+            if (!isActiveLicenseProfile() || !window.licenseUser) return;
+            const loginId = window.activeLoginId;
+            const result = await checkLocalLicenseAccess(window.licenseUser);
+            if (!result.checked || result.active || loginId !== window.activeLoginId) return;
+            try {
+                flushWorkoutSave();
+                saveDatabase({ silent: true });
+            } catch (err) {
+                console.warn('Local save before license logout failed.', err);
+            }
+            removeLoggedTrainer(loginId);
+            window.licenseUser = null;
+            window.cloudUser = null;
+            renderCloudStatus();
+            window.activeMemberId = null;
+            await initializeLoginGate();
+            showToast('사용 허가가 해제되어 로그아웃되었습니다.');
         }
 
         async function createAccessRequest(user, trainerName, consentMeta) {
@@ -2059,13 +2095,14 @@
                 const requestedAt = formatAccessRequestDate(req.requestedAt || req.updatedAt);
                 const statusClass = status === 'pending' ? 'bg-amber-500 text-stone-950' : (status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-stone-300 text-stone-700');
                 const encodedId = encodeURIComponent(req.id);
-                const deleteAction = `<button onclick="window.deleteAccessRequest('${encodedId}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black active-scale">삭제</button>`;
+                const deleteLabel = status === 'pending' ? '요청 삭제' : '허가/기록 삭제';
+                const deleteAction = `<button onclick="window.deleteAccessRequest('${encodedId}')" class="min-h-[44px] px-3 py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black active-scale">${deleteLabel}</button>`;
                 const requestActions = status === 'approved'
-                    ? `<button onclick="window.revokeAccessRequest('${encodedId}')" class="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black active-scale">사용 차단</button>${deleteAction}`
+                    ? `<button onclick="window.revokeAccessRequest('${encodedId}')" class="flex-1 min-h-[44px] py-2 rounded-xl bg-red-50 text-red-600 text-[10px] font-black active-scale">사용 차단</button>${deleteAction}`
                     : status === 'pending'
-                    ? `<button onclick="window.approveAccessRequest('${encodedId}')" class="flex-1 py-2 rounded-xl bg-amber-500 text-stone-950 text-[10px] font-black active-scale">승인</button>
-                       <button onclick="window.rejectAccessRequest('${encodedId}')" class="flex-1 py-2 rounded-xl bg-stone-100 text-stone-600 text-[10px] font-black active-scale">거절</button>${deleteAction}`
-                    : `<button onclick="window.approveAccessRequest('${encodedId}')" class="flex-1 py-2 rounded-xl bg-amber-500 text-stone-950 text-[10px] font-black active-scale">재승인</button>${deleteAction}`;
+                    ? `<button onclick="window.approveAccessRequest('${encodedId}')" class="flex-1 min-h-[44px] py-2 rounded-xl bg-amber-500 text-stone-950 text-[10px] font-black active-scale">승인</button>
+                       <button onclick="window.rejectAccessRequest('${encodedId}')" class="flex-1 min-h-[44px] py-2 rounded-xl bg-stone-100 text-stone-600 text-[10px] font-black active-scale">거절</button>${deleteAction}`
+                    : `<button onclick="window.approveAccessRequest('${encodedId}')" class="flex-1 min-h-[44px] py-2 rounded-xl bg-amber-500 text-stone-950 text-[10px] font-black active-scale">재승인</button>${deleteAction}`;
                 return `<div class="rounded-2xl border border-stone-200 bg-white p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
@@ -2117,25 +2154,32 @@
             const email = normalizeCloudEmail(req.email);
             const ok = confirm(`${req.trainerName} (${email}) 사용을 허가할까요?\n이 사용자는 로컬 저장만 사용할 수 있습니다.`);
             if (!ok) return;
-            await window.firebaseApi.setDoc(getLocalLicenseRef(email), {
-                email: req.email,
-                normalizedEmail: email,
-                active: true,
-                trainerName: req.trainerName,
-                sourceRequestId: req.id,
-                approvedAt: window.firebaseApi.serverTimestamp(),
-                approvedBy: window.cloudUser && window.cloudUser.email || '',
-                updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
-            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
-                status: 'approved',
-                active: true,
-                approvedAt: window.firebaseApi.serverTimestamp(),
-                approvedBy: window.cloudUser && window.cloudUser.email || '',
-                updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
-            showToast('사용을 허가했습니다.');
-            await window.refreshAccessRequests(false);
+            try {
+                const batch = window.firebaseApi.writeBatch(window.firebaseDb);
+                batch.set(getLocalLicenseRef(email), {
+                    email: req.email,
+                    normalizedEmail: email,
+                    active: true,
+                    trainerName: req.trainerName,
+                    sourceRequestId: req.id,
+                    approvedAt: window.firebaseApi.serverTimestamp(),
+                    approvedBy: window.cloudUser && window.cloudUser.email || '',
+                    updatedAt: window.firebaseApi.serverTimestamp()
+                }, { merge: true });
+                batch.set(getAccessRequestRef(req.id), {
+                    status: 'approved',
+                    active: true,
+                    approvedAt: window.firebaseApi.serverTimestamp(),
+                    approvedBy: window.cloudUser && window.cloudUser.email || '',
+                    updatedAt: window.firebaseApi.serverTimestamp()
+                }, { merge: true });
+                await batch.commit();
+                showToast('사용을 허가했습니다.');
+                await window.refreshAccessRequests(false);
+            } catch (err) {
+                console.error('Access request approve failed.', err);
+                showToast('사용 허가 처리에 실패했습니다. 다시 시도해주세요.');
+            }
         }
 
         window.rejectAccessRequest = async function(encodedId) {
@@ -2143,53 +2187,72 @@
             if (!req) return;
             const ok = confirm(`${req.trainerName || req.email} 요청을 거절할까요?`);
             if (!ok) return;
-            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
-                status: 'rejected',
-                active: false,
-                rejectedAt: window.firebaseApi.serverTimestamp(),
-                rejectedBy: window.cloudUser && window.cloudUser.email || '',
-                updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
-            showToast('요청을 거절했습니다.');
-            await window.refreshAccessRequests(false);
+            try {
+                await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
+                    status: 'rejected',
+                    active: false,
+                    rejectedAt: window.firebaseApi.serverTimestamp(),
+                    rejectedBy: window.cloudUser && window.cloudUser.email || '',
+                    updatedAt: window.firebaseApi.serverTimestamp()
+                }, { merge: true });
+                showToast('요청을 거절했습니다.');
+                await window.refreshAccessRequests(false);
+            } catch (err) {
+                console.error('Access request reject failed.', err);
+                showToast('요청 거절 처리에 실패했습니다. 다시 시도해주세요.');
+            }
         }
 
         window.revokeAccessRequest = async function(encodedId) {
             const req = findAccessRequest(encodedId);
             if (!req || !req.email) return;
             const email = normalizeCloudEmail(req.email);
-            const ok = confirm(`${req.trainerName || email} 사용 권한을 차단할까요?`);
+            const ok = confirm(`${req.trainerName || email} 사용 권한을 차단할까요?\n이미 열린 앱은 다음 확인 시점 또는 다음 로그인부터 차단됩니다.`);
             if (!ok) return;
-            await window.firebaseApi.setDoc(getLocalLicenseRef(email), {
-                email: req.email,
-                normalizedEmail: email,
-                active: false,
-                trainerName: req.trainerName || '',
-                revokedAt: window.firebaseApi.serverTimestamp(),
-                revokedBy: window.cloudUser && window.cloudUser.email || '',
-                updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
-            await window.firebaseApi.setDoc(getAccessRequestRef(req.id), {
-                status: 'revoked',
-                active: false,
-                revokedAt: window.firebaseApi.serverTimestamp(),
-                revokedBy: window.cloudUser && window.cloudUser.email || '',
-                updatedAt: window.firebaseApi.serverTimestamp()
-            }, { merge: true });
-            showToast('사용 권한을 차단했습니다.');
-            await window.refreshAccessRequests(false);
+            try {
+                const batch = window.firebaseApi.writeBatch(window.firebaseDb);
+                batch.set(getLocalLicenseRef(email), {
+                    email: req.email,
+                    normalizedEmail: email,
+                    active: false,
+                    trainerName: req.trainerName || '',
+                    revokedAt: window.firebaseApi.serverTimestamp(),
+                    revokedBy: window.cloudUser && window.cloudUser.email || '',
+                    updatedAt: window.firebaseApi.serverTimestamp()
+                }, { merge: true });
+                batch.set(getAccessRequestRef(req.id), {
+                    status: 'revoked',
+                    active: false,
+                    revokedAt: window.firebaseApi.serverTimestamp(),
+                    revokedBy: window.cloudUser && window.cloudUser.email || '',
+                    updatedAt: window.firebaseApi.serverTimestamp()
+                }, { merge: true });
+                await batch.commit();
+                showToast('사용 권한을 차단했습니다. 다음 확인 시점부터 적용됩니다.');
+                await window.refreshAccessRequests(false);
+            } catch (err) {
+                console.error('Access request revoke failed.', err);
+                showToast('사용 차단 처리에 실패했습니다. 다시 시도해주세요.');
+            }
         }
 
         window.deleteAccessRequest = async function(encodedId) {
             const req = findAccessRequest(encodedId);
             if (!req || !req.email) return;
             const email = normalizeCloudEmail(req.email);
-            const ok = confirm(`${req.trainerName || email} 허가 요청 기록을 삭제할까요?\n\n허가 기록과 요청 목록에서는 삭제됩니다. 단, Firebase 로그인 계정 자체는 앱에서 삭제할 수 없으므로 비밀번호를 잊은 사용자는 로그인 창의 비밀번호 재설정 메일을 사용해야 합니다.`);
+            const ok = confirm(`${req.trainerName || email} 허가 및 요청 기록을 삭제할까요?\n\n승인된 사용자는 사용 허가도 함께 삭제되어 다시 승인받아야 합니다. 단, Firebase 로그인 계정 자체는 앱에서 삭제할 수 없으므로 비밀번호를 잊은 사용자는 로그인 창의 비밀번호 재설정 메일을 사용해야 합니다.`);
             if (!ok) return;
-            await window.firebaseApi.deleteDoc(getLocalLicenseRef(email)).catch(() => {});
-            await window.firebaseApi.deleteDoc(getAccessRequestRef(req.id));
-            showToast('사용 허가 기록을 삭제했습니다.');
-            await window.refreshAccessRequests(false);
+            try {
+                const batch = window.firebaseApi.writeBatch(window.firebaseDb);
+                batch.delete(getLocalLicenseRef(email));
+                batch.delete(getAccessRequestRef(req.id));
+                await batch.commit();
+                showToast('사용 허가 기록을 삭제했습니다.');
+                await window.refreshAccessRequests(false);
+            } catch (err) {
+                console.error('Access request delete failed.', err);
+                showToast('허가/요청 기록 삭제에 실패했습니다. 다시 시도해주세요.');
+            }
         }
 
         function getCloudAuthMode() {
@@ -2205,7 +2268,7 @@
             const modal = document.getElementById('modal-cloud-auth');
             const isSignup = getCloudAuthMode() === 'signup';
             const isRequest = getCloudAuthMode() === 'request';
-            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isRequest ? '사용 허가 요청' : (isSignup ? '클라우드 계정 만들기' : '사용 허가 로그인')}`;
+            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isRequest ? '사용 허가 요청' : (isSignup ? '클라우드 계정 만들기' : '이메일 로그인')}`;
             document.getElementById('cloud-auth-subtitle').innerText = isRequest
                 ? '이름과 이메일로 사용 허가를 요청합니다. 승인 전에는 앱에 들어갈 수 없습니다.'
                 : (isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '이메일과 비밀번호로 로그인합니다.');
@@ -2300,7 +2363,7 @@
             if (code.includes('user-not-found')) return '가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.';
             if (code.includes('invalid-credential')) {
                 if (context.emailStatus === 'exists') return '비밀번호가 맞지 않습니다.';
-                if (context.mode === 'request') return '이미 가입된 이메일입니다. 비밀번호가 맞지 않으면 비밀번호 재설정 메일을 사용해주세요.';
+                if (context.mode === 'request') return '이미 가입된 이메일입니다. 비밀번호가 맞지 않으면 이메일 로그인 화면에서 비밀번호 재설정 메일을 사용해주세요.';
                 if (context.emailStatus === 'missing') return '가입되지 않았거나 이메일 주소가 틀렸습니다. 이메일을 다시 확인해주세요.';
                 return '이메일 또는 비밀번호가 맞지 않습니다. 이메일을 확인하거나 비밀번호 재설정을 사용해주세요.';
             }
@@ -2397,6 +2460,18 @@
                     if (isAllowedCloudEmail(requestUser.email)) {
                         await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
                         showToast('관리자 이메일은 허가 요청 대상이 아닙니다. 로그인으로 접속해주세요.');
+                        return;
+                    }
+                    const existingLicense = await getLocalLicense(requestUser);
+                    if (existingLicense) {
+                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                        window.licenseUser = null;
+                        window.cloudUser = null;
+                        renderCloudStatus();
+                        const message = '이미 승인된 계정입니다. 이메일 로그인으로 접속해주세요.';
+                        setCloudAuthMessage(message, 'info');
+                        showToast(message);
+                        setTimeout(() => window.openCloudAuthModal('login'), 1000);
                         return;
                     }
                     await createAccessRequest(requestUser, trainerName, consentMeta);
@@ -3135,7 +3210,7 @@
         }
 
         window.toggleAuthCreateMode = function() {
-            showToast('새 사용자는 사용 허가 로그인으로 등록합니다.');
+            showToast('새 사용자는 사용 허가 요청으로 등록합니다.');
         }
 
         window.cancelAdditionalLogin = function() {
