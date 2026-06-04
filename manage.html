@@ -758,9 +758,9 @@
                 <button onclick="window.closeCloudAuthModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3">
-                <div id="cloud-trainer-row" class="hidden">
-                    <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
-                    <input type="text" id="cloud-trainer-name" placeholder="예: 안병규" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                <div id="cloud-trainer-row">
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">이름</label>
+                    <input type="text" id="cloud-trainer-name" autocomplete="name" placeholder="예: 홍길동" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">이메일</label>
@@ -773,7 +773,7 @@
                 <label class="flex items-start gap-2.5 p-3 bg-stone-50 border border-stone-200 rounded-xl">
                     <input type="checkbox" id="cloud-privacy-consent" class="mt-0.5 w-4 h-4 accent-amber-500 shrink-0">
                     <span class="text-[11px] leading-relaxed text-stone-600 font-bold">
-                        이메일, 로그인 식별값, 트레이너명, 사용 허가 상태를 앱 사용 허가 확인 및 계정 관리 목적으로 처리하는 것에 동의합니다.
+                        이름, 이메일, 로그인 식별값, 사용 허가 상태를 앱 사용 허가 확인 및 계정 관리 목적으로 처리하는 것에 동의합니다.
                         <a href="./privacy.html" target="_blank" rel="noopener" class="text-amber-600 underline underline-offset-2">개인정보 처리방침</a>
                     </span>
                 </label>
@@ -1083,7 +1083,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v71';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v72';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1336,6 +1336,10 @@
             return String(email || '').trim().toLowerCase();
         }
 
+        function normalizePersonName(name) {
+            return String(name || '').trim().replace(/\s+/g, '').toLowerCase();
+        }
+
         function isAllowedCloudEmail(email) {
             return ALLOWED_CLOUD_EMAILS.includes(normalizeCloudEmail(email));
         }
@@ -1522,11 +1526,12 @@
             return window.trainerProfiles[loginId];
         }
 
-        async function ensureLicensedLocalProfile(user, license = null, consentMeta = null) {
+        async function ensureLicensedLocalProfile(user, license = null, consentMeta = null, enteredName = '') {
             if (!user) return null;
             const loginId = getLicenseLoginId(user.email);
             const fallbackName = normalizeCloudEmail(user.email).split('@')[0] || '허가 사용자';
-            const trainerName = (license && license.trainerName) || user.displayName || fallbackName;
+            const approvedName = (license && license.trainerName) || '';
+            const trainerName = approvedName || enteredName || user.displayName || fallbackName;
             const existing = window.trainerProfiles[loginId] || {};
             window.trainerProfiles[loginId] = {
                 ...existing,
@@ -1534,6 +1539,9 @@
                 loginId,
                 email: user.email || '',
                 licenseEmail: normalizeCloudEmail(user.email),
+                licenseTrainerName: approvedName,
+                enteredTrainerName: enteredName || existing.enteredTrainerName || '',
+                emailNameMatchedAt: enteredName ? new Date().toISOString() : (existing.emailNameMatchedAt || ''),
                 licenseMode: true,
                 localOnly: true,
                 privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || '',
@@ -1889,20 +1897,20 @@
             const isSignup = getCloudAuthMode() === 'signup';
             document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isSignup ? '클라우드 계정 만들기' : '사용 허가 로그인'}`;
             document.getElementById('cloud-auth-subtitle').innerText = isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '허가 사용자는 로컬 전용, 관리자 이메일은 클라우드 동기화로 로그인합니다.';
-            document.getElementById('cloud-trainer-row').classList.toggle('hidden', !isSignup);
+            document.getElementById('cloud-trainer-row').classList.remove('hidden');
             document.getElementById('cloud-auth-submit-btn').innerText = isSignup ? '계정 만들고 동기화' : '로그인';
             const toggleBtn = document.getElementById('cloud-auth-toggle-btn');
             toggleBtn.classList.toggle('hidden', !CLOUD_SIGNUP_ENABLED);
             toggleBtn.innerText = isSignup ? '기존 클라우드 계정 로그인' : '새 클라우드 계정 만들기';
             document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || '';
             document.getElementById('cloud-password').value = '';
-            document.getElementById('cloud-trainer-name').value = getTrainerName();
+            document.getElementById('cloud-trainer-name').value = '';
             const consent = document.getElementById('cloud-privacy-consent');
             if (consent) consent.checked = false;
             modal.classList.remove('hidden');
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
-                const target = isSignup ? document.getElementById('cloud-trainer-name') : document.getElementById('cloud-email');
+                const target = document.getElementById('cloud-trainer-name');
                 if (target) target.focus();
             }, 10);
         };
@@ -1936,8 +1944,9 @@
             const isSignup = mode === 'signup';
             const email = document.getElementById('cloud-email').value.trim();
             const password = document.getElementById('cloud-password').value;
-            const trainerName = document.getElementById('cloud-trainer-name').value.trim() || getTrainerName();
+            const trainerName = document.getElementById('cloud-trainer-name').value.trim();
             const consentChecked = !!(document.getElementById('cloud-privacy-consent') && document.getElementById('cloud-privacy-consent').checked);
+            if (!trainerName) return showToast('이름을 입력해주세요.');
             if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
             if (!consentChecked) return showToast('개인정보 수집 및 이용 동의가 필요합니다.');
             if (isSignup && !CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
@@ -1969,10 +1978,27 @@
                         showToast('사용 허가가 없거나 해제된 계정입니다.');
                         return;
                     }
+                    const approvedName = String(license.trainerName || '').trim();
+                    if (!approvedName) {
+                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                        window.licenseUser = null;
+                        window.cloudUser = null;
+                        renderCloudStatus();
+                        showToast('허가 정보에 이름이 등록되어 있지 않습니다. 관리자에게 확인해주세요.');
+                        return;
+                    }
+                    if (normalizePersonName(approvedName) !== normalizePersonName(trainerName)) {
+                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                        window.licenseUser = null;
+                        window.cloudUser = null;
+                        renderCloudStatus();
+                        showToast('이름과 이메일 허가 정보가 일치하지 않습니다.');
+                        return;
+                    }
                     stopCloudSync();
                     window.cloudUser = null;
                     window.licenseUser = signedUser;
-                    await ensureLicensedLocalProfile(signedUser, license, consentMeta);
+                    await ensureLicensedLocalProfile(signedUser, license, consentMeta, trainerName);
                     const licenseLoginId = getLicenseLoginId(signedUser.email);
                     addLoggedTrainer(licenseLoginId, true);
                     loadDatabase();
