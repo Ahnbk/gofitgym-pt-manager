@@ -271,6 +271,48 @@
             transform: rotate(180deg) !important;
             transform-origin: center !important;
         }
+        #sign-modal.signature-phone-landscape {
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 0.5rem;
+        }
+        #sign-modal.signature-phone-landscape #modal-box {
+            width: calc(100dvh - 1rem);
+            height: calc(100dvw - 1rem);
+            max-width: none;
+            max-height: none;
+            display: flex;
+            flex-direction: column;
+            transform: rotate(90deg) !important;
+            transform-origin: center !important;
+        }
+        #sign-modal.signature-phone-landscape #modal-box.signature-counter-side {
+            transform: rotate(270deg) !important;
+        }
+        #sign-modal.signature-phone-landscape #modal-box > .p-4.space-y-3 {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.75rem;
+        }
+        #sign-modal.signature-phone-landscape #sign-status-badge {
+            display: none;
+        }
+        #sign-modal.signature-phone-landscape #sign-orientation-hint {
+            display: block !important;
+        }
+        #sign-modal.signature-phone-landscape #signature-canvas-wrapper,
+        #sign-modal.signature-phone-landscape #signature-preview-wrapper {
+            flex: 1 1 auto;
+            min-height: 0;
+            height: auto;
+        }
+        #sign-modal.signature-phone-landscape #sign-action-btns {
+            padding: 0.75rem;
+        }
         .signature-counter-guide {
             position: absolute;
             top: 0.75rem;
@@ -1060,7 +1102,7 @@
                     <span class="text-[10px] text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen text-amber-500 mr-1"></i>사인 패드</span>
                 </div>
                 <p id="sign-orientation-hint" class="hidden text-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                    휴대폰에서는 가로 화면으로 돌려 서명하면 더 넓게 쓸 수 있습니다.
+                    서명 패드가 가로 모드로 열렸습니다.
                 </p>
                 
                 <!-- CANVAS WRAPPER (그리기 모드) -->
@@ -1139,7 +1181,6 @@
         var currentZoom = 1;
         var currentDate = new Date();
         var signaturePad = null;
-        var signatureOrientationLocked = false;
         var currentPdfElementToExport = null;
         var memberStatusFilter = 'active';
         var memberLongPressTimer = null;
@@ -1177,7 +1218,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v85';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v86';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4413,9 +4454,40 @@
                 const rect = canvas.getBoundingClientRect();
                 const localX = Math.min(rect.width, Math.max(0, x - rect.left));
                 const localY = Math.min(rect.height, Math.max(0, y - rect.top));
-                return originalCreatePoint(rect.left + rect.width - localX, rect.top + rect.height - localY, pressure);
+                const baseWidth = canvas.offsetWidth || rect.width;
+                const baseHeight = canvas.offsetHeight || rect.height;
+                let mappedX = localX;
+                let mappedY = localY;
+
+                switch (getSignatureInputRotation()) {
+                    case 90:
+                        mappedX = localY;
+                        mappedY = baseHeight - localX;
+                        break;
+                    case 180:
+                        mappedX = baseWidth - localX;
+                        mappedY = baseHeight - localY;
+                        break;
+                    case 270:
+                        mappedX = baseWidth - localY;
+                        mappedY = localX;
+                        break;
+                }
+
+                return originalCreatePoint(rect.left + mappedX, rect.top + mappedY, pressure);
             };
             pad._gofitCounterSideInput = true;
+        }
+
+        function getSignatureInputRotation() {
+            const modal = document.getElementById('sign-modal');
+            const modalBox = document.getElementById('modal-box');
+            const phoneLandscape = !!(modal && modal.classList.contains('signature-phone-landscape'));
+            const counterSide = !!(modalBox && modalBox.classList.contains('signature-counter-side'));
+            if (phoneLandscape && counterSide) return 270;
+            if (phoneLandscape) return 90;
+            if (counterSide) return 180;
+            return 0;
         }
 
         function setSignatureCounterSideMode(enabled) {
@@ -4441,42 +4513,20 @@
             setTimeout(() => window.dispatchEvent(new Event('resize')), delay);
         }
 
+        function setSignaturePhoneLandscapeMode(enabled) {
+            const modal = document.getElementById('sign-modal');
+            if (!modal) return;
+            modal.classList.toggle('signature-phone-landscape', !!enabled);
+            setSignatureOrientationHint(!!enabled);
+            resizeSignaturePadSoon(enabled ? 260 : 180);
+        }
+
         function requestSignatureLandscapeIfUseful() {
-            setSignatureOrientationHint(false);
-            if (!shouldPreferLandscapeSignature()) return;
-
-            const orientation = window.screen && window.screen.orientation;
-            if (!orientation || typeof orientation.lock !== 'function') {
-                setSignatureOrientationHint(true);
-                return;
-            }
-
-            try {
-                orientation.lock('landscape')
-                    .then(() => {
-                        signatureOrientationLocked = true;
-                        setSignatureOrientationHint(false);
-                        resizeSignaturePadSoon(320);
-                    })
-                    .catch(err => {
-                        console.info('Signature landscape lock skipped.', err);
-                        setSignatureOrientationHint(true);
-                    });
-            } catch (err) {
-                console.info('Signature landscape lock skipped.', err);
-                setSignatureOrientationHint(true);
-            }
+            setSignaturePhoneLandscapeMode(shouldPreferLandscapeSignature());
         }
 
         function releaseSignatureOrientationLock() {
-            setSignatureOrientationHint(false);
-            if (!signatureOrientationLocked) return;
-            signatureOrientationLocked = false;
-            const orientation = window.screen && window.screen.orientation;
-            if (orientation && typeof orientation.unlock === 'function') {
-                try { orientation.unlock(); } catch (err) { console.info('Signature orientation unlock skipped.', err); }
-            }
-            resizeSignaturePadSoon(320);
+            setSignaturePhoneLandscapeMode(false);
         }
 
         function initSignaturePad() {
@@ -4484,8 +4534,10 @@
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             function resizeCanvas() {
                 const rect = canvas.getBoundingClientRect();
-                if(rect.width === 0) return;
-                canvas.width = rect.width * ratio; canvas.height = rect.height * ratio;
+                const width = canvas.offsetWidth || rect.width;
+                const height = canvas.offsetHeight || rect.height;
+                if(width === 0) return;
+                canvas.width = width * ratio; canvas.height = height * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
                 if (window.signaturePad) window.signaturePad.clear();
             }
