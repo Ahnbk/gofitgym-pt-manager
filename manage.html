@@ -345,10 +345,10 @@
                     로그인 정보 초기화
                 </button>
                 <button onclick="window.openCloudAuthModal('login')" id="auth-cloud-login-btn" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
-                    <i class="fa-solid fa-cloud mr-1 text-amber-500"></i>클라우드 로그인 / 복원
+                    <i class="fa-solid fa-right-to-bracket mr-1 text-amber-500"></i>사용 허가 로그인
                 </button>
                 <p class="text-[11px] leading-relaxed text-stone-500">
-                    비밀번호는 이 기기에 해시로 저장됩니다. 백업 파일에는 로그인 비밀번호가 포함되지 않습니다.
+                    허가 사용자는 로컬 저장만 사용합니다. 관리자 이메일만 클라우드 동기화를 사용할 수 있습니다.
                 </p>
             </div>
         </div>
@@ -631,16 +631,16 @@
                 <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
-                            <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>클라우드 동기화</p>
+                            <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>관리자 클라우드 동기화</p>
                             <p id="profile-cloud-status" class="text-[11px] font-bold text-stone-500 truncate">상태 확인 중</p>
                         </div>
                         <span id="profile-cloud-badge" class="shrink-0 px-2 py-1 rounded-full bg-stone-200 text-stone-500 text-[9px] font-black">OFF</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="window.openCloudAuthModal('login')" id="profile-cloud-login-btn" class="py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
-                            클라우드 로그인
+                        <button onclick="window.openCloudAuthModal('login')" id="profile-cloud-login-btn" class="col-span-2 py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                            관리자 클라우드 로그인
                         </button>
-                        <button onclick="window.openCloudAuthModal('signup')" id="profile-cloud-signup-btn" class="py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                        <button onclick="window.openCloudAuthModal('signup')" id="profile-cloud-signup-btn" class="hidden py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
                             새 계정 만들기
                         </button>
                         <button onclick="window.pushFullCloudSync(true)" id="profile-cloud-sync-btn" class="hidden py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
@@ -753,7 +753,7 @@
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div>
                     <h3 id="cloud-auth-title" class="font-black text-amber-500 text-base"><i class="fa-solid fa-cloud mr-1.5"></i>클라우드 로그인</h3>
-                    <p id="cloud-auth-subtitle" class="text-[11px] text-stone-400 mt-1">어느 기기에서나 같은 데이터를 불러옵니다.</p>
+                    <p id="cloud-auth-subtitle" class="text-[11px] text-stone-400 mt-1">허가 여부를 확인합니다. 일반 사용자의 데이터는 로컬에만 저장됩니다.</p>
                 </div>
                 <button onclick="window.closeCloudAuthModal()" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
@@ -773,11 +773,11 @@
                 <button onclick="window.submitCloudAuth()" id="cloud-auth-submit-btn" class="w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
                     로그인
                 </button>
-                <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                <button onclick="window.toggleCloudAuthMode()" id="cloud-auth-toggle-btn" class="hidden w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
                     새 클라우드 계정 만들기
                 </button>
                 <p class="text-[11px] leading-relaxed text-stone-500">
-                    클라우드 계정으로 로그인하면 회원, 예약, 수업 서명, 운동일지가 Firebase에 동기화됩니다.
+                    허가 사용자는 회원, 예약, 서명, 운동일지가 이 기기에만 저장됩니다. 관리자 이메일로 로그인한 경우에만 Firebase 클라우드 동기화가 켜집니다.
                 </p>
             </div>
         </div>
@@ -1063,6 +1063,7 @@
         var firebaseDb = null;
         var firebaseApi = {};
         var cloudUser = null;
+        var licenseUser = null;
         var cloudReady = false;
         var cloudAuthInitialized = false;
         var cloudAuthFlowActive = false;
@@ -1075,7 +1076,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v68';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v70';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1086,6 +1087,8 @@
             measurementId: 'G-XQMW29RNQL'
         };
         const ALLOWED_CLOUD_EMAILS = ['rebirth1013@gmail.com'];
+        const CLOUD_SIGNUP_ENABLED = false;
+        const LICENSE_LOGIN_PREFIX = 'license:';
         const APP_UPDATE_CHECK_KEY = 'gofitgym_v11_last_update_check';
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
@@ -1316,6 +1319,11 @@
             return uid ? `${CLOUD_LOGIN_PREFIX}${uid}` : '';
         }
 
+        function getLicenseLoginId(email = window.licenseUser && window.licenseUser.email) {
+            const normalized = normalizeCloudEmail(email);
+            return normalized ? `${LICENSE_LOGIN_PREFIX}${normalized}` : '';
+        }
+
         function normalizeCloudEmail(email) {
             return String(email || '').trim().toLowerCase();
         }
@@ -1328,8 +1336,16 @@
             return !!(profile && profile.cloudUid);
         }
 
+        function isLicenseProfile(profile = window.appProfile) {
+            return !!(profile && profile.licenseMode);
+        }
+
         function isActiveCloudProfile() {
             return !!(window.cloudUser && window.activeLoginId === getCloudLoginId(window.cloudUser.uid));
+        }
+
+        function isActiveLicenseProfile() {
+            return !!(window.licenseUser && window.activeLoginId === getLicenseLoginId(window.licenseUser.email));
         }
 
         function getCloudCollection(name, uid = window.cloudUser && window.cloudUser.uid) {
@@ -1340,6 +1356,12 @@
         function getCloudProfileRef(uid = window.cloudUser && window.cloudUser.uid) {
             if (!uid || !window.firebaseDb) return null;
             return window.firebaseApi.doc(window.firebaseDb, 'users', uid, 'meta', 'profile');
+        }
+
+        function getLocalLicenseRef(email) {
+            const normalized = normalizeCloudEmail(email);
+            if (!normalized || !window.firebaseDb) return null;
+            return window.firebaseApi.doc(window.firebaseDb, 'localLicenses', normalized);
         }
 
         function getCloudTrainerName(user = window.cloudUser, remoteProfile = null) {
@@ -1435,6 +1457,21 @@
             }
         }
 
+        async function getLocalLicense(user) {
+            try {
+                const ref = getLocalLicenseRef(user && user.email);
+                if (!ref) return null;
+                const snap = await window.firebaseApi.getDoc(ref);
+                if (!snap.exists()) return null;
+                const data = snap.data() || {};
+                const sameEmail = normalizeCloudEmail(data.email || user.email) === normalizeCloudEmail(user.email);
+                return sameEmail && data.active !== false ? data : null;
+            } catch (err) {
+                console.error('Local license read failed.', err);
+                return null;
+            }
+        }
+
         async function saveRemoteCloudProfile(profile = window.appProfile) {
             if (!window.cloudUser || !window.firebaseDb) return;
             const ref = getCloudProfileRef(window.cloudUser.uid);
@@ -1469,8 +1506,28 @@
             return window.trainerProfiles[loginId];
         }
 
+        async function ensureLicensedLocalProfile(user, license = null) {
+            if (!user) return null;
+            const loginId = getLicenseLoginId(user.email);
+            const fallbackName = normalizeCloudEmail(user.email).split('@')[0] || '허가 사용자';
+            const trainerName = (license && license.trainerName) || user.displayName || fallbackName;
+            window.trainerProfiles[loginId] = {
+                ...(window.trainerProfiles[loginId] || {}),
+                trainerName,
+                loginId,
+                email: user.email || '',
+                licenseEmail: normalizeCloudEmail(user.email),
+                licenseMode: true,
+                localOnly: true,
+                createdAt: (window.trainerProfiles[loginId] || {}).createdAt || new Date().toISOString()
+            };
+            saveProfileStore();
+            return window.trainerProfiles[loginId];
+        }
+
         async function handleCloudAuthStateChanged(user) {
-            window.cloudUser = user || null;
+            window.cloudUser = null;
+            window.licenseUser = null;
             if (!user) {
                 stopCloudSync();
                 renderCloudStatus();
@@ -1478,14 +1535,13 @@
             }
             if (!isAllowedCloudEmail(user.email)) {
                 stopCloudSync();
-                window.cloudUser = null;
-                window.cloudLastError = '허용되지 않은 이메일';
+                window.licenseUser = user;
+                window.cloudLastError = '';
                 renderCloudStatus();
-                showToast('허용된 이메일만 클라우드를 사용할 수 있습니다.');
-                if (window.firebaseAuth) window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
                 return;
             }
 
+            window.cloudUser = user;
             const remoteProfile = await getRemoteCloudProfile(user.uid);
             await ensureCloudLocalProfile(user, remoteProfile);
             if (!remoteProfile) {
@@ -1751,7 +1807,10 @@
             const logoutBtn = document.getElementById('profile-cloud-logout-btn');
             const signedIn = !!window.cloudUser;
             const activeCloud = isActiveCloudProfile();
-            const label = signedIn
+            const activeLicense = isActiveLicenseProfile();
+            const label = activeLicense
+                ? '로컬 전용 허가 로그인'
+                : signedIn
                 ? (window.cloudLastError || (activeCloud ? '클라우드 동기화' : '클라우드 로그인됨'))
                 : '백업 모드';
 
@@ -1778,19 +1837,21 @@
                 }
             }
             if (profileStatus) {
-                if (signedIn) {
+                if (activeLicense) {
+                    profileStatus.innerText = `${window.licenseUser.email || '허가 계정'} · 로컬 전용`;
+                } else if (signedIn) {
                     const time = window.cloudLastSyncedAt ? ` · 최근 ${formatBackupTimestamp(window.cloudLastSyncedAt)}` : '';
                     profileStatus.innerText = `${window.cloudUser.email || '클라우드 계정'}${time}`;
                 } else {
-                    profileStatus.innerText = window.cloudLastError || '로그인하면 데이터가 기기 간 동기화됩니다.';
+                    profileStatus.innerText = window.cloudLastError || '관리자 이메일만 클라우드 동기화를 사용할 수 있습니다.';
                 }
             }
             if (badge) {
-                badge.innerText = activeCloud ? 'ON' : 'OFF';
-                badge.className = `shrink-0 px-2 py-1 rounded-full text-[9px] font-black ${activeCloud ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`;
+                badge.innerText = activeCloud ? 'ON' : (activeLicense ? 'LOCAL' : 'OFF');
+                badge.className = `shrink-0 px-2 py-1 rounded-full text-[9px] font-black ${activeCloud ? 'bg-emerald-500 text-white' : (activeLicense ? 'bg-amber-500 text-stone-950' : 'bg-stone-200 text-stone-500')}`;
             }
             if (loginBtn) loginBtn.classList.toggle('hidden', signedIn);
-            if (signupBtn) signupBtn.classList.toggle('hidden', signedIn);
+            if (signupBtn) signupBtn.classList.toggle('hidden', signedIn || !CLOUD_SIGNUP_ENABLED);
             if (syncBtn) syncBtn.classList.toggle('hidden', !signedIn);
             if (logoutBtn) logoutBtn.classList.toggle('hidden', !signedIn);
         }
@@ -1800,14 +1861,20 @@
         }
 
         window.openCloudAuthModal = function(mode = 'login') {
+            if (mode === 'signup' && !CLOUD_SIGNUP_ENABLED) {
+                showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
+                mode = 'login';
+            }
             window.cloudAuthMode = mode === 'signup' ? 'signup' : 'login';
             const modal = document.getElementById('modal-cloud-auth');
             const isSignup = getCloudAuthMode() === 'signup';
-            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-cloud mr-1.5"></i>${isSignup ? '클라우드 계정 만들기' : '클라우드 로그인'}`;
-            document.getElementById('cloud-auth-subtitle').innerText = isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '로그인하면 저장된 클라우드 데이터를 불러옵니다.';
+            document.getElementById('cloud-auth-title').innerHTML = `<i class="fa-solid fa-right-to-bracket mr-1.5"></i>${isSignup ? '클라우드 계정 만들기' : '사용 허가 로그인'}`;
+            document.getElementById('cloud-auth-subtitle').innerText = isSignup ? '새 계정으로 이 기기의 데이터를 클라우드에 올릴 수 있습니다.' : '허가 사용자는 로컬 전용, 관리자 이메일은 클라우드 동기화로 로그인합니다.';
             document.getElementById('cloud-trainer-row').classList.toggle('hidden', !isSignup);
-            document.getElementById('cloud-auth-submit-btn').innerText = isSignup ? '계정 만들고 동기화' : '로그인하고 동기화';
-            document.getElementById('cloud-auth-toggle-btn').innerText = isSignup ? '기존 클라우드 계정 로그인' : '새 클라우드 계정 만들기';
+            document.getElementById('cloud-auth-submit-btn').innerText = isSignup ? '계정 만들고 동기화' : '로그인';
+            const toggleBtn = document.getElementById('cloud-auth-toggle-btn');
+            toggleBtn.classList.toggle('hidden', !CLOUD_SIGNUP_ENABLED);
+            toggleBtn.innerText = isSignup ? '기존 클라우드 계정 로그인' : '새 클라우드 계정 만들기';
             document.getElementById('cloud-email').value = (window.cloudUser && window.cloudUser.email) || (window.appProfile && window.appProfile.email) || '';
             document.getElementById('cloud-password').value = '';
             document.getElementById('cloud-trainer-name').value = getTrainerName();
@@ -1826,6 +1893,7 @@
         };
 
         window.toggleCloudAuthMode = function() {
+            if (!CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
             window.openCloudAuthModal(getCloudAuthMode() === 'signup' ? 'login' : 'signup');
         };
 
@@ -1849,7 +1917,7 @@
             const password = document.getElementById('cloud-password').value;
             const trainerName = document.getElementById('cloud-trainer-name').value.trim() || getTrainerName();
             if (!email || !password) return showToast('이메일과 비밀번호를 입력해주세요.');
-            if (!isAllowedCloudEmail(email)) return showToast('허용된 이메일만 클라우드를 사용할 수 있습니다.');
+            if (isSignup && !CLOUD_SIGNUP_ENABLED) return showToast('클라우드 계정 생성은 관리자만 별도로 처리합니다.');
             if (isSignup && !trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const previousLoginId = window.activeLoginId;
@@ -1863,13 +1931,38 @@
                 const credential = isSignup
                     ? await window.firebaseApi.createUserWithEmailAndPassword(window.firebaseAuth, email, password)
                     : await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, email, password);
-                window.cloudUser = credential.user;
-                if (isSignup && window.firebaseApi.updateProfile) {
-                    await window.firebaseApi.updateProfile(credential.user, { displayName: trainerName }).catch(() => {});
+                const signedUser = credential.user;
+                if (!isAllowedCloudEmail(signedUser.email)) {
+                    const license = await getLocalLicense(signedUser);
+                    if (!license) {
+                        await window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                        window.licenseUser = null;
+                        window.cloudUser = null;
+                        renderCloudStatus();
+                        showToast('사용 허가가 없거나 해제된 계정입니다.');
+                        return;
+                    }
+                    stopCloudSync();
+                    window.cloudUser = null;
+                    window.licenseUser = signedUser;
+                    await ensureLicensedLocalProfile(signedUser, license);
+                    const licenseLoginId = getLicenseLoginId(signedUser.email);
+                    addLoggedTrainer(licenseLoginId, true);
+                    loadDatabase();
+                    enterTrainerWorkspace();
+                    window.closeCloudAuthModal();
+                    showToast('사용 허가 로그인 완료. 데이터는 이 기기에만 저장됩니다.');
+                    return;
                 }
-                const remoteProfile = await getRemoteCloudProfile(credential.user.uid);
-                await ensureCloudLocalProfile(credential.user, remoteProfile || { trainerName });
-                const cloudLoginId = getCloudLoginId(credential.user.uid);
+
+                window.cloudUser = signedUser;
+                window.licenseUser = null;
+                if (isSignup && window.firebaseApi.updateProfile) {
+                    await window.firebaseApi.updateProfile(signedUser, { displayName: trainerName }).catch(() => {});
+                }
+                const remoteProfile = await getRemoteCloudProfile(signedUser.uid);
+                await ensureCloudLocalProfile(signedUser, remoteProfile || { trainerName });
+                const cloudLoginId = getCloudLoginId(signedUser.uid);
                 addLoggedTrainer(cloudLoginId, true);
 
                 if (hasLocalData) {
@@ -2386,6 +2479,24 @@
             refreshActiveProfile();
         }
 
+        async function verifyStoredProfileAccess(profile) {
+            if (!profile) return false;
+            if (isCloudProfile(profile)) {
+                const user = window.firebaseAuth && window.firebaseAuth.currentUser;
+                return !!(user && isAllowedCloudEmail(user.email) && profile.loginId === getCloudLoginId(user.uid));
+            }
+            if (isLicenseProfile(profile)) {
+                const user = window.firebaseAuth && window.firebaseAuth.currentUser;
+                if (!user || normalizeCloudEmail(user.email) !== normalizeCloudEmail(profile.licenseEmail || profile.email)) return false;
+                const license = await getLocalLicense(user);
+                if (!license) return false;
+                window.licenseUser = user;
+                await ensureLicensedLocalProfile(user, license);
+                return true;
+            }
+            return true;
+        }
+
         function removeLoggedTrainer(loginId) {
             const removeFrom = (store, key) => {
                 let ids = [];
@@ -2421,9 +2532,9 @@
             overlay.classList.remove('hidden');
             trainerRow.classList.toggle('hidden', !isCreate);
             title.innerText = isCreate ? (isAdditional ? '새 트레이너 추가' : '트레이너 설정') : (isAdditional ? '추가 로그인' : '트레이너 로그인');
-            subtitle.innerText = isCreate ? '트레이너 이름과 로그인 정보를 설정하세요.' : '로그인하면 상단에서 트레이너를 전환할 수 있습니다.';
+            subtitle.innerText = isCreate ? '새 사용자는 사용 허가 로그인으로만 등록할 수 있습니다.' : '사용 허가 로그인 또는 기존 기기 로그인을 사용하세요.';
             submit.innerText = isCreate ? (isAdditional ? '추가하고 로그인' : '설정하고 시작') : '로그인';
-            secondary.classList.toggle('hidden', Object.keys(window.trainerProfiles).length === 0);
+            secondary.classList.add('hidden');
             secondary.innerText = isCreate ? '기존 트레이너 로그인' : '새 트레이너 등록';
             cancel.classList.toggle('hidden', !isAdditional || !window.activeLoginId);
             reset.classList.toggle('hidden', Object.keys(window.trainerProfiles).length === 0);
@@ -2442,16 +2553,22 @@
 
         async function initializeLoginGate() {
             const profileCount = Object.keys(window.trainerProfiles).length;
-            if (!profileCount) return showLoginOverlay('setup');
+            if (!profileCount) return showLoginOverlay('login');
 
             window.loggedInTrainerIds = readLoggedIds();
             const storedActive = sessionStorage.getItem(ACTIVE_LOGIN_KEY) || localStorage.getItem(ACTIVE_LOGIN_KEY);
             window.activeLoginId = window.loggedInTrainerIds.includes(storedActive) ? storedActive : (window.loggedInTrainerIds[0] || null);
             refreshActiveProfile();
 
-            if (window.activeLoginId) {
-                enterTrainerWorkspace();
-                return;
+            while (window.activeLoginId) {
+                const loginId = window.activeLoginId;
+                const allowed = await verifyStoredProfileAccess(window.appProfile);
+                if (allowed) {
+                    enterTrainerWorkspace();
+                    return;
+                }
+                removeLoggedTrainer(loginId);
+                refreshActiveProfile();
             }
             showLoginOverlay('login');
         }
@@ -2483,7 +2600,7 @@
             window.switchMainView('dashboard');
         }
 
-        window.switchActiveTrainer = function(encodedLoginId) {
+        window.switchActiveTrainer = async function(encodedLoginId) {
             const loginId = decodeURIComponent(encodedLoginId);
             if (!window.trainerProfiles[loginId]) return;
             if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
@@ -2494,6 +2611,11 @@
             sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
             localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
             refreshActiveProfile();
+            const allowed = await verifyStoredProfileAccess(window.appProfile);
+            if (!allowed) {
+                removeLoggedTrainer(loginId);
+                return showToast('사용 허가가 해제된 계정입니다.');
+            }
             window.activeMemberId = null;
             window.setDetailProgressExpanded(false);
             window.setLessonEditMode(false, false);
@@ -2506,7 +2628,7 @@
         }
 
         window.toggleAuthCreateMode = function() {
-            showLoginOverlay(window.authMode === 'add-setup' || window.authMode === 'setup' ? 'add-login' : 'add-setup');
+            showToast('새 사용자는 사용 허가 로그인으로 등록합니다.');
         }
 
         window.cancelAdditionalLogin = function() {
@@ -2523,7 +2645,7 @@
             window.appProfile = null;
             window.members = [];
             window.schedules = [];
-            showLoginOverlay('setup');
+            showLoginOverlay('login');
             showToast('로그인 정보가 초기화되었습니다.');
         }
 
@@ -2535,23 +2657,7 @@
             const isCreate = window.authMode === 'setup' || window.authMode === 'add-setup';
 
             if (isCreate) {
-                if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
-                if (!loginId) return showToast('아이디를 입력해주세요.');
-                if (window.trainerProfiles[loginId]) return showToast('이미 등록된 아이디입니다.');
-                if (password.length < 4) return showToast('비밀번호는 4자리 이상으로 설정해주세요.');
-                const salt = createSalt();
-                window.trainerProfiles[loginId] = {
-                    trainerName,
-                    loginId,
-                    passwordSalt: salt,
-                    passwordHash: await hashPassword(password, salt),
-                    createdAt: new Date().toISOString()
-                };
-                saveProfileStore();
-                addLoggedTrainer(loginId, keepLogin);
-                enterTrainerWorkspace();
-                showToast('트레이너 로그인이 설정되었습니다.');
-                return;
+                return showToast('새 사용자는 사용 허가 로그인으로 등록합니다.');
             }
 
             if (!loginId || !password) return showToast('아이디와 비밀번호를 입력해주세요.');
@@ -2576,7 +2682,7 @@
             document.getElementById('profile-current-password').value = '';
             document.getElementById('profile-new-password').value = '';
             const passwordSection = document.getElementById('profile-password-section');
-            if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile());
+            if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile() || isLicenseProfile());
             renderProfileTrainerSwitcher();
             renderCloudStatus();
             const modal = document.getElementById('modal-profile-settings');
@@ -2608,6 +2714,15 @@
             if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const changingPassword = newPassword.length > 0;
+            if (isLicenseProfile()) {
+                window.appProfile.trainerName = trainerName;
+                window.trainerProfiles[window.activeLoginId] = window.appProfile;
+                saveProfileStore();
+                updateTrainerUi();
+                window.closeProfileSettingsModal();
+                showToast('로컬 전용 트레이너 설정이 저장되었습니다.');
+                return;
+            }
             if (isCloudProfile()) {
                 window.appProfile.trainerName = trainerName;
                 window.trainerProfiles[window.activeLoginId] = window.appProfile;
@@ -2650,6 +2765,10 @@
             if (isCloudProfile() && window.cloudUser) {
                 window.logoutCloudUser();
                 return;
+            }
+            if (isLicenseProfile() && window.firebaseAuth && window.firebaseAuth.currentUser) {
+                window.firebaseApi.signOut(window.firebaseAuth).catch(() => {});
+                window.licenseUser = null;
             }
             const loggedOutName = getTrainerName();
             flushWorkoutSave();

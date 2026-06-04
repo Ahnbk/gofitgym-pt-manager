@@ -10,5 +10,13 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if isAllowedCloudEmail() && request.auth.uid == userId;
     }
+
+    match /localLicenses/{email} {
+      allow read: if isAllowedCloudEmail()
+        || (request.auth != null
+          && resource.data.active == true
+          && request.auth.token.email == resource.data.email);
+      allow write: if isAllowedCloudEmail();
+    }
   }
 }
