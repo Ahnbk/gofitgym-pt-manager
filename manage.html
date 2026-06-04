@@ -1119,7 +1119,7 @@
         var dashboardSearchOpen = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v76';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v77';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2232,12 +2232,30 @@
             window.openCloudAuthModal(getCloudAuthMode() === 'request' ? 'login' : 'request');
         };
 
-        function translateCloudAuthError(err) {
+        async function getCloudEmailStatus(email) {
+            if (!window.firebaseApi || !window.firebaseApi.fetchSignInMethodsForEmail) return 'unknown';
+            try {
+                const methods = await window.firebaseApi.fetchSignInMethodsForEmail(window.firebaseAuth, email);
+                return Array.isArray(methods) && methods.length ? 'exists' : 'missing';
+            } catch (err) {
+                const code = err && err.code ? err.code : '';
+                if (code.includes('invalid-email')) return 'invalid';
+                console.warn('Email status check skipped.', err);
+                return 'unknown';
+            }
+        }
+
+        function translateCloudAuthError(err, context = {}) {
             const code = err && err.code ? err.code : '';
             if (code.includes('operation-not-allowed')) return 'Firebase 콘솔에서 Email/Password 로그인을 먼저 켜야 합니다.';
             if (code.includes('invalid-email')) return '이메일 형식을 확인해주세요.';
-            if (code.includes('invalid-credential') || code.includes('wrong-password')) return '이메일 또는 비밀번호가 맞지 않습니다.';
-            if (code.includes('user-not-found')) return '등록되지 않은 클라우드 계정입니다.';
+            if (code.includes('wrong-password')) return '비밀번호가 맞지 않습니다.';
+            if (code.includes('user-not-found') || context.emailStatus === 'missing') return '가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.';
+            if (code.includes('invalid-credential')) {
+                if (context.emailStatus === 'exists') return '비밀번호가 맞지 않습니다.';
+                if (context.mode === 'request') return '이미 가입된 이메일입니다. 비밀번호가 맞지 않으면 비밀번호 재설정 메일을 사용해주세요.';
+                return '이메일 또는 비밀번호가 맞지 않습니다. 이메일을 확인하거나 비밀번호 재설정을 사용해주세요.';
+            }
             if (code.includes('email-already-in-use')) return '이미 가입된 이메일입니다.';
             if (code.includes('weak-password')) return '비밀번호를 6자리 이상으로 입력해주세요.';
             return '클라우드 로그인에 실패했습니다.';
@@ -2285,16 +2303,23 @@
             const previousMembers = JSON.parse(JSON.stringify(window.members || []));
             const previousSchedules = JSON.parse(JSON.stringify(window.schedules || []));
             const hasLocalData = !!(previousLoginId && !previousLoginId.startsWith(CLOUD_LOGIN_PREFIX) && (previousMembers.length || previousSchedules.length));
+            let emailStatus = 'unknown';
 
             try {
                 window.cloudAuthFlowActive = true;
                 let credential;
+                if (!isRequest && !isSignup) {
+                    emailStatus = await getCloudEmailStatus(email);
+                    if (emailStatus === 'invalid') return showToast('이메일 형식을 확인해주세요.');
+                    if (emailStatus === 'missing') return showToast('가입되지 않은 이메일입니다. 이메일 주소를 확인해주세요.');
+                }
                 if (isRequest) {
                     try {
                         credential = await window.firebaseApi.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
                     } catch (err) {
                         const code = err && err.code ? err.code : '';
                         if (!code.includes('email-already-in-use')) throw err;
+                        emailStatus = 'exists';
                         credential = await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, email, password);
                     }
                     const requestUser = credential.user;
@@ -2389,7 +2414,7 @@
                 showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '클라우드 로그인 완료');
             } catch (err) {
                 console.error('Cloud auth failed.', err);
-                showToast(translateCloudAuthError(err));
+                showToast(translateCloudAuthError(err, { mode, emailStatus }));
             } finally {
                 window.cloudAuthFlowActive = false;
                 renderCloudStatus();
