@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gofitgym-pt-v108';
+const CACHE_NAME = 'gofitgym-pt-v109';
 const APP_SHELL = [
   './index.html',
   './manage.html',
@@ -40,6 +40,18 @@ function createFreshRequest(request) {
   }
 }
 
+function shouldCacheExternalRequest(requestUrl) {
+  const allowedHosts = new Set([
+    'cdn.tailwindcss.com',
+    'cdnjs.cloudflare.com',
+    'cdn.jsdelivr.net',
+    'fonts.googleapis.com',
+    'fonts.gstatic.com',
+    'accounts.google.com'
+  ]);
+  return allowedHosts.has(requestUrl.hostname);
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -79,15 +91,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && (response.ok || response.type === 'opaque')) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(() => caches.match(request).then((cached) => cached || Response.error()))
-  );
+  if (shouldCacheExternalRequest(requestUrl)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && (response.ok || response.type === 'opaque')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  event.respondWith(fetch(request).catch(() => Response.error()));
 });

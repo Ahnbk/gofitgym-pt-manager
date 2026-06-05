@@ -462,6 +462,9 @@
             min-height: 44px;
             min-width: 44px;
         }
+        .modal-safe-area {
+            padding-bottom: calc(1rem + var(--app-safe-bottom));
+        }
         .modal-close-btn {
             width: 44px;
             height: 44px;
@@ -607,13 +610,13 @@
                 </div>
 
                 <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200">
-                    <button onclick="window.switchMemberStatusTab('active')" id="member-tab-active" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg bg-stone-900 text-white shadow transition-all">
+                    <button onclick="window.switchMemberStatusTab('active')" id="member-tab-active" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg bg-stone-900 text-white shadow transition-all">
                         진행중 <span id="member-tab-active-count" class="ml-1 text-amber-400">0</span>
                     </button>
-                    <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                    <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
                         완료 <span id="member-tab-completed-count" class="ml-1 text-stone-400">0</span>
                     </button>
-                    <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" class="flex-1 py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                    <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
                         보류 <span id="member-tab-hold-count" class="ml-1 text-stone-400">0</span>
                     </button>
                 </div>
@@ -657,7 +660,7 @@
                         <p id="calendar-move-label" class="min-w-0 text-[11px] font-black text-emerald-800 truncate">
                             <i class="fa-solid fa-arrows-up-down-left-right mr-1.5"></i>이동할 빈 시간을 선택해주세요.
                         </p>
-                        <button onclick="window.cancelScheduleMove()" class="shrink-0 min-h-[36px] px-3 rounded-xl bg-white text-stone-700 border border-emerald-200 text-[10px] font-black active-scale">
+                        <button onclick="window.cancelScheduleMove()" class="shrink-0 min-h-[44px] px-3 rounded-xl bg-white text-stone-700 border border-emerald-200 text-[10px] font-black active-scale">
                             취소
                         </button>
                     </div>
@@ -794,7 +797,7 @@
     <!-- ============================================== -->
 
     <!-- 0. Trainer Profile Settings Modal -->
-    <div id="modal-profile-settings" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-profile-settings" role="dialog" aria-modal="true" aria-label="트레이너 설정" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-gear mr-1.5"></i>트레이너 설정</h3>
@@ -802,8 +805,8 @@
             </div>
             <div class="p-5 space-y-3 overflow-y-auto">
                 <div class="grid grid-cols-2 gap-1 rounded-2xl bg-stone-100 p-1">
-                    <button onclick="window.switchProfileSettingsTab('basic')" id="profile-tab-basic" class="min-h-[38px] rounded-xl text-xs font-black bg-stone-900 text-white active-scale">기본</button>
-                    <button onclick="window.switchProfileSettingsTab('admin')" id="profile-tab-admin" class="min-h-[38px] rounded-xl text-xs font-black text-stone-500 active-scale">관리자</button>
+                    <button onclick="window.switchProfileSettingsTab('basic')" id="profile-tab-basic" class="min-h-[44px] rounded-xl text-xs font-black bg-stone-900 text-white active-scale">기본</button>
+                    <button onclick="window.switchProfileSettingsTab('admin')" id="profile-tab-admin" class="min-h-[44px] rounded-xl text-xs font-black text-stone-500 active-scale">관리자</button>
                 </div>
                 <div class="profile-basic-section">
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
@@ -902,7 +905,7 @@
     </div>
 
     <!-- 0-A. App Info & Privacy Policy Modal -->
-    <div id="modal-app-info" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
+    <div id="modal-app-info" role="dialog" aria-modal="true" aria-label="앱 정보와 개인정보 처리방침" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-md max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
                 <div>
@@ -958,7 +961,7 @@
     </div>
 
     <!-- 0-B. Access Request Admin Modal -->
-    <div id="modal-access-requests" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
+    <div id="modal-access-requests" role="dialog" aria-modal="true" aria-label="사용 허가 요청 관리" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-md max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
                 <div>
@@ -979,7 +982,7 @@
     </div>
 
     <!-- 0-0. Cloud Auth Modal -->
-    <div id="modal-cloud-auth" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
+    <div id="modal-cloud-auth" role="dialog" aria-modal="true" aria-label="이메일 로그인과 사용 허가 요청" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[80] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div>
@@ -1034,7 +1037,7 @@
     </div>
 
     <!-- 0-0-1. Member Long Press Action Menu -->
-    <div id="modal-member-action" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-[75] hidden opacity-0 transition-opacity">
+    <div id="modal-member-action" role="dialog" aria-modal="true" aria-label="회원 작업 메뉴" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm flex items-end md:items-center justify-center p-4 modal-safe-area z-[75] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div class="min-w-0">
@@ -1061,7 +1064,7 @@
     </div>
 
     <!-- 0-1. Backup Choice Modal -->
-    <div id="modal-backup-choice" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-backup-choice" role="dialog" aria-modal="true" aria-label="백업 저장" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-end md:items-center justify-center p-4 modal-safe-area z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-shield-halved mr-1.5"></i>백업 저장</h3>
@@ -1084,7 +1087,7 @@
     </div>
 
     <!-- A. New Member Modal -->
-    <div id="modal-member" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-member" role="dialog" aria-modal="true" aria-label="신규 회원 등록" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-member-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
@@ -1114,7 +1117,7 @@
     </div>
 
     <!-- A-1. Add Session Modal -->
-    <div id="modal-add-session" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-add-session" role="dialog" aria-modal="true" aria-label="세션 재등록 추가" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
@@ -1138,7 +1141,7 @@
     </div>
 
     <!-- A-2. Delete Member Confirm Modal -->
-    <div id="modal-delete-confirm" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-delete-confirm" role="dialog" aria-modal="true" aria-label="회원 삭제 확인" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="p-6 text-center space-y-4 mt-2">
                 <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -1155,7 +1158,7 @@
     </div>
 
     <!-- B. Schedule Event Modal -->
-    <div id="modal-schedule" class="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="modal-schedule" role="dialog" aria-modal="true" aria-label="일정 등록 및 수정" class="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white border border-stone-300 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-schedule-box">
             <div class="bg-white text-stone-950 p-4 flex justify-between items-center border-b border-stone-300">
                 <h3 class="font-black text-amber-500 text-base" id="sched-modal-title"><i class="fa-solid fa-calendar-plus mr-1.5"></i>일정 등록</h3>
@@ -1200,7 +1203,7 @@
                             <p class="text-xs font-black text-stone-900"><i class="fa-brands fa-google text-amber-500 mr-1"></i>구글 캘린더</p>
                             <p id="sched-google-calendar-status" class="text-[10px] font-bold text-stone-500 truncate">상태 확인 중</p>
                         </div>
-                        <button onclick="window.connectGoogleCalendarFromSchedule()" id="sched-google-calendar-connect-btn" class="hidden shrink-0 min-h-[36px] px-3 rounded-xl bg-stone-900 text-white text-[10px] font-black active-scale">
+                        <button onclick="window.connectGoogleCalendarFromSchedule()" id="sched-google-calendar-connect-btn" class="hidden shrink-0 min-h-[44px] px-3 rounded-xl bg-stone-900 text-white text-[10px] font-black active-scale">
                             연결
                         </button>
                     </div>
@@ -1214,7 +1217,7 @@
     </div>
 
     <!-- B-2. Schedule Long Press Action Menu -->
-    <div id="modal-schedule-action" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-[60] hidden opacity-0 transition-opacity">
+    <div id="modal-schedule-action" role="dialog" aria-modal="true" aria-label="예약 일정 작업" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4 modal-safe-area z-[60] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-stone-200">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <div class="min-w-0">
@@ -1241,7 +1244,7 @@
     </div>
 
     <!-- B-3. Google Calendar Bulk Sync Progress -->
-    <div id="modal-calendar-sync-progress" class="fixed inset-0 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-[90] hidden opacity-0 transition-opacity">
+    <div id="modal-calendar-sync-progress" role="dialog" aria-modal="true" aria-label="구글 캘린더 예약 전체 반영 진행상황" class="fixed inset-0 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-[90] hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-stone-200">
             <div class="bg-stone-900 text-stone-100 p-4">
                 <p class="text-[10px] font-black text-amber-500 tracking-widest">GOOGLE CALENDAR</p>
@@ -1283,7 +1286,7 @@
     </div>
 
     <!-- C. Signature Pad & Preview Modal (UPGRADED) -->
-    <div id="sign-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="sign-modal" role="dialog" aria-modal="true" aria-label="레슨 서명" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden" id="modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base" id="sign-modal-title">01회차 레슨 서명</h3>
@@ -1293,14 +1296,14 @@
                 <div class="text-center" id="sign-status-badge">
                     <span class="text-[10px] text-stone-400 font-bold bg-stone-100 px-2.5 py-1 rounded-full"><i class="fa-solid fa-pen text-amber-500 mr-1"></i>사인 패드</span>
                 </div>
-                <p id="sign-orientation-hint" class="hidden text-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                <p id="sign-orientation-hint" aria-live="polite" class="hidden text-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                     서명 패드가 가로 모드로 열렸습니다.
                 </p>
                 
                 <!-- CANVAS WRAPPER (그리기 모드) -->
                 <div id="signature-canvas-wrapper" class="relative bg-stone-50 border-2 border-dashed border-stone-200 rounded-2xl overflow-hidden w-full h-[min(42dvh,360px)] min-h-[220px] md:min-h-[300px] flex items-center justify-center">
                     <div class="signature-counter-guide"><i class="fa-solid fa-signature mr-1 text-amber-500"></i>서명</div>
-                    <canvas id="signature-canvas" class="absolute inset-0 w-full h-full touch-none cursor-crosshair" width="0" height="0" style="touch-action: none; user-select: none;"></canvas>
+                    <canvas id="signature-canvas" aria-label="레슨 서명 입력 영역" class="absolute inset-0 w-full h-full touch-none cursor-crosshair" width="0" height="0" style="touch-action: none; user-select: none;"></canvas>
                 </div>
                 
                 <!-- PREVIEW WRAPPER (서명 보기 모드) -->
@@ -1317,7 +1320,7 @@
     </div>
 
     <!-- D. Smart Share Modal -->
-    <div id="share-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+    <div id="share-modal" role="dialog" aria-modal="true" aria-label="운동일지 스마트 전송" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="share-modal-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-share-nodes mr-1.5"></i>운동일지 스마트 전송</h3>
@@ -1342,7 +1345,7 @@
     </div>
 
     <!-- E. PDF Preview Modal -->
-    <div id="pdf-preview-modal" class="fixed inset-0 h-[100dvh] bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
+    <div id="pdf-preview-modal" role="dialog" aria-modal="true" aria-label="PDF 미리보기" class="fixed inset-0 h-[100dvh] bg-stone-900/95 flex flex-col z-50 hidden opacity-0 transition-opacity">
         <div class="flex justify-between items-center p-4 text-white shrink-0">
             <button onclick="window.closePdfPreviewModal()" aria-label="닫기" class="modal-close-btn text-stone-300 text-xl hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
@@ -1356,7 +1359,7 @@
     </div>
 
     <!-- CUSTOM TOAST -->
-    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-stone-900/90 text-stone-100 px-5 py-3 rounded-full shadow-xl flex items-center space-x-2 text-xs z-50 pointer-events-none transform translate-y-10 opacity-0 transition-all duration-300">
+    <div id="toast" role="status" aria-live="polite" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-stone-900/90 text-stone-100 px-5 py-3 rounded-full shadow-xl flex items-center space-x-2 text-xs z-50 pointer-events-none transform translate-y-10 opacity-0 transition-all duration-300">
         <span id="toast-message">알림 내용</span>
     </div>
 
@@ -1426,8 +1429,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v108';
-        const APP_DISPLAY_VERSION = '1.08';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v109';
+        const APP_DISPLAY_VERSION = '1.09';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1446,6 +1449,7 @@
         const LAST_BACKUP_KEY_PREFIX = 'gofitgym_v11_last_backup_';
         const LAST_DATA_CHANGE_KEY_PREFIX = 'gofitgym_v11_last_data_change_';
         const RESTORE_SAFETY_KEY_PREFIX = 'gofitgym_v11_restore_safety_';
+        const CLOUD_PENDING_WRITES_KEY_PREFIX = 'gofitgym_v11_cloud_pending_';
         const BACKUP_FRESH_MS = 1000 * 60 * 60 * 24 * 7;
         const WORKOUT_SAVE_DELAY_MS = 450;
         const FIREBASE_SDK_VERSION = '11.6.1';
@@ -1787,10 +1791,49 @@
             return Number(item && item.localUpdatedAt) || 0;
         }
 
+        function getCloudPendingWritesKey(loginId = window.activeLoginId) {
+            return getScopedMetaKey(CLOUD_PENDING_WRITES_KEY_PREFIX, loginId);
+        }
+
+        function normalizeCloudPendingWrites(value) {
+            const source = value && typeof value === 'object' ? value : {};
+            return {
+                members: source.members && typeof source.members === 'object' ? { ...source.members } : {},
+                schedules: source.schedules && typeof source.schedules === 'object' ? { ...source.schedules } : {}
+            };
+        }
+
+        function loadCloudPendingWrites(loginId = window.activeLoginId) {
+            if (!loginId) {
+                window.cloudPendingWrites = { members: {}, schedules: {} };
+                return;
+            }
+            try {
+                window.cloudPendingWrites = normalizeCloudPendingWrites(JSON.parse(localStorage.getItem(getCloudPendingWritesKey(loginId)) || '{}'));
+            } catch (err) {
+                window.cloudPendingWrites = { members: {}, schedules: {} };
+            }
+        }
+
+        function saveCloudPendingWrites(loginId = window.activeLoginId) {
+            if (!loginId) return;
+            const pending = normalizeCloudPendingWrites(window.cloudPendingWrites);
+            try {
+                if (!Object.keys(pending.members).length && !Object.keys(pending.schedules).length) {
+                    localStorage.removeItem(getCloudPendingWritesKey(loginId));
+                    return;
+                }
+                localStorage.setItem(getCloudPendingWritesKey(loginId), JSON.stringify(pending));
+            } catch (err) {
+                console.warn('Cloud pending writes could not be persisted.', err);
+            }
+        }
+
         function markCloudWritePending(name, item) {
             if (!item || !item.id) return;
             if (!window.cloudPendingWrites[name]) window.cloudPendingWrites[name] = {};
             window.cloudPendingWrites[name][String(item.id)] = getLocalUpdateStamp(item) || Date.now();
+            saveCloudPendingWrites();
         }
 
         function clearCloudWritePending(name, id, stamp = 0) {
@@ -1798,7 +1841,10 @@
             if (!pendingGroup || !id) return;
             const key = String(id);
             if (!pendingGroup[key]) return;
-            if (!stamp || Number(pendingGroup[key]) <= Number(stamp)) delete pendingGroup[key];
+            if (!stamp || Number(pendingGroup[key]) <= Number(stamp)) {
+                delete pendingGroup[key];
+                saveCloudPendingWrites();
+            }
         }
 
         function shouldKeepPendingLocalItem(name, localItem, remoteItem) {
@@ -3294,6 +3340,7 @@
             window.loggedInTrainerIds = readLoggedIds();
             window.appProfile = window.activeLoginId ? window.trainerProfiles[window.activeLoginId] : null;
             window.isAuthenticated = !!window.appProfile;
+            loadCloudPendingWrites(window.activeLoginId);
         }
 
         function getTrainerName() {
@@ -3352,8 +3399,8 @@
                 googleCalendarSection.classList.toggle('hidden', target !== 'admin' || !isGoogleCalendarAllowedForActiveProfile());
             }
             if (basicBtn && adminBtn) {
-                basicBtn.className = `min-h-[38px] rounded-xl text-xs font-black active-scale ${target === 'basic' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
-                adminBtn.className = `min-h-[38px] rounded-xl text-xs font-black active-scale ${target === 'admin' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                basicBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${target === 'basic' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                adminBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${target === 'admin' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
             }
         }
 
@@ -4169,9 +4216,9 @@
             const activeBtn = document.getElementById('member-tab-active');
             const completedBtn = document.getElementById('member-tab-completed');
             const holdBtn = document.getElementById('member-tab-hold');
-            activeBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
-            completedBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
-            holdBtn.className = "flex-1 py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            activeBtn.className = "flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            completedBtn.className = "flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg transition-all";
+            holdBtn.className = "flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg transition-all";
             if (window.memberStatusFilter === 'completed') {
                 activeBtn.className += " text-stone-500";
                 completedBtn.className += " bg-stone-900 text-white shadow";
@@ -6389,7 +6436,7 @@
                 const isScheduled = item.time ? true : false;
                 const c = document.createElement('button');
                 c.type = 'button';
-                c.className = `min-h-[36px] text-[10px] ${isScheduled ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-sm' : 'bg-white text-stone-800 border-stone-300'} px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-stone-100 font-black border transition-all active-scale`;
+                c.className = `min-h-[44px] text-[10px] ${isScheduled ? 'bg-amber-100 text-amber-950 border-amber-300 shadow-sm' : 'bg-white text-stone-800 border-stone-300'} px-2.5 py-1.5 rounded-lg cursor-pointer hover:bg-stone-100 font-black border transition-all active-scale`;
                 c.innerText = isScheduled ? `[${item.time}] ${item.name}` : item.name;
                 c.onclick = () => document.getElementById('sched-title').value = item.name;
                 chips.appendChild(c);
