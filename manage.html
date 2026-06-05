@@ -1397,8 +1397,8 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v103';
-        const APP_DISPLAY_VERSION = '1.03';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v104';
+        const APP_DISPLAY_VERSION = '1.04';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1425,6 +1425,7 @@
         const GOOGLE_CALENDAR_ALLOWED_EMAILS = ['rebirth1013@gmail.com'];
         const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
         const GOOGLE_CALENDAR_ID = 'primary';
+        const GOOGLE_CALENDAR_TIMEZONE = 'Asia/Seoul';
         const GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES = 60;
         const GOOGLE_CALENDAR_REMINDER_MINUTES = 10;
 
@@ -5598,7 +5599,17 @@
         }
 
         function getGoogleCalendarTimezone() {
-            return (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul');
+            return GOOGLE_CALENDAR_TIMEZONE;
+        }
+
+        function getGoogleCalendarEventTitle(schedule) {
+            const title = String((schedule && schedule.title) || 'PT 예약').trim();
+            return `[G]${title}`;
+        }
+
+        function getGoogleCalendarLegacyEventTitles(schedule) {
+            const title = String((schedule && schedule.title) || 'PT 예약').trim();
+            return [`[G]${title}`, `[G] ${title}`];
         }
 
         function buildGoogleCalendarEvent(schedule) {
@@ -5606,9 +5617,8 @@
             if (!start) throw new Error('일정 날짜/시간이 올바르지 않습니다.');
             const end = new Date(start.getTime() + GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES * 60000);
             const timezone = getGoogleCalendarTimezone();
-            const title = String(schedule.title || 'PT 예약').trim();
             return {
-                summary: `[G]${title}`,
+                summary: getGoogleCalendarEventTitle(schedule),
                 description: [
                     'GOFITGYM PT Manager에서 등록한 예약입니다.',
                     `담당: ${getTrainerName()}`,
@@ -5656,6 +5666,66 @@
             return response.json();
         }
 
+        async function findGoogleCalendarEventsByScheduleId(schedule, options = {}) {
+            if (!schedule || schedule.id == null) return [];
+            const params = new URLSearchParams({
+                privateExtendedProperty: `gofitgymScheduleId=${String(schedule.id)}`,
+                singleEvents: 'true',
+                showDeleted: 'false',
+                maxResults: '20'
+            });
+            const result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events?${params.toString()}`, {
+                method: 'GET'
+            }, { interactive: options.interactive !== false });
+            return Array.isArray(result && result.items) ? result.items : [];
+        }
+
+        async function findGoogleCalendarEventsByTimeAndTitle(schedule, options = {}) {
+            const start = parseScheduleStartDate(schedule);
+            if (!start) return [];
+            const end = new Date(start.getTime() + GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES * 60000);
+            const windowStart = new Date(start.getTime() - 60000);
+            const windowEnd = new Date(end.getTime() + 60000);
+            const params = new URLSearchParams({
+                q: String((schedule && schedule.title) || '').trim(),
+                timeMin: windowStart.toISOString(),
+                timeMax: windowEnd.toISOString(),
+                singleEvents: 'true',
+                showDeleted: 'false',
+                maxResults: '20'
+            });
+            const result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events?${params.toString()}`, {
+                method: 'GET'
+            }, { interactive: options.interactive !== false });
+            const allowedTitles = getGoogleCalendarLegacyEventTitles(schedule);
+            const expectedStart = formatGoogleCalendarDateTime(start);
+            return (Array.isArray(result && result.items) ? result.items : []).filter(event => {
+                const eventStart = event && event.start && (event.start.dateTime || event.start.date);
+                return allowedTitles.includes(String(event.summary || '').trim())
+                    && String(eventStart || '').startsWith(expectedStart);
+            });
+        }
+
+        async function findExistingGoogleCalendarEvents(schedule, options = {}) {
+            const byScheduleId = await findGoogleCalendarEventsByScheduleId(schedule, options);
+            if (byScheduleId.length) return byScheduleId;
+            return findGoogleCalendarEventsByTimeAndTitle(schedule, options);
+        }
+
+        async function deleteGoogleCalendarEventById(eventId, options = {}) {
+            if (!eventId) return false;
+            try {
+                await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
+                    method: 'DELETE'
+                }, { interactive: options.interactive !== false });
+                return true;
+            } catch (err) {
+                if (err && err.status === 404) return true;
+                console.error('Google Calendar duplicate delete failed.', err);
+                return false;
+            }
+        }
+
         async function syncScheduleToGoogleCalendar(schedule, options = {}) {
             if (!schedule) return null;
             if (!isGoogleCalendarAllowedForActiveProfile()) {
@@ -5691,10 +5761,23 @@
                     }
                 }
                 if (!result) {
-                    result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events`, {
-                        method: 'POST',
-                        body: JSON.stringify(body)
-                    }, { interactive: options.interactive !== false });
+                    const existingEvents = options.forceCreate ? [] : await findExistingGoogleCalendarEvents(schedule, options);
+                    const activeEvents = existingEvents.filter(event => event && event.id && event.status !== 'cancelled');
+                    if (activeEvents.length) {
+                        const primaryEvent = activeEvents[0];
+                        result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(primaryEvent.id)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(body)
+                        }, { interactive: options.interactive !== false });
+                        for (const duplicateEvent of activeEvents.slice(1)) {
+                            await deleteGoogleCalendarEventById(duplicateEvent.id, options);
+                        }
+                    } else {
+                        result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events`, {
+                            method: 'POST',
+                            body: JSON.stringify(body)
+                        }, { interactive: options.interactive !== false });
+                    }
                 }
 
                 schedule.googleCalendarEventId = result.id || schedule.googleCalendarEventId || '';
