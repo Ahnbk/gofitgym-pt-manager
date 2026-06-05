@@ -1382,7 +1382,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v98';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v99';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5582,6 +5582,10 @@
                             method: 'PATCH',
                             body: JSON.stringify(body)
                         }, { interactive: options.interactive !== false });
+                        if (result && result.status === 'cancelled') {
+                            delete schedule.googleCalendarEventId;
+                            result = null;
+                        }
                     } catch (err) {
                         if (err && err.status !== 404) throw err;
                         delete schedule.googleCalendarEventId;
@@ -5649,7 +5653,7 @@
             window.initCalendar();
             window.renderMemberList();
             const suffix = failed ? `, 실패 ${failed}건` : '';
-            showToast(`구글 캘린더 반영 ${success}건${suffix}`);
+            showToast(`구글 캘린더 대상 ${list.length}건 중 ${success}건 반영${suffix}`);
         }
 
         window.syncUpcomingSchedulesToGoogleCalendar = async function() {
