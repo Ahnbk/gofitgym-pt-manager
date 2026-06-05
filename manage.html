@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Signature Pad JS -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js" crossorigin="anonymous"></script>
+    <!-- Google Identity Services for Calendar OAuth -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
     <style>
@@ -873,6 +875,28 @@
                         </div>
                     </div>
                 </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-stone-800"><i class="fa-brands fa-google text-amber-500 mr-1"></i>구글 캘린더 연동</p>
+                            <p id="profile-google-calendar-status" class="text-[11px] font-bold text-stone-500 truncate">연결 상태 확인 중</p>
+                        </div>
+                        <span class="shrink-0 px-2 py-1 rounded-full bg-stone-200 text-stone-500 text-[9px] font-black">60분</span>
+                    </div>
+                    <input type="text" id="profile-google-calendar-client-id" autocomplete="off" placeholder="Google OAuth 클라이언트 ID" class="w-full text-xs bg-white border border-stone-200 rounded-xl px-3 py-2.5 outline-none focus:border-amber-500 font-bold">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="window.connectGoogleCalendar()" class="min-h-[44px] py-2.5 bg-stone-900 text-white rounded-xl text-[10px] font-black active-scale">
+                            <i class="fa-brands fa-google mr-1 text-amber-500"></i>캘린더 연결
+                        </button>
+                        <button onclick="window.disconnectGoogleCalendar()" class="min-h-[44px] py-2.5 bg-white text-stone-700 rounded-xl text-[10px] font-black active-scale border border-stone-200">
+                            연결 해제
+                        </button>
+                        <button onclick="window.syncUpcomingSchedulesToGoogleCalendar()" class="col-span-2 min-h-[44px] py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale">
+                            <i class="fa-solid fa-calendar-check mr-1"></i>오늘 이후 예약 전체 반영
+                        </button>
+                    </div>
+                    <p class="text-[10px] font-bold text-stone-500 leading-relaxed">기본 캘린더(primary)에 60분 일정으로 등록하고 10분 전 팝업 알림을 설정합니다.</p>
+                </div>
                 <div id="profile-password-section" class="border-t border-stone-100 pt-3 space-y-3">
                     <input type="password" id="profile-current-password" autocomplete="current-password" placeholder="현재 비밀번호" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                     <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
@@ -912,6 +936,7 @@
                         <li>처리 항목: 트레이너 계정 정보, 회원명, 등록일, 수업 횟수, 예약 일정, 레슨 서명 이미지, 운동일지, 백업 및 동기화 기록</li>
                         <li>처리 목적: 회원 관리, 예약 관리, 수업 이력 확인, 운동일지 공유, 백업 및 클라우드 동기화</li>
                         <li>저장 위치: 사용 기기의 로컬 저장소 및 클라우드 로그인 시 Firebase 기반 클라우드 저장소</li>
+                        <li>구글 캘린더 연동 사용 시 예약명, 날짜, 시간이 사용자의 Google Calendar 기본 캘린더에 등록됩니다.</li>
                         <li>제3자 제공: 사용자가 공유 버튼으로 직접 전송하는 경우를 제외하고 임의 제공하지 않습니다.</li>
                         <li>보관 기간: 사용자가 앱에서 삭제하거나 계정/데이터 삭제를 요청할 때까지 보관합니다.</li>
                     </ul>
@@ -1201,6 +1226,9 @@
                 <button onclick="window.startScheduleMoveFromAction()" class="w-full min-h-[48px] bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-arrows-up-down-left-right mr-1.5"></i>일정 이동
                 </button>
+                <button onclick="window.syncScheduleFromAction()" id="schedule-action-google-btn" class="w-full min-h-[48px] bg-white text-stone-800 border border-stone-200 rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                    <i class="fa-brands fa-google mr-1.5 text-amber-500"></i>구글 캘린더 등록/반영
+                </button>
                 <button onclick="window.deleteScheduleFromAction()" class="w-full min-h-[48px] bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black active-scale flex items-center justify-center">
                     <i class="fa-solid fa-trash-can mr-1.5"></i>일정 삭제
                 </button>
@@ -1347,9 +1375,14 @@
         var scheduleActionScheduleId = null;
         var scheduleMoveState = null;
         var scheduleNativeMenuGuardReady = false;
+        var googleCalendarAccessToken = '';
+        var googleCalendarTokenExpiresAt = 0;
+        var googleCalendarTokenClient = null;
+        var googleCalendarTokenClientId = '';
+        var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v94';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v95';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1373,6 +1406,10 @@
         const FIREBASE_SDK_VERSION = '11.6.1';
         const CLOUD_LOGIN_PREFIX = 'cloud:';
         const CLOUD_SYNC_DELAY_MS = 800;
+        const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+        const GOOGLE_CALENDAR_ID = 'primary';
+        const GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES = 60;
+        const GOOGLE_CALENDAR_REMINDER_MINUTES = 10;
 
         const HOURS = 16; 
         const START_HOUR = 8;
@@ -1823,6 +1860,7 @@
             const payload = {
                 trainerName,
                 email: window.cloudUser.email || '',
+                googleCalendarClientId: normalizeGoogleCalendarClientId(profile && profile.googleCalendarClientId),
                 updatedAt: window.firebaseApi.serverTimestamp()
             };
             if (profile && profile.privacyConsentAt) {
@@ -1848,6 +1886,7 @@
                 cloudUid: user.uid,
                 cloudEmail: user.email || '',
                 cloudMode: true,
+                googleCalendarClientId: existing.googleCalendarClientId || (remoteProfile && remoteProfile.googleCalendarClientId) || '',
                 privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || (remoteProfile && remoteProfile.privacyConsentAt) || '',
                 privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || (remoteProfile && remoteProfile.privacyConsentVersion) || '',
                 createdAt: existing.createdAt || new Date().toISOString()
@@ -3449,10 +3488,13 @@
             document.getElementById('profile-login-id').value = (window.appProfile && window.appProfile.loginId) || '';
             document.getElementById('profile-current-password').value = '';
             document.getElementById('profile-new-password').value = '';
+            const googleClientInput = document.getElementById('profile-google-calendar-client-id');
+            if (googleClientInput) googleClientInput.value = getGoogleCalendarClientId();
             const passwordSection = document.getElementById('profile-password-section');
             if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile() || isLicenseProfile());
             renderProfileTrainerSwitcher();
             renderCloudStatus();
+            renderGoogleCalendarStatus();
             const modal = document.getElementById('modal-profile-settings');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
             if (isActiveCloudProfile()) {
@@ -3482,20 +3524,24 @@
             const trainerName = document.getElementById('profile-trainer-name').value.trim();
             const currentPassword = document.getElementById('profile-current-password').value;
             const newPassword = document.getElementById('profile-new-password').value;
+            const googleCalendarClientId = normalizeGoogleCalendarClientId(document.getElementById('profile-google-calendar-client-id')?.value || '');
             if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const changingPassword = newPassword.length > 0;
             if (isLicenseProfile()) {
                 window.appProfile.trainerName = trainerName;
+                window.appProfile.googleCalendarClientId = googleCalendarClientId;
                 window.trainerProfiles[window.activeLoginId] = window.appProfile;
                 saveProfileStore();
                 updateTrainerUi();
+                renderGoogleCalendarStatus();
                 window.closeProfileSettingsModal();
                 showToast('로컬 전용 트레이너 설정이 저장되었습니다.');
                 return;
             }
             if (isCloudProfile()) {
                 window.appProfile.trainerName = trainerName;
+                window.appProfile.googleCalendarClientId = googleCalendarClientId;
                 window.trainerProfiles[window.activeLoginId] = window.appProfile;
                 saveProfileStore();
                 await saveRemoteCloudProfile().catch(err => {
@@ -3503,6 +3549,7 @@
                     window.cloudLastError = '클라우드 프로필 저장 실패';
                 });
                 updateTrainerUi();
+                renderGoogleCalendarStatus();
                 window.closeProfileSettingsModal();
                 showToast('클라우드 트레이너 설정이 저장되었습니다.');
                 return;
@@ -3520,9 +3567,11 @@
             }
 
             window.appProfile.trainerName = trainerName;
+            window.appProfile.googleCalendarClientId = googleCalendarClientId;
             window.trainerProfiles[window.activeLoginId] = window.appProfile;
             saveProfileStore();
             updateTrainerUi();
+            renderGoogleCalendarStatus();
             window.closeProfileSettingsModal();
             showToast('트레이너 설정이 저장되었습니다.');
         }
@@ -3991,7 +4040,7 @@
             if (memberId) window.selectMember(memberId);
         }
 
-        window.cancelActionMemberTodaySchedule = function() {
+        window.cancelActionMemberTodaySchedule = async function() {
             const m = window.members.find(x => x.id === window.memberActionMemberId);
             if (!m) return;
             const todaySchedules = getTodaySchedulesForMember(m);
@@ -4002,6 +4051,12 @@
             if (!ok) return;
 
             const ids = new Set(todaySchedules.map(s => String(s.id)));
+            let calendarDeleted = 0;
+            if (hasGoogleCalendarToken()) {
+                for (const schedule of todaySchedules) {
+                    if (await deleteGoogleCalendarEventForSchedule(schedule, { interactive: false, manual: false })) calendarDeleted++;
+                }
+            }
             window.schedules = window.schedules.filter(s => !ids.has(String(s.id)));
             todaySchedules.forEach(s => localDeleteSchedule(s.id));
 
@@ -4009,9 +4064,10 @@
             if (scheduleViewOpen) window.initCalendar();
             window.renderMemberList();
             window.closeMemberActionMenu();
+            const calendarText = calendarDeleted ? ` 구글 캘린더 ${calendarDeleted}건도 삭제했습니다.` : '';
             showToast(todaySchedules.length > 1
-                ? `${m.name} 회원의 오늘 수업 ${todaySchedules.length}건을 취소했습니다.`
-                : `${m.name} 회원의 오늘 수업을 취소했습니다.`);
+                ? `${m.name} 회원의 오늘 수업 ${todaySchedules.length}건을 취소했습니다.${calendarText}`
+                : `${m.name} 회원의 오늘 수업을 취소했습니다.${calendarText}`);
         }
 
         window.toggleActionMemberHold = function() {
@@ -5260,6 +5316,322 @@
             return 'calc(8.7px * var(--cal-zoom))';
         }
 
+        function normalizeGoogleCalendarClientId(value) {
+            return String(value || '').trim();
+        }
+
+        function getGoogleCalendarClientId() {
+            return normalizeGoogleCalendarClientId(window.appProfile && window.appProfile.googleCalendarClientId);
+        }
+
+        function hasGoogleCalendarToken() {
+            return !!(window.googleCalendarAccessToken && Date.now() < window.googleCalendarTokenExpiresAt - 60000);
+        }
+
+        function renderGoogleCalendarStatus() {
+            const status = document.getElementById('profile-google-calendar-status');
+            if (!status) return;
+            if (!getGoogleCalendarClientId()) {
+                status.innerText = 'OAuth 클라이언트 ID를 입력하면 사용할 수 있습니다.';
+            } else if (hasGoogleCalendarToken()) {
+                status.innerText = '연결됨 · 예약 등록 시 자동 반영';
+            } else {
+                status.innerText = '설정됨 · 캘린더 연결을 눌러 권한을 허용해주세요.';
+            }
+        }
+
+        function saveGoogleCalendarClientIdFromSettings() {
+            const input = document.getElementById('profile-google-calendar-client-id');
+            const clientId = normalizeGoogleCalendarClientId(input ? input.value : getGoogleCalendarClientId());
+            if (!window.appProfile) return clientId;
+            window.appProfile.googleCalendarClientId = clientId;
+            window.trainerProfiles[window.activeLoginId] = window.appProfile;
+            saveProfileStore();
+            if (isActiveCloudProfile()) saveRemoteCloudProfile().catch(() => {});
+            renderGoogleCalendarStatus();
+            return clientId;
+        }
+
+        function loadGoogleIdentityScript() {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
+            if (window.googleCalendarScriptPromise) return window.googleCalendarScriptPromise;
+            window.googleCalendarScriptPromise = new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
+                if (existing) {
+                    const started = Date.now();
+                    const wait = () => {
+                        if (window.google && window.google.accounts && window.google.accounts.oauth2) return resolve();
+                        if (Date.now() - started > 10000) return reject(new Error('Google Identity Services 로딩 실패'));
+                        setTimeout(wait, 100);
+                    };
+                    wait();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Google Identity Services 로딩 실패'));
+                document.head.appendChild(script);
+            });
+            return window.googleCalendarScriptPromise;
+        }
+
+        async function requestGoogleCalendarAccess(options = {}) {
+            const clientId = normalizeGoogleCalendarClientId(options.clientId || getGoogleCalendarClientId());
+            if (!clientId) throw new Error('Google OAuth 클라이언트 ID가 필요합니다.');
+            if (hasGoogleCalendarToken() && window.googleCalendarTokenClientId === clientId) return window.googleCalendarAccessToken;
+
+            await loadGoogleIdentityScript();
+            if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+                throw new Error('Google 로그인 모듈을 불러오지 못했습니다.');
+            }
+
+            if (!window.googleCalendarTokenClient || window.googleCalendarTokenClientId !== clientId) {
+                window.googleCalendarTokenClientId = clientId;
+                window.googleCalendarTokenClient = window.google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: GOOGLE_CALENDAR_SCOPE,
+                    callback: () => {}
+                });
+            }
+
+            return new Promise((resolve, reject) => {
+                window.googleCalendarTokenClient.callback = response => {
+                    if (response && response.error) {
+                        reject(new Error(response.error_description || response.error));
+                        return;
+                    }
+                    const token = response && response.access_token;
+                    if (!token) {
+                        reject(new Error('Google Calendar 권한을 받지 못했습니다.'));
+                        return;
+                    }
+                    const expiresIn = Number(response.expires_in || 3600);
+                    window.googleCalendarAccessToken = token;
+                    window.googleCalendarTokenExpiresAt = Date.now() + Math.max(60, expiresIn) * 1000;
+                    renderGoogleCalendarStatus();
+                    resolve(token);
+                };
+                try {
+                    window.googleCalendarTokenClient.requestAccessToken({
+                        prompt: options.prompt == null ? '' : options.prompt
+                    });
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        }
+
+        window.connectGoogleCalendar = async function() {
+            const clientId = saveGoogleCalendarClientIdFromSettings();
+            if (!clientId) return showToast('Google OAuth 클라이언트 ID를 입력해주세요.');
+            try {
+                await requestGoogleCalendarAccess({ clientId, prompt: 'consent' });
+                showToast('구글 캘린더가 연결되었습니다.');
+            } catch (err) {
+                console.error('Google Calendar connect failed.', err);
+                showToast(`구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`);
+            }
+        }
+
+        window.disconnectGoogleCalendar = function() {
+            const token = window.googleCalendarAccessToken;
+            if (token && window.google && window.google.accounts && window.google.accounts.oauth2) {
+                try { window.google.accounts.oauth2.revoke(token, () => {}); } catch (err) {}
+            }
+            window.googleCalendarAccessToken = '';
+            window.googleCalendarTokenExpiresAt = 0;
+            window.googleCalendarTokenClient = null;
+            window.googleCalendarTokenClientId = '';
+            renderGoogleCalendarStatus();
+            showToast('구글 캘린더 연결을 해제했습니다.');
+        }
+
+        function formatGoogleCalendarError(err) {
+            const message = String((err && (err.message || err.error_description || err.error)) || err || '').trim();
+            if (!message) return '알 수 없는 오류';
+            if (message.includes('popup') || message.includes('user_cancel')) return '권한 창이 닫혔습니다.';
+            if (message.includes('OAuth 클라이언트 ID')) return message;
+            if (message.includes('access_denied')) return '권한이 거부되었습니다.';
+            return message.length > 80 ? `${message.slice(0, 80)}...` : message;
+        }
+
+        function parseScheduleStartDate(schedule) {
+            const dateParts = String(schedule && schedule.date || '').split('-').map(Number);
+            const timeParts = String(schedule && schedule.time || '00:00').split(':').map(Number);
+            if (dateParts.length !== 3 || dateParts.some(n => !Number.isFinite(n))) return null;
+            const hour = Number.isFinite(timeParts[0]) ? timeParts[0] : 0;
+            const minute = Number.isFinite(timeParts[1]) ? timeParts[1] : 0;
+            return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], hour, minute, 0, 0);
+        }
+
+        function formatGoogleCalendarDateTime(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
+        }
+
+        function getGoogleCalendarTimezone() {
+            return (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul');
+        }
+
+        function buildGoogleCalendarEvent(schedule) {
+            const start = parseScheduleStartDate(schedule);
+            if (!start) throw new Error('일정 날짜/시간이 올바르지 않습니다.');
+            const end = new Date(start.getTime() + GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES * 60000);
+            const timezone = getGoogleCalendarTimezone();
+            const title = String(schedule.title || 'PT 예약').trim();
+            return {
+                summary: `[GOFITGYM] ${title}`,
+                location: 'GOFITGYM',
+                description: [
+                    'GOFITGYM PT Manager에서 등록한 예약입니다.',
+                    `담당: ${getTrainerName()}`,
+                    `앱 예약 ID: ${schedule.id}`
+                ].join('\n'),
+                start: { dateTime: formatGoogleCalendarDateTime(start), timeZone: timezone },
+                end: { dateTime: formatGoogleCalendarDateTime(end), timeZone: timezone },
+                reminders: {
+                    useDefault: false,
+                    overrides: [{ method: 'popup', minutes: GOOGLE_CALENDAR_REMINDER_MINUTES }]
+                },
+                extendedProperties: {
+                    private: {
+                        gofitgymScheduleId: String(schedule.id),
+                        gofitgymTrainerId: String(window.activeLoginId || '')
+                    }
+                }
+            };
+        }
+
+        async function googleCalendarFetch(path, options = {}, authOptions = {}) {
+            const token = await requestGoogleCalendarAccess({
+                prompt: authOptions.interactive ? '' : '',
+                clientId: getGoogleCalendarClientId()
+            });
+            const response = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
+                ...options,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {})
+                }
+            });
+            if (!response.ok) {
+                let detail = '';
+                try {
+                    const body = await response.json();
+                    detail = body && body.error && (body.error.message || body.error.status);
+                } catch (err) {}
+                const error = new Error(detail || `Google Calendar API 오류 ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            if (response.status === 204) return null;
+            return response.json();
+        }
+
+        async function syncScheduleToGoogleCalendar(schedule, options = {}) {
+            if (!schedule) return null;
+            if (!getGoogleCalendarClientId()) {
+                if (options.manual) showToast('설정에서 Google OAuth 클라이언트 ID를 입력해주세요.');
+                return null;
+            }
+            if (options.interactive === false && !hasGoogleCalendarToken()) {
+                schedule.googleCalendarError = '구글 캘린더 연결 필요';
+                return null;
+            }
+
+            try {
+                const body = buildGoogleCalendarEvent(schedule);
+                const eventId = schedule.googleCalendarEventId;
+                let result = null;
+                if (eventId && !options.forceCreate) {
+                    try {
+                        result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(eventId)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(body)
+                        }, { interactive: options.interactive !== false });
+                    } catch (err) {
+                        if (err && err.status !== 404) throw err;
+                        delete schedule.googleCalendarEventId;
+                    }
+                }
+                if (!result) {
+                    result = await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events`, {
+                        method: 'POST',
+                        body: JSON.stringify(body)
+                    }, { interactive: options.interactive !== false });
+                }
+
+                schedule.googleCalendarEventId = result.id || schedule.googleCalendarEventId || '';
+                schedule.googleCalendarHtmlLink = result.htmlLink || schedule.googleCalendarHtmlLink || '';
+                schedule.googleCalendarSyncedAt = new Date().toISOString();
+                delete schedule.googleCalendarError;
+                localSaveSchedule(schedule);
+                if (options.manual) showToast('구글 캘린더에 반영했습니다.');
+                return result;
+            } catch (err) {
+                console.error('Google Calendar sync failed.', err);
+                schedule.googleCalendarError = formatGoogleCalendarError(err);
+                localSaveSchedule(schedule);
+                if (options.manual) showToast(`구글 캘린더 반영 실패: ${schedule.googleCalendarError}`);
+                return null;
+            }
+        }
+
+        async function deleteGoogleCalendarEventForSchedule(schedule, options = {}) {
+            if (!schedule || !schedule.googleCalendarEventId || !getGoogleCalendarClientId()) return false;
+            if (options.interactive === false && !hasGoogleCalendarToken()) return false;
+            try {
+                await googleCalendarFetch(`/calendars/${encodeURIComponent(GOOGLE_CALENDAR_ID)}/events/${encodeURIComponent(schedule.googleCalendarEventId)}`, {
+                    method: 'DELETE'
+                }, { interactive: options.interactive !== false });
+                return true;
+            } catch (err) {
+                if (err && err.status === 404) return true;
+                console.error('Google Calendar delete failed.', err);
+                if (options.manual) showToast(`구글 캘린더 삭제 실패: ${formatGoogleCalendarError(err)}`);
+                return false;
+            }
+        }
+
+        async function syncSchedulesToGoogleCalendar(targetSchedules, options = {}) {
+            const list = (targetSchedules || []).filter(Boolean);
+            if (!list.length) return showToast('반영할 예약이 없습니다.');
+            if (!getGoogleCalendarClientId()) return showToast('설정에서 Google OAuth 클라이언트 ID를 입력해주세요.');
+
+            let success = 0;
+            let failed = 0;
+            try {
+                await requestGoogleCalendarAccess({ prompt: '' });
+            } catch (err) {
+                console.error('Google Calendar auth failed.', err);
+                return showToast(`구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`);
+            }
+            for (const schedule of list) {
+                const result = await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: false });
+                if (result) success++;
+                else failed++;
+            }
+            window.initCalendar();
+            window.renderMemberList();
+            const suffix = failed ? `, 실패 ${failed}건` : '';
+            showToast(`구글 캘린더 반영 ${success}건${suffix}`);
+        }
+
+        window.syncUpcomingSchedulesToGoogleCalendar = async function() {
+            saveGoogleCalendarClientIdFromSettings();
+            const today = formatDate(new Date());
+            const upcoming = (window.schedules || [])
+                .filter(schedule => schedule && schedule.date >= today)
+                .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+            if (!upcoming.length) return showToast('오늘 이후 예약이 없습니다.');
+            const ok = confirm(`오늘 이후 예약 ${upcoming.length}건을 구글 캘린더에 반영할까요?\n기본 캘린더에 60분 일정, 10분 전 알림으로 등록됩니다.`);
+            if (!ok) return;
+            await syncSchedulesToGoogleCalendar(upcoming);
+        }
+
         function findScheduleById(id) {
             return (window.schedules || []).find(item => String(item.id) === String(id));
         }
@@ -5406,8 +5778,17 @@
             window.scheduleActionScheduleId = schedule.id;
             const title = document.getElementById('schedule-action-title');
             const subtitle = document.getElementById('schedule-action-subtitle');
+            const googleBtn = document.getElementById('schedule-action-google-btn');
             if (title) title.innerText = schedule.title || '예약 일정';
-            if (subtitle) subtitle.innerText = `${formatDisplayDate(schedule.date)} ${schedule.time || ''}`;
+            if (subtitle) {
+                const googleState = schedule.googleCalendarEventId ? '구글 캘린더 등록됨' : '구글 캘린더 미등록';
+                subtitle.innerText = `${formatDisplayDate(schedule.date)} ${schedule.time || ''} · ${googleState}`;
+            }
+            if (googleBtn) {
+                googleBtn.innerHTML = schedule.googleCalendarEventId
+                    ? '<i class="fa-brands fa-google mr-1.5 text-amber-500"></i>구글 캘린더 다시 반영'
+                    : '<i class="fa-brands fa-google mr-1.5 text-amber-500"></i>구글 캘린더 등록';
+            }
 
             const modal = document.getElementById('modal-schedule-action');
             modal.classList.remove('hidden');
@@ -5425,6 +5806,15 @@
             window.closeScheduleActionMenu();
             if (id == null) return showToast('선택된 일정이 없습니다.');
             setTimeout(() => window.deleteSchedule(id), 180);
+        }
+
+        window.syncScheduleFromAction = async function() {
+            const schedule = findScheduleById(window.scheduleActionScheduleId);
+            window.closeScheduleActionMenu();
+            if (!schedule) return showToast('이미 삭제된 일정입니다.');
+            await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: true });
+            window.initCalendar();
+            window.renderMemberList();
         }
 
         window.startScheduleMoveFromAction = function() {
@@ -5448,7 +5838,7 @@
             if (!options.silent) showToast('일정 이동을 취소했습니다.');
         }
 
-        window.selectScheduleMoveTarget = function(date, time) {
+        window.selectScheduleMoveTarget = async function(date, time) {
             const state = window.scheduleMoveState;
             if (!state) return;
             const schedule = findScheduleById(state.id);
@@ -5469,11 +5859,15 @@
             schedule.date = date;
             schedule.time = time;
             localSaveSchedule(schedule);
+            let calendarUpdated = false;
+            if (schedule.googleCalendarEventId || hasGoogleCalendarToken()) {
+                calendarUpdated = !!(await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: false }));
+            }
             window.scheduleMoveState = null;
             updateScheduleMoveBar();
             window.initCalendar();
             window.renderMemberList();
-            showToast('일정을 이동했습니다.');
+            showToast(calendarUpdated ? '일정을 이동하고 구글 캘린더도 반영했습니다.' : '일정을 이동했습니다.');
         }
 
         function applyWeekOffset(offset) {
@@ -5672,11 +6066,13 @@
             m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
         }
 
-        window.saveSchedule = function() {
+        window.saveSchedule = async function() {
             const title = document.getElementById('sched-title').value.trim();
             if(!title) return showToast('내용을 입력하세요!');
             const id = document.getElementById('sched-id').value;
             const isRec = document.getElementById('sched-recurring').checked;
+            const changedSchedules = [];
+            let localMessage = '';
             
             if (id) {
                 const s = window.schedules.find(x => x.id == id);
@@ -5686,6 +6082,8 @@
                 }
                 s.title = title;
                 localSaveSchedule(s);
+                changedSchedules.push(s);
+                localMessage = '일정을 저장했습니다.';
             } else {
                 if (isRec) {
                     const baseDate = document.getElementById('sched-date').value;
@@ -5707,17 +6105,36 @@
                         };
                         window.schedules.push(newS);
                         localSaveSchedule(newS);
+                        changedSchedules.push(newS);
                     }
-                    showToast('12주 반복 예약이 세팅되었습니다.');
+                    localMessage = '12주 반복 예약이 세팅되었습니다.';
                 } else {
                     const newS = { id: Date.now(), title, date: document.getElementById('sched-date').value, time: document.getElementById('sched-time').value, color: 'bg-blue-500/90' };
                     window.schedules.push(newS);
                     localSaveSchedule(newS);
+                    changedSchedules.push(newS);
+                    localMessage = '일정이 등록되었습니다.';
                 }
             }
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal();
+
+            if (hasGoogleCalendarToken()) {
+                let synced = 0;
+                for (const schedule of changedSchedules) {
+                    if (await syncScheduleToGoogleCalendar(schedule, { interactive: false, manual: false })) synced++;
+                }
+                window.initCalendar();
+                window.renderMemberList();
+                showToast(synced
+                    ? `${localMessage} 구글 캘린더 ${synced}건 반영 완료`
+                    : `${localMessage} 구글 캘린더 반영은 실패했습니다.`);
+            } else if (getGoogleCalendarClientId()) {
+                showToast(`${localMessage} 구글 캘린더는 연결 후 반영됩니다.`);
+            } else {
+                showToast(localMessage);
+            }
         }
-        window.deleteSchedule = function(id) { 
+        window.deleteSchedule = async function(id) {
             const target = window.schedules.find(s => s.id == id);
             if (!target) {
                 window.closeScheduleModal();
@@ -5732,11 +6149,18 @@
             );
             const deleteTargets = deleteFuture ? recurringTargets : [target];
             const deleteIds = new Set(deleteTargets.map(schedule => String(schedule.id)));
+            let calendarDeleted = 0;
+            if (hasGoogleCalendarToken()) {
+                for (const schedule of deleteTargets) {
+                    if (await deleteGoogleCalendarEventForSchedule(schedule, { interactive: false, manual: false })) calendarDeleted++;
+                }
+            }
             window.schedules = window.schedules.filter(s => !deleteIds.has(String(s.id)));
             saveDatabase({ skipCloud: true });
             deleteIds.forEach(scheduleId => deleteCloudDocument('schedules', scheduleId));
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal(); 
-            showToast(deleteFuture ? `반복 일정 ${deleteIds.size}건을 삭제했습니다.` : '일정을 삭제했습니다.');
+            const calendarText = calendarDeleted ? ` 구글 캘린더 ${calendarDeleted}건 삭제` : '';
+            showToast(deleteFuture ? `반복 일정 ${deleteIds.size}건을 삭제했습니다.${calendarText}` : `일정을 삭제했습니다.${calendarText}`);
         }
 
         // ================= SMART SHARE =================
