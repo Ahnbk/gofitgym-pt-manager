@@ -807,22 +807,26 @@
                 <button onclick="window.closeProfileSettingsModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-3 overflow-y-auto">
-                <div>
+                <div class="grid grid-cols-2 gap-1 rounded-2xl bg-stone-100 p-1">
+                    <button onclick="window.switchProfileSettingsTab('basic')" id="profile-tab-basic" class="min-h-[38px] rounded-xl text-xs font-black bg-stone-900 text-white active-scale">기본</button>
+                    <button onclick="window.switchProfileSettingsTab('admin')" id="profile-tab-admin" class="min-h-[38px] rounded-xl text-xs font-black text-stone-500 active-scale">관리자</button>
+                </div>
+                <div class="profile-basic-section">
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
                     <input type="text" id="profile-trainer-name" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
-                <div>
-                    <label class="block text-xs text-stone-500 font-bold mb-1.5">아이디</label>
+                <div class="profile-basic-section">
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">로그인 계정</label>
                     <input type="text" id="profile-login-id" autocomplete="username" readonly class="w-full text-sm bg-stone-100 border border-stone-200 rounded-xl px-3.5 py-3 outline-none font-medium text-stone-500">
                 </div>
-                <div id="profile-trainer-switch-section" class="hidden rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div id="profile-trainer-switch-section" class="profile-basic-section hidden rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div>
                         <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-users-gear text-amber-500 mr-1"></i>트레이너 전환</p>
                         <p class="text-[11px] font-bold text-stone-500">로그인된 트레이너 기준으로 회원 목록과 일정을 전환합니다.</p>
                     </div>
                     <div id="profile-trainer-switch-list" class="grid grid-cols-1 gap-1.5"></div>
                 </div>
-                <div id="profile-google-calendar-section" class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div id="profile-cloud-section" class="profile-admin-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>관리자 클라우드 동기화</p>
@@ -848,7 +852,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div class="profile-admin-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div>
                         <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-database text-amber-500 mr-1"></i>백업 관리</p>
                         <p class="text-[11px] font-bold text-stone-500">로컬 백업 저장과 복원은 여기서 관리합니다.</p>
@@ -875,7 +879,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div id="profile-google-calendar-section" class="profile-admin-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             <p class="text-xs font-black text-stone-800"><i class="fa-brands fa-google text-amber-500 mr-1"></i>구글 캘린더 연동</p>
@@ -897,16 +901,16 @@
                     </div>
                     <p class="text-[10px] font-bold text-stone-500 leading-relaxed">기본 캘린더(primary)에 60분 일정으로 등록하고 10분 전 팝업 알림을 설정합니다.</p>
                 </div>
-                <div id="profile-password-section" class="border-t border-stone-100 pt-3 space-y-3">
+                <div id="profile-password-section" class="profile-basic-section border-t border-stone-100 pt-3 space-y-3">
                     <input type="password" id="profile-current-password" autocomplete="current-password" placeholder="현재 비밀번호" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                     <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <button onclick="window.saveProfileSettings()" class="w-full min-h-[44px] py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
-                <button onclick="window.openAdditionalLogin()" class="w-full min-h-[44px] py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
-                <button onclick="window.checkStorageProtection(true)" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>저장 보호 확인</button>
-                <button onclick="window.checkAppUpdate(true)" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
-                <button onclick="window.openAppInfoModal()" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>앱 정보 / 개인정보 처리방침</button>
-                <button onclick="window.logoutLocalUser()" class="w-full min-h-[44px] py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
+                <button onclick="window.openAdditionalLogin()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
+                <button onclick="window.openAppInfoModal()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>앱 정보 / 개인정보 처리방침</button>
+                <button onclick="window.logoutLocalUser()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
+                <button onclick="window.checkStorageProtection(true)" class="profile-admin-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>기기 저장 보호 확인</button>
+                <button onclick="window.checkAppUpdate(true)" class="profile-admin-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-rotate mr-1 text-amber-500"></i>앱 업데이트 확인</button>
             </div>
         </div>
     </div>
@@ -1204,6 +1208,17 @@
                         <div class="w-11 h-6 bg-stone-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
+                <div id="sched-google-calendar-block" class="hidden p-3 bg-stone-50 border border-stone-300 rounded-xl">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-xs font-black text-stone-900"><i class="fa-brands fa-google text-amber-500 mr-1"></i>구글 캘린더</p>
+                            <p id="sched-google-calendar-status" class="text-[10px] font-bold text-stone-500 truncate">상태 확인 중</p>
+                        </div>
+                        <button onclick="window.connectGoogleCalendarFromSchedule()" id="sched-google-calendar-connect-btn" class="hidden shrink-0 min-h-[36px] px-3 rounded-xl bg-stone-900 text-white text-[10px] font-black active-scale">
+                            연결
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-300" id="sched-action-btns">
@@ -1382,7 +1397,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v99';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v100';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3238,6 +3253,15 @@
             return (window.appProfile && window.appProfile.trainerName) || '기본 담당';
         }
 
+        function getProfileDisplayAccount(profile = window.appProfile) {
+            if (!profile) return '';
+            const email = profile.cloudEmail || profile.licenseEmail || profile.email || '';
+            if (email) return email;
+            if (profile.loginId && String(profile.loginId).startsWith(CLOUD_LOGIN_PREFIX)) return '관리자 클라우드 계정';
+            if (profile.loginId && String(profile.loginId).startsWith(LICENSE_LOGIN_PREFIX)) return String(profile.loginId).replace(LICENSE_LOGIN_PREFIX, '');
+            return profile.loginId || '';
+        }
+
         function formatTrainerLabel(name) {
             const value = (name || '미지정').trim();
             return value.endsWith('트레이너') ? value : `${value} 트레이너`;
@@ -3281,6 +3305,32 @@
                 container.innerHTML = trainerSwitcher;
             }
             renderCloudStatus();
+        }
+
+        window.switchProfileSettingsTab = function(tab = 'basic') {
+            const target = tab === 'admin' ? 'admin' : 'basic';
+            document.querySelectorAll('.profile-basic-section').forEach(el => el.classList.toggle('hidden', target !== 'basic'));
+            document.querySelectorAll('.profile-admin-section').forEach(el => el.classList.toggle('hidden', target !== 'admin'));
+
+            const basicBtn = document.getElementById('profile-tab-basic');
+            const adminBtn = document.getElementById('profile-tab-admin');
+            const switchSection = document.getElementById('profile-trainer-switch-section');
+            if (switchSection) {
+                const ids = (window.loggedInTrainerIds || []).filter(id => window.trainerProfiles[id]);
+                switchSection.classList.toggle('hidden', target !== 'basic' || ids.length <= 1);
+            }
+            const passwordSection = document.getElementById('profile-password-section');
+            if (passwordSection) {
+                passwordSection.classList.toggle('hidden', target !== 'basic' || isCloudProfile() || isLicenseProfile());
+            }
+            const googleCalendarSection = document.getElementById('profile-google-calendar-section');
+            if (googleCalendarSection) {
+                googleCalendarSection.classList.toggle('hidden', target !== 'admin' || !isGoogleCalendarAllowedForActiveProfile());
+            }
+            if (basicBtn && adminBtn) {
+                basicBtn.className = `min-h-[38px] rounded-xl text-xs font-black active-scale ${target === 'basic' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                adminBtn.className = `min-h-[38px] rounded-xl text-xs font-black active-scale ${target === 'admin' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+            }
         }
 
         async function hashPassword(password, salt) {
@@ -3498,7 +3548,7 @@
 
         window.openProfileSettingsModal = function() {
             document.getElementById('profile-trainer-name').value = getTrainerName();
-            document.getElementById('profile-login-id').value = (window.appProfile && window.appProfile.loginId) || '';
+            document.getElementById('profile-login-id').value = getProfileDisplayAccount();
             document.getElementById('profile-current-password').value = '';
             document.getElementById('profile-new-password').value = '';
             const googleClientInput = document.getElementById('profile-google-calendar-client-id');
@@ -3510,6 +3560,7 @@
             renderProfileTrainerSwitcher();
             renderCloudStatus();
             renderGoogleCalendarStatus();
+            window.switchProfileSettingsTab('basic');
             const modal = document.getElementById('modal-profile-settings');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
             if (isActiveCloudProfile()) {
@@ -5362,10 +5413,38 @@
             }
         }
 
+        function renderScheduleGoogleCalendarBlock() {
+            const block = document.getElementById('sched-google-calendar-block');
+            const status = document.getElementById('sched-google-calendar-status');
+            const connectBtn = document.getElementById('sched-google-calendar-connect-btn');
+            if (!block || !status || !connectBtn) return;
+
+            const allowed = isGoogleCalendarAllowedForActiveProfile();
+            block.classList.toggle('hidden', !allowed);
+            if (!allowed) return;
+
+            const clientId = getGoogleCalendarClientId();
+            if (!clientId) {
+                status.innerText = '설정 > 관리자 탭에서 OAuth 클라이언트 ID를 입력해주세요.';
+                connectBtn.classList.add('hidden');
+                return;
+            }
+
+            if (hasGoogleCalendarToken()) {
+                status.innerText = '연결됨 · 등록 시 구글 캘린더에도 자동 반영';
+                connectBtn.classList.add('hidden');
+                return;
+            }
+
+            status.innerText = '다시 연결 필요 · 등록 전 연결 권장';
+            connectBtn.classList.remove('hidden');
+        }
+
         function saveGoogleCalendarClientIdFromSettings() {
             if (!isGoogleCalendarAllowedForActiveProfile()) return '';
             const input = document.getElementById('profile-google-calendar-client-id');
-            const clientId = normalizeGoogleCalendarClientId(input ? input.value : getGoogleCalendarClientId());
+            const inputValue = normalizeGoogleCalendarClientId(input ? input.value : '');
+            const clientId = inputValue || getGoogleCalendarClientId();
             if (!window.appProfile) return clientId;
             window.appProfile.googleCalendarClientId = clientId;
             window.trainerProfiles[window.activeLoginId] = window.appProfile;
@@ -5454,6 +5533,7 @@
             if (!clientId) return showToast('Google OAuth 클라이언트 ID를 입력해주세요.');
             try {
                 await requestGoogleCalendarAccess({ clientId, prompt: 'consent' });
+                renderScheduleGoogleCalendarBlock();
                 showToast('구글 캘린더가 연결되었습니다.');
             } catch (err) {
                 console.error('Google Calendar connect failed.', err);
@@ -5472,7 +5552,13 @@
             window.googleCalendarTokenClient = null;
             window.googleCalendarTokenClientId = '';
             renderGoogleCalendarStatus();
+            renderScheduleGoogleCalendarBlock();
             showToast('구글 캘린더 연결을 해제했습니다.');
+        }
+
+        window.connectGoogleCalendarFromSchedule = async function() {
+            await window.connectGoogleCalendar();
+            renderScheduleGoogleCalendarBlock();
         }
 
         function formatGoogleCalendarError(err) {
@@ -6096,6 +6182,7 @@
                 document.getElementById('sched-recurring').checked = false;
                 btns.innerHTML = `<button onclick="window.closeScheduleModal()" class="flex-1 py-3 bg-stone-200 text-stone-800 font-black rounded-xl text-xs active-scale">취소</button><button onclick="window.saveSchedule()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs active-scale">등록</button>`;
             }
+            renderScheduleGoogleCalendarBlock();
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
         }
 
