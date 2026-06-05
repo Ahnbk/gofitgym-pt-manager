@@ -64,6 +64,7 @@
         .cal-wrapper {
             min-width: calc(var(--cal-base-min-width) * var(--cal-zoom));
             transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, opacity;
         }
         .calendar-scroll {
             isolation: isolate;
@@ -127,13 +128,31 @@
             background: #fffbeb;
         }
         .cal-now-cell::after {
+            display: none;
+        }
+        .cal-now-line {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            top: var(--cal-now-pct, 0%);
+            height: 2px;
+            background: #ef4444;
+            border-radius: 999px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.9), 0 2px 7px rgba(239,68,68,0.35);
+            pointer-events: none;
+            z-index: 35;
+        }
+        .cal-now-line::before {
             content: '';
             position: absolute;
-            inset: 2px;
-            border: 2px solid #f59e0b;
-            border-radius: 6px;
-            pointer-events: none;
-            z-index: 20;
+            left: -3px;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            transform: translateY(-50%);
+            border-radius: 999px;
+            background: #ef4444;
+            box-shadow: 0 0 0 2px #fff7ed;
         }
         .cal-grid-header {
             border-right: 1px solid #57534e;
@@ -1256,9 +1275,13 @@
         var cloudLastError = '';
         var accessRequests = [];
         var dashboardSearchOpen = false;
+        var calendarGestureReady = false;
+        var calendarGestureState = null;
+        var calendarAnimating = false;
+        var calendarSuppressClickUntil = 0;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v89';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v90';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4925,11 +4948,106 @@
         }
 
         // ================= CALENDAR ENGINE =================
-        window.zoomCalendar = function(delta) {
-            window.currentZoom = Math.max(0.7, Math.min(1.8, window.currentZoom + delta));
-            document.documentElement.style.setProperty('--cal-zoom', window.currentZoom);
-            document.getElementById('zoom-level-text').innerText = `${Math.round(window.currentZoom * 100)}%`;
+        function clampCalendarZoom(value) {
+            return Math.max(0.7, Math.min(1.8, Number(value) || 1));
         }
+
+        function setCalendarZoom(value) {
+            window.currentZoom = clampCalendarZoom(value);
+            document.documentElement.style.setProperty('--cal-zoom', window.currentZoom);
+            const label = document.getElementById('zoom-level-text');
+            if (label) label.innerText = `${Math.round(window.currentZoom * 100)}%`;
+        }
+
+        window.zoomCalendar = function(delta) {
+            setCalendarZoom(window.currentZoom + delta);
+        }
+
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function setupCalendarGestures() {
+            if (window.calendarGestureReady) return;
+            const area = document.getElementById('calendar-scroll-area');
+            if (!area) return;
+            window.calendarGestureReady = true;
+
+            area.addEventListener('touchstart', event => {
+                if (event.touches.length === 2) {
+                    window.calendarGestureState = {
+                        mode: 'pinch',
+                        startDistance: getTouchDistance(event.touches),
+                        startZoom: window.currentZoom
+                    };
+                    return;
+                }
+                if (event.touches.length === 1) {
+                    const touch = event.touches[0];
+                    window.calendarGestureState = {
+                        mode: 'swipe',
+                        startX: touch.clientX,
+                        startY: touch.clientY,
+                        startTime: Date.now()
+                    };
+                }
+            }, { passive: true });
+
+            area.addEventListener('touchmove', event => {
+                const state = window.calendarGestureState;
+                if (!state) return;
+                if (event.touches.length === 2 && state.mode === 'pinch') {
+                    event.preventDefault();
+                    const distance = getTouchDistance(event.touches);
+                    if (state.startDistance > 0) {
+                        setCalendarZoom(state.startZoom * (distance / state.startDistance));
+                    }
+                    return;
+                }
+                if (event.touches.length === 1 && state.mode === 'swipe') {
+                    const touch = event.touches[0];
+                    const dx = touch.clientX - state.startX;
+                    const dy = touch.clientY - state.startY;
+                    if (Math.abs(dx) > 22 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                        event.preventDefault();
+                    }
+                }
+            }, { passive: false });
+
+            area.addEventListener('touchend', event => {
+                const state = window.calendarGestureState;
+                if (!state) return;
+                if (state.mode === 'pinch') {
+                    if (event.touches.length < 2) window.calendarGestureState = null;
+                    return;
+                }
+                const changedTouch = event.changedTouches && event.changedTouches[0];
+                window.calendarGestureState = null;
+                if (!changedTouch || state.mode !== 'swipe') return;
+                const dx = changedTouch.clientX - state.startX;
+                const dy = changedTouch.clientY - state.startY;
+                const elapsed = Date.now() - state.startTime;
+                const threshold = Math.min(150, Math.max(85, area.clientWidth * 0.22));
+                if (elapsed < 900 && Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
+                    window.calendarSuppressClickUntil = Date.now() + 450;
+                    window.changeWeek(dx < 0 ? 1 : -1, true);
+                }
+            }, { passive: true });
+
+            area.addEventListener('touchcancel', () => {
+                window.calendarGestureState = null;
+            }, { passive: true });
+
+            area.addEventListener('click', event => {
+                if (Date.now() < window.calendarSuppressClickUntil) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }, true);
+        }
+
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
         function getKoreanHolidayInfo(date) {
             const key = formatDate(date);
@@ -4989,10 +5107,55 @@
             return 'calc(8.7px * var(--cal-zoom))';
         }
 
-        window.changeWeek = function(offset) { window.currentDate.setDate(window.currentDate.getDate() + (offset * 7)); window.initCalendar(); }
+        function applyWeekOffset(offset) {
+            window.currentDate.setDate(window.currentDate.getDate() + (offset * 7));
+            window.initCalendar();
+        }
+
+        function animateCalendarWeekChange(offset) {
+            if (window.calendarAnimating) return;
+            const wrapper = document.querySelector('#calendar-scroll-area .cal-wrapper');
+            if (!wrapper) return applyWeekOffset(offset);
+            window.calendarAnimating = true;
+            const direction = offset > 0 ? -1 : 1;
+            wrapper.style.transition = 'transform 160ms cubic-bezier(0.4, 0, 1, 1), opacity 160ms ease';
+            wrapper.style.transform = `translateX(${direction * 22}%)`;
+            wrapper.style.opacity = '0.35';
+
+            setTimeout(() => {
+                applyWeekOffset(offset);
+                const freshWrapper = document.querySelector('#calendar-scroll-area .cal-wrapper');
+                if (!freshWrapper) {
+                    window.calendarAnimating = false;
+                    return;
+                }
+                freshWrapper.style.transition = 'none';
+                freshWrapper.style.transform = `translateX(${-direction * 22}%)`;
+                freshWrapper.style.opacity = '0.35';
+                freshWrapper.getBoundingClientRect();
+                requestAnimationFrame(() => {
+                    freshWrapper.style.transition = 'transform 220ms cubic-bezier(0, 0, 0.2, 1), opacity 220ms ease';
+                    freshWrapper.style.transform = 'translateX(0)';
+                    freshWrapper.style.opacity = '1';
+                    setTimeout(() => {
+                        freshWrapper.style.transition = '';
+                        freshWrapper.style.transform = '';
+                        freshWrapper.style.opacity = '';
+                        window.calendarAnimating = false;
+                    }, 240);
+                });
+            }, 160);
+        }
+
+        window.changeWeek = function(offset, animated = true) {
+            if (!offset || window.calendarAnimating) return;
+            if (animated) return animateCalendarWeekChange(offset);
+            applyWeekOffset(offset);
+        }
         window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
 
         window.initCalendar = function() {
+            setupCalendarGestures();
             const s = getStartOfWeek(window.currentDate);
             const e = new Date(s); e.setDate(e.getDate() + 6);
 
@@ -5046,6 +5209,12 @@
                     else if (holiday.name) cell.title = holiday.name;
                     cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
                     cell.id = `cell-${tDate}-${tStr}`;
+                    if (isCurrentTimeCell) {
+                        const line = document.createElement('div');
+                        line.className = 'cal-now-line';
+                        line.style.setProperty('--cal-now-pct', `${Math.max(0, Math.min(100, (now.getMinutes() / 60) * 100))}%`);
+                        cell.appendChild(line);
+                    }
                     row.appendChild(cell);
                 }
                 body.appendChild(row);
