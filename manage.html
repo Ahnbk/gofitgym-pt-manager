@@ -68,6 +68,14 @@
         }
         .calendar-scroll {
             isolation: isolate;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .calendar-scroll * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         .calendar-scroll.cal-pinching .cal-wrapper,
         .calendar-scroll.cal-pinching .cal-grid-row {
@@ -1327,7 +1335,7 @@
         var scheduleMoveState = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v92';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v93';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5154,6 +5162,11 @@
                 area.classList.remove('cal-pinching');
                 clearCalendarSwipePreview();
             }, { passive: true });
+
+            area.addEventListener('contextmenu', event => {
+                event.preventDefault();
+                event.stopPropagation();
+            }, true);
 
             area.addEventListener('click', event => {
                 if (Date.now() < window.calendarSuppressClickUntil) {
