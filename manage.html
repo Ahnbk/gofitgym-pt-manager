@@ -69,6 +69,10 @@
         .calendar-scroll {
             isolation: isolate;
         }
+        .calendar-scroll.cal-pinching .cal-wrapper,
+        .calendar-scroll.cal-pinching .cal-grid-row {
+            transition: none !important;
+        }
         .cal-grid-row {
             height: calc(var(--cal-base-row-height) * var(--cal-zoom));
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -143,19 +147,22 @@
             z-index: 35;
         }
         .cal-now-line::before {
-            content: '';
-            position: absolute;
-            left: -3px;
-            top: 50%;
-            width: 8px;
-            height: 8px;
-            transform: translateY(-50%);
-            border-radius: 999px;
-            background: #ef4444;
-            box-shadow: 0 0 0 2px #fff7ed;
+            display: none;
         }
         .cal-grid-header {
             border-right: 1px solid #57534e;
+        }
+        .cal-moving-source {
+            opacity: 0.72;
+            outline: 2px solid #f59e0b;
+            outline-offset: -2px;
+        }
+        .cal-move-target {
+            background: #ecfdf5 !important;
+            box-shadow: inset 0 0 0 2px #10b981;
+        }
+        .cal-move-blocked {
+            cursor: not-allowed !important;
         }
         
         /* Font scaling based on zoom */
@@ -628,6 +635,16 @@
                         <button onclick="window.zoomCalendar(0.3)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 확대"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
                     </div>
                 </div>
+                <div id="calendar-move-bar" class="hidden px-3 py-2 bg-emerald-50 border-b border-emerald-200 shrink-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <p id="calendar-move-label" class="min-w-0 text-[11px] font-black text-emerald-800 truncate">
+                            <i class="fa-solid fa-arrows-up-down-left-right mr-1.5"></i>이동할 빈 시간을 선택해주세요.
+                        </p>
+                        <button onclick="window.cancelScheduleMove()" class="shrink-0 min-h-[36px] px-3 rounded-xl bg-white text-stone-700 border border-emerald-200 text-[10px] font-black active-scale">
+                            취소
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Independent Scrollable Grid Wrapper for Sticky Header -->
                 <div class="overflow-auto calendar-scroll bg-white flex-grow relative" id="calendar-scroll-area">
@@ -761,12 +778,12 @@
 
     <!-- 0. Trainer Profile Settings Modal -->
     <div id="modal-profile-settings" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
-        <div class="bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] shadow-2xl overflow-y-auto">
-            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+        <div class="bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-gear mr-1.5"></i>트레이너 설정</h3>
                 <button onclick="window.closeProfileSettingsModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-5 space-y-3">
+            <div class="p-5 space-y-3 overflow-y-auto">
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">트레이너 이름</label>
                     <input type="text" id="profile-trainer-name" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
@@ -1149,6 +1166,30 @@
         </div>
     </div>
 
+    <!-- B-2. Schedule Long Press Action Menu -->
+    <div id="modal-schedule-action" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4 z-[60] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-stone-200">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div class="min-w-0">
+                    <h3 id="schedule-action-title" class="font-black text-amber-500 text-base truncate">예약 일정</h3>
+                    <p id="schedule-action-subtitle" class="text-[11px] text-stone-400 font-bold mt-0.5 truncate">일정 작업을 선택하세요.</p>
+                </div>
+                <button onclick="window.closeScheduleActionMenu()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-4 space-y-2">
+                <button onclick="window.startScheduleMoveFromAction()" class="w-full min-h-[48px] bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                    <i class="fa-solid fa-arrows-up-down-left-right mr-1.5"></i>일정 이동
+                </button>
+                <button onclick="window.deleteScheduleFromAction()" class="w-full min-h-[48px] bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black active-scale flex items-center justify-center">
+                    <i class="fa-solid fa-trash-can mr-1.5"></i>일정 삭제
+                </button>
+                <button onclick="window.closeScheduleActionMenu()" class="w-full min-h-[44px] bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- C. Signature Pad & Preview Modal (UPGRADED) -->
     <div id="sign-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden" id="modal-box">
@@ -1279,9 +1320,14 @@
         var calendarGestureState = null;
         var calendarAnimating = false;
         var calendarSuppressClickUntil = 0;
+        var scheduleLongPressTimer = null;
+        var scheduleLongPressState = null;
+        var scheduleLongPressTriggered = false;
+        var scheduleActionScheduleId = null;
+        var scheduleMoveState = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v90';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v92';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4969,6 +5015,37 @@
             return Math.hypot(dx, dy);
         }
 
+        function getCalendarScrollLimit(area) {
+            if (!area) return 0;
+            return Math.max(0, area.scrollWidth - area.clientWidth);
+        }
+
+        function clearCalendarSwipePreview() {
+            const wrapper = document.querySelector('#calendar-scroll-area .cal-wrapper');
+            if (!wrapper) return;
+            wrapper.style.transition = 'transform 180ms cubic-bezier(0, 0, 0.2, 1), opacity 180ms ease';
+            wrapper.style.transform = 'translateX(0)';
+            wrapper.style.opacity = '1';
+            setTimeout(() => {
+                if (window.calendarAnimating) return;
+                wrapper.style.transition = '';
+                wrapper.style.transform = '';
+                wrapper.style.opacity = '';
+            }, 190);
+        }
+
+        function applyCalendarSwipePreview(area, dx) {
+            const wrapper = document.querySelector('#calendar-scroll-area .cal-wrapper');
+            if (!wrapper || !area) return 0;
+            const limit = Math.min(280, Math.max(80, area.clientWidth * 0.32));
+            const previewX = Math.max(-limit, Math.min(limit, dx * 0.62));
+            const progress = Math.min(1, Math.abs(previewX) / limit);
+            wrapper.style.transition = 'none';
+            wrapper.style.transform = `translateX(${previewX}px)`;
+            wrapper.style.opacity = `${1 - (progress * 0.28)}`;
+            return previewX;
+        }
+
         function setupCalendarGestures() {
             if (window.calendarGestureReady) return;
             const area = document.getElementById('calendar-scroll-area');
@@ -4982,6 +5059,7 @@
                         startDistance: getTouchDistance(event.touches),
                         startZoom: window.currentZoom
                     };
+                    area.classList.add('cal-pinching');
                     return;
                 }
                 if (event.touches.length === 1) {
@@ -4990,7 +5068,10 @@
                         mode: 'swipe',
                         startX: touch.clientX,
                         startY: touch.clientY,
-                        startTime: Date.now()
+                        startTime: Date.now(),
+                        edgeSwipe: false,
+                        edgeStartX: touch.clientX,
+                        previewX: 0
                     };
                 }
             }, { passive: true });
@@ -5010,8 +5091,34 @@
                     const touch = event.touches[0];
                     const dx = touch.clientX - state.startX;
                     const dy = touch.clientY - state.startY;
-                    if (Math.abs(dx) > 22 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                    if (Math.abs(dx) <= 18 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+
+                    const scrollLimit = getCalendarScrollLimit(area);
+                    const edgeTolerance = 3;
+                    const atLeftEdge = area.scrollLeft <= edgeTolerance;
+                    const atRightEdge = area.scrollLeft >= scrollLimit - edgeTolerance;
+                    const wantsPreviousWeek = dx > 0;
+                    const wantsNextWeek = dx < 0;
+                    const canEdgeSwipe = scrollLimit <= edgeTolerance
+                        || (wantsPreviousWeek && atLeftEdge)
+                        || (wantsNextWeek && atRightEdge);
+
+                    if (!state.edgeSwipe && canEdgeSwipe) {
+                        state.edgeSwipe = true;
+                        state.edgeStartX = touch.clientX;
+                        state.edgeDirection = wantsNextWeek ? 1 : -1;
+                    }
+
+                    if (state.edgeSwipe) {
+                        const edgeDx = touch.clientX - state.edgeStartX;
+                        const matchesDirection = state.edgeDirection === 1 ? edgeDx < 0 : edgeDx > 0;
+                        if (!matchesDirection && Math.abs(edgeDx) > 10) {
+                            state.edgeSwipe = false;
+                            clearCalendarSwipePreview();
+                            return;
+                        }
                         event.preventDefault();
+                        state.previewX = applyCalendarSwipePreview(area, edgeDx);
                     }
                 }
             }, { passive: false });
@@ -5020,24 +5127,32 @@
                 const state = window.calendarGestureState;
                 if (!state) return;
                 if (state.mode === 'pinch') {
-                    if (event.touches.length < 2) window.calendarGestureState = null;
+                    if (event.touches.length < 2) {
+                        window.calendarGestureState = null;
+                        setTimeout(() => area.classList.remove('cal-pinching'), 80);
+                    }
                     return;
                 }
                 const changedTouch = event.changedTouches && event.changedTouches[0];
                 window.calendarGestureState = null;
                 if (!changedTouch || state.mode !== 'swipe') return;
-                const dx = changedTouch.clientX - state.startX;
-                const dy = changedTouch.clientY - state.startY;
-                const elapsed = Date.now() - state.startTime;
-                const threshold = Math.min(150, Math.max(85, area.clientWidth * 0.22));
-                if (elapsed < 900 && Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
+                if (!state.edgeSwipe) return;
+
+                const edgeDx = changedTouch.clientX - state.edgeStartX;
+                const threshold = Math.min(150, Math.max(72, area.clientWidth * 0.18));
+                const direction = edgeDx < 0 ? 1 : -1;
+                if (Math.abs(edgeDx) > threshold && direction === state.edgeDirection) {
                     window.calendarSuppressClickUntil = Date.now() + 450;
-                    window.changeWeek(dx < 0 ? 1 : -1, true);
+                    window.changeWeek(direction, true);
+                } else {
+                    clearCalendarSwipePreview();
                 }
             }, { passive: true });
 
             area.addEventListener('touchcancel', () => {
                 window.calendarGestureState = null;
+                area.classList.remove('cal-pinching');
+                clearCalendarSwipePreview();
             }, { passive: true });
 
             area.addEventListener('click', event => {
@@ -5107,6 +5222,173 @@
             return 'calc(8.7px * var(--cal-zoom))';
         }
 
+        function findScheduleById(id) {
+            return (window.schedules || []).find(item => String(item.id) === String(id));
+        }
+
+        function isScheduleMoveActive() {
+            return !!(window.scheduleMoveState && window.scheduleMoveState.id != null);
+        }
+
+        function getOccupiedScheduleAt(date, time, excludeId = null) {
+            return (window.schedules || []).find(item => {
+                if (!item || item.date !== date || item.time !== time) return false;
+                return excludeId == null || String(item.id) !== String(excludeId);
+            });
+        }
+
+        function updateScheduleMoveBar() {
+            const bar = document.getElementById('calendar-move-bar');
+            const label = document.getElementById('calendar-move-label');
+            if (!bar) return;
+
+            if (!isScheduleMoveActive()) {
+                bar.classList.add('hidden');
+                return;
+            }
+
+            const schedule = findScheduleById(window.scheduleMoveState.id);
+            bar.classList.remove('hidden');
+            if (label) {
+                const title = schedule ? String(schedule.title || '예약') : '예약';
+                label.innerHTML = `<i class="fa-solid fa-arrows-up-down-left-right mr-1.5"></i>${escapeHtml(title)} 이동 중 · 빈 시간을 선택해주세요.`;
+            }
+        }
+
+        function clearScheduleLongPress() {
+            if (window.scheduleLongPressTimer) clearTimeout(window.scheduleLongPressTimer);
+            window.scheduleLongPressTimer = null;
+            window.scheduleLongPressState = null;
+        }
+
+        function attachScheduleLongPress(element, schedule) {
+            element.addEventListener('pointerdown', event => {
+                if (isScheduleMoveActive()) return;
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                clearScheduleLongPress();
+                window.scheduleLongPressTriggered = false;
+                window.scheduleLongPressState = {
+                    id: schedule.id,
+                    x: event.clientX,
+                    y: event.clientY
+                };
+                window.scheduleLongPressTimer = setTimeout(() => {
+                    window.scheduleLongPressTriggered = true;
+                    window.calendarSuppressClickUntil = Date.now() + 700;
+                    if (navigator.vibrate) navigator.vibrate(12);
+                    window.openScheduleActionMenu(schedule.id);
+                    setTimeout(() => { window.scheduleLongPressTriggered = false; }, 900);
+                }, 580);
+            });
+
+            element.addEventListener('pointermove', event => {
+                const state = window.scheduleLongPressState;
+                if (!state) return;
+                const dx = event.clientX - state.x;
+                const dy = event.clientY - state.y;
+                if (Math.hypot(dx, dy) > 12) clearScheduleLongPress();
+            });
+
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+                element.addEventListener(type, clearScheduleLongPress);
+            });
+
+            element.addEventListener('contextmenu', event => {
+                if (isScheduleMoveActive()) return;
+                event.preventDefault();
+                clearScheduleLongPress();
+                window.calendarSuppressClickUntil = Date.now() + 500;
+                window.openScheduleActionMenu(schedule.id);
+            });
+        }
+
+        function handleCalendarCellClick(date, time) {
+            if (Date.now() < window.calendarSuppressClickUntil) return;
+            if (isScheduleMoveActive()) {
+                window.selectScheduleMoveTarget(date, time);
+                return;
+            }
+            window.openScheduleModal(date, time, null);
+        }
+
+        window.openScheduleActionMenu = function(id) {
+            if (isScheduleMoveActive()) return showToast('이동 중에는 먼저 이동을 완료하거나 취소해주세요.');
+            const schedule = findScheduleById(id);
+            if (!schedule) return showToast('이미 삭제된 일정입니다.');
+
+            window.scheduleActionScheduleId = schedule.id;
+            const title = document.getElementById('schedule-action-title');
+            const subtitle = document.getElementById('schedule-action-subtitle');
+            if (title) title.innerText = schedule.title || '예약 일정';
+            if (subtitle) subtitle.innerText = `${formatDisplayDate(schedule.date)} ${schedule.time || ''}`;
+
+            const modal = document.getElementById('modal-schedule-action');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeScheduleActionMenu = function() {
+            const modal = document.getElementById('modal-schedule-action');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.deleteScheduleFromAction = function() {
+            const id = window.scheduleActionScheduleId;
+            window.closeScheduleActionMenu();
+            if (id == null) return showToast('선택된 일정이 없습니다.');
+            setTimeout(() => window.deleteSchedule(id), 180);
+        }
+
+        window.startScheduleMoveFromAction = function() {
+            const schedule = findScheduleById(window.scheduleActionScheduleId);
+            if (!schedule) return showToast('이미 삭제된 일정입니다.');
+            window.scheduleMoveState = {
+                id: schedule.id,
+                startedAt: Date.now()
+            };
+            window.closeScheduleActionMenu();
+            updateScheduleMoveBar();
+            window.initCalendar();
+            showToast('이동할 시간을 선택해주세요.');
+        }
+
+        window.cancelScheduleMove = function(options = {}) {
+            if (!isScheduleMoveActive()) return;
+            window.scheduleMoveState = null;
+            updateScheduleMoveBar();
+            window.initCalendar();
+            if (!options.silent) showToast('일정 이동을 취소했습니다.');
+        }
+
+        window.selectScheduleMoveTarget = function(date, time) {
+            const state = window.scheduleMoveState;
+            if (!state) return;
+            const schedule = findScheduleById(state.id);
+            if (!schedule) {
+                window.scheduleMoveState = null;
+                updateScheduleMoveBar();
+                window.initCalendar();
+                return showToast('이미 삭제된 일정입니다.');
+            }
+
+            const occupied = getOccupiedScheduleAt(date, time, schedule.id);
+            if (occupied) return showToast('이미 일정이 있습니다. 빈칸을 선택해주세요.');
+
+            if (schedule.date === date && schedule.time === time) {
+                return showToast('현재 위치입니다. 다른 빈칸을 선택해주세요.');
+            }
+
+            schedule.date = date;
+            schedule.time = time;
+            localSaveSchedule(schedule);
+            window.scheduleMoveState = null;
+            updateScheduleMoveBar();
+            window.initCalendar();
+            window.renderMemberList();
+            showToast('일정을 이동했습니다.');
+        }
+
         function applyWeekOffset(offset) {
             window.currentDate.setDate(window.currentDate.getDate() + (offset * 7));
             window.initCalendar();
@@ -5156,6 +5438,7 @@
 
         window.initCalendar = function() {
             setupCalendarGestures();
+            updateScheduleMoveBar();
             const s = getStartOfWeek(window.currentDate);
             const e = new Date(s); e.setDate(e.getDate() + 6);
 
@@ -5204,10 +5487,13 @@
                     const holiday = getKoreanHolidayInfo(d);
                     const cell = document.createElement('div');
                     const isCurrentTimeCell = showCurrentTimeCell && tDate === todayStr && tStr === currentHourStr;
-                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white')}`;
+                    const moveActive = isScheduleMoveActive();
+                    const moveOccupied = moveActive && !!getOccupiedScheduleAt(tDate, tStr);
+                    const moveClass = moveActive ? (moveOccupied ? 'cal-move-blocked' : 'cal-move-target') : '';
+                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white')} ${moveClass}`;
                     if (isCurrentTimeCell) cell.title = holiday.name ? `현재 시간 · ${holiday.name}` : '현재 시간';
                     else if (holiday.name) cell.title = holiday.name;
-                    cell.onclick = () => window.openScheduleModal(tDate, tStr, null);
+                    cell.onclick = () => handleCalendarCellClick(tDate, tStr);
                     cell.id = `cell-${tDate}-${tStr}`;
                     if (isCurrentTimeCell) {
                         const line = document.createElement('div');
@@ -5224,9 +5510,20 @@
                 const cell = document.getElementById(`cell-${evt.date}-${evt.time}`);
                 if (cell) {
                     const b = document.createElement('div');
-                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10`;
+                    const movingSource = isScheduleMoveActive() && String(window.scheduleMoveState.id) === String(evt.id);
+                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10 ${movingSource ? 'cal-moving-source' : ''}`;
                     b.innerHTML = `<span class="font-black text-white cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
-                    b.onclick = (e) => { e.stopPropagation(); window.openScheduleModal(evt.date, evt.time, evt); };
+                    b.style.touchAction = 'manipulation';
+                    attachScheduleLongPress(b, evt);
+                    b.onclick = (e) => {
+                        e.stopPropagation();
+                        if (isScheduleMoveActive()) return showToast('이미 일정이 있습니다. 빈칸을 선택해주세요.');
+                        if (window.scheduleLongPressTriggered || Date.now() < window.calendarSuppressClickUntil) {
+                            window.scheduleLongPressTriggered = false;
+                            return;
+                        }
+                        window.openScheduleModal(evt.date, evt.time, evt);
+                    };
                     cell.appendChild(b);
                 }
             });
