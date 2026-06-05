@@ -1254,6 +1254,48 @@
         </div>
     </div>
 
+    <!-- B-3. Google Calendar Bulk Sync Progress -->
+    <div id="modal-calendar-sync-progress" class="fixed inset-0 bg-stone-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-[90] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-stone-200">
+            <div class="bg-stone-900 text-stone-100 p-4">
+                <p class="text-[10px] font-black text-amber-500 tracking-widest">GOOGLE CALENDAR</p>
+                <h3 id="calendar-sync-progress-title" class="font-black text-lg mt-0.5">예약 전체 반영 중</h3>
+                <p id="calendar-sync-progress-status" class="text-[11px] text-stone-400 font-bold mt-1">구글 캘린더 연결을 확인하고 있습니다.</p>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="flex items-center justify-between text-xs font-black text-stone-700">
+                    <span id="calendar-sync-progress-count">0 / 0</span>
+                    <span id="calendar-sync-progress-percent" class="text-amber-600">0%</span>
+                </div>
+                <div class="h-3 bg-stone-100 rounded-full overflow-hidden border border-stone-200">
+                    <div id="calendar-sync-progress-bar" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="rounded-2xl bg-stone-50 border border-stone-200 p-3">
+                    <p class="text-[10px] font-black text-stone-500">현재 처리 중</p>
+                    <p id="calendar-sync-progress-current" class="text-sm font-black text-stone-950 mt-1 truncate">대기 중</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-3 text-center">
+                        <p class="text-[10px] font-black text-emerald-700">성공</p>
+                        <p id="calendar-sync-progress-success" class="text-xl font-black text-emerald-700">0</p>
+                    </div>
+                    <div class="rounded-2xl bg-red-50 border border-red-100 p-3 text-center">
+                        <p class="text-[10px] font-black text-red-600">실패</p>
+                        <p id="calendar-sync-progress-failed" class="text-xl font-black text-red-600">0</p>
+                    </div>
+                </div>
+                <p id="calendar-sync-progress-note" class="text-[11px] font-bold text-stone-500 leading-relaxed">
+                    반영 중에는 앱을 닫거나 다른 버튼을 누르지 마세요.
+                </p>
+            </div>
+            <div class="p-4 bg-stone-50 border-t border-stone-200">
+                <button id="calendar-sync-progress-close" onclick="window.closeCalendarSyncProgressModal()" disabled class="w-full min-h-[48px] rounded-xl bg-stone-200 text-stone-400 text-sm font-black cursor-not-allowed">
+                    완료 후 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- C. Signature Pad & Preview Modal (UPGRADED) -->
     <div id="sign-modal" class="fixed inset-0 bg-stone-900/90 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden" id="modal-box">
@@ -1395,10 +1437,11 @@
         var googleCalendarTokenClient = null;
         var googleCalendarTokenClientId = '';
         var googleCalendarScriptPromise = null;
+        var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v105';
-        const APP_DISPLAY_VERSION = '1.05';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v106';
+        const APP_DISPLAY_VERSION = '1.06';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5831,29 +5874,176 @@
             }
         }
 
+        function getScheduleProgressLabel(schedule) {
+            if (!schedule) return '대기 중';
+            return `${formatDisplayDate(schedule.date)} ${schedule.time || ''} ${schedule.title || ''}`.trim();
+        }
+
+        function setCalendarSyncProgressCloseEnabled(enabled) {
+            const btn = document.getElementById('calendar-sync-progress-close');
+            if (!btn) return;
+            btn.disabled = !enabled;
+            btn.innerText = enabled ? '확인' : '완료 후 닫기';
+            btn.className = enabled
+                ? 'w-full min-h-[48px] rounded-xl bg-amber-500 text-stone-950 text-sm font-black active-scale'
+                : 'w-full min-h-[48px] rounded-xl bg-stone-200 text-stone-400 text-sm font-black cursor-not-allowed';
+        }
+
+        function updateCalendarSyncProgress(data = {}) {
+            const total = Math.max(0, Number(data.total || 0));
+            const current = Math.min(total, Math.max(0, Number(data.current || 0)));
+            const success = Math.max(0, Number(data.success || 0));
+            const failed = Math.max(0, Number(data.failed || 0));
+            const percent = total ? Math.round((current / total) * 100) : 0;
+            const title = document.getElementById('calendar-sync-progress-title');
+            const status = document.getElementById('calendar-sync-progress-status');
+            const count = document.getElementById('calendar-sync-progress-count');
+            const percentEl = document.getElementById('calendar-sync-progress-percent');
+            const bar = document.getElementById('calendar-sync-progress-bar');
+            const currentEl = document.getElementById('calendar-sync-progress-current');
+            const successEl = document.getElementById('calendar-sync-progress-success');
+            const failedEl = document.getElementById('calendar-sync-progress-failed');
+            const note = document.getElementById('calendar-sync-progress-note');
+            if (title && data.title) title.innerText = data.title;
+            if (status && data.status) status.innerText = data.status;
+            if (count) count.innerText = `${current} / ${total}`;
+            if (percentEl) percentEl.innerText = `${percent}%`;
+            if (bar) bar.style.width = `${percent}%`;
+            if (currentEl) currentEl.innerText = data.currentLabel || '대기 중';
+            if (successEl) successEl.innerText = String(success);
+            if (failedEl) failedEl.innerText = String(failed);
+            if (note && data.note) note.innerText = data.note;
+        }
+
+        function openCalendarSyncProgressModal(total) {
+            window.googleCalendarBulkSyncState = { active: true, done: false };
+            setCalendarSyncProgressCloseEnabled(false);
+            updateCalendarSyncProgress({
+                total,
+                current: 0,
+                success: 0,
+                failed: 0,
+                title: '예약 전체 반영 중',
+                status: '구글 캘린더 연결을 확인하고 있습니다.',
+                currentLabel: '대기 중',
+                note: '반영 중에는 앱을 닫거나 다른 버튼을 누르지 마세요.'
+            });
+            const modal = document.getElementById('modal-calendar-sync-progress');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function finishCalendarSyncProgressModal(total, success, failed, message) {
+            window.googleCalendarBulkSyncState = { active: false, done: true };
+            updateCalendarSyncProgress({
+                total,
+                current: total,
+                success,
+                failed,
+                title: failed ? '반영 완료, 일부 실패' : '예약 전체 반영 완료',
+                status: message || `총 ${total}건 중 ${success}건 반영 완료`,
+                currentLabel: '완료',
+                note: failed
+                    ? '실패한 예약은 연결 상태를 확인한 뒤 다시 전체 반영을 실행해주세요.'
+                    : '확인을 누르면 창이 닫힙니다.'
+            });
+            setCalendarSyncProgressCloseEnabled(true);
+        }
+
+        function failCalendarSyncProgressModal(total, message) {
+            window.googleCalendarBulkSyncState = { active: false, done: true };
+            updateCalendarSyncProgress({
+                total,
+                current: 0,
+                success: 0,
+                failed: total,
+                title: '반영을 시작하지 못했습니다',
+                status: message || '구글 캘린더 연결에 실패했습니다.',
+                currentLabel: '중단됨',
+                note: '확인을 누른 뒤 설정의 구글 캘린더 연결 상태를 확인해주세요.'
+            });
+            setCalendarSyncProgressCloseEnabled(true);
+        }
+
+        window.closeCalendarSyncProgressModal = function() {
+            if (window.googleCalendarBulkSyncState && window.googleCalendarBulkSyncState.active && !window.googleCalendarBulkSyncState.done) {
+                return showToast('반영 중에는 닫을 수 없습니다.');
+            }
+            const modal = document.getElementById('modal-calendar-sync-progress');
+            if (!modal) return;
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
         async function syncSchedulesToGoogleCalendar(targetSchedules, options = {}) {
             const list = (targetSchedules || []).filter(Boolean);
             if (!isGoogleCalendarAllowedForActiveProfile()) return showToast('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
             if (!list.length) return showToast('반영할 예약이 없습니다.');
             if (!getGoogleCalendarClientId()) return showToast('설정에서 Google OAuth 클라이언트 ID를 입력해주세요.');
 
+            const showProgress = options.showProgress !== false;
+            if (showProgress) openCalendarSyncProgressModal(list.length);
             let success = 0;
             let failed = 0;
             try {
+                if (showProgress) {
+                    updateCalendarSyncProgress({
+                        total: list.length,
+                        current: 0,
+                        success,
+                        failed,
+                        status: '구글 캘린더 연결을 확인하고 있습니다.',
+                        currentLabel: '연결 확인 중'
+                    });
+                }
                 await requestGoogleCalendarAccess({ prompt: '' });
             } catch (err) {
                 console.error('Google Calendar auth failed.', err);
-                return showToast(`구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`);
+                const message = `구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`;
+                if (showProgress) {
+                    failCalendarSyncProgressModal(list.length, message);
+                    return { success, failed: list.length, total: list.length };
+                }
+                showToast(message);
+                return { success, failed: list.length, total: list.length };
             }
-            for (const schedule of list) {
+            for (let i = 0; i < list.length; i++) {
+                const schedule = list[i];
+                if (showProgress) {
+                    updateCalendarSyncProgress({
+                        total: list.length,
+                        current: i,
+                        success,
+                        failed,
+                        status: `${i + 1}번째 예약을 반영하고 있습니다.`,
+                        currentLabel: getScheduleProgressLabel(schedule)
+                    });
+                }
                 const result = await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: false });
                 if (result) success++;
                 else failed++;
+                if (showProgress) {
+                    updateCalendarSyncProgress({
+                        total: list.length,
+                        current: i + 1,
+                        success,
+                        failed,
+                        status: `${i + 1} / ${list.length}건 처리 완료`,
+                        currentLabel: getScheduleProgressLabel(schedule)
+                    });
+                }
             }
             window.initCalendar();
             window.renderMemberList();
             const suffix = failed ? `, 실패 ${failed}건` : '';
-            showToast(`구글 캘린더 대상 ${list.length}건 중 ${success}건 반영${suffix}`);
+            const message = `구글 캘린더 대상 ${list.length}건 중 ${success}건 반영${suffix}`;
+            if (showProgress) {
+                finishCalendarSyncProgressModal(list.length, success, failed, message);
+            } else {
+                showToast(message);
+            }
+            return { success, failed, total: list.length };
         }
 
         window.syncUpcomingSchedulesToGoogleCalendar = async function() {
@@ -5865,7 +6055,6 @@
             if (!upcoming.length) return showToast('오늘 이후 예약이 없습니다.');
             const ok = confirm(`오늘 이후 예약 ${upcoming.length}건을 구글 캘린더에 반영할까요?\n기본 캘린더에 60분 일정, 10분 전 알림으로 등록됩니다.`);
             if (!ok) return;
-            showToast('구글 캘린더 반영 중입니다. 앱을 끄지 마세요.');
             await syncSchedulesToGoogleCalendar(upcoming);
         }
 
