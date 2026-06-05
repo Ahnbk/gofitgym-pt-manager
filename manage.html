@@ -516,12 +516,6 @@
                 <button onclick="window.submitLocalLogin()" id="auth-submit-btn" class="hidden w-full py-3.5 bg-amber-500 text-stone-950 rounded-xl text-sm font-black active-scale shadow-sm">
                     시작하기
                 </button>
-                <button onclick="window.toggleAuthCreateMode()" id="auth-secondary-btn" class="hidden w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
-                    새 트레이너 등록
-                </button>
-                <button onclick="window.cancelAdditionalLogin()" id="auth-cancel-btn" class="hidden w-full py-3 bg-stone-100 text-stone-500 rounded-xl text-xs font-black active-scale">
-                    취소
-                </button>
                 <button onclick="window.confirmResetLocalLoginInfo()" id="auth-reset-btn" class="hidden w-full py-2 text-[10px] font-bold text-red-500">
                     로그인 정보 초기화
                 </button>
@@ -819,13 +813,6 @@
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">로그인 계정</label>
                     <input type="text" id="profile-login-id" autocomplete="username" readonly class="w-full text-sm bg-stone-100 border border-stone-200 rounded-xl px-3.5 py-3 outline-none font-medium text-stone-500">
                 </div>
-                <div id="profile-trainer-switch-section" class="profile-basic-section hidden rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
-                    <div>
-                        <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-users-gear text-amber-500 mr-1"></i>트레이너 전환</p>
-                        <p class="text-[11px] font-bold text-stone-500">로그인된 트레이너 기준으로 회원 목록과 일정을 전환합니다.</p>
-                    </div>
-                    <div id="profile-trainer-switch-list" class="grid grid-cols-1 gap-1.5"></div>
-                </div>
                 <div id="profile-cloud-section" class="profile-admin-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
@@ -852,7 +839,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="profile-admin-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div class="profile-basic-section rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div>
                         <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-database text-amber-500 mr-1"></i>백업 관리</p>
                         <p class="text-[11px] font-bold text-stone-500">로컬 백업 저장과 복원은 여기서 관리합니다.</p>
@@ -906,7 +893,6 @@
                     <input type="password" id="profile-new-password" autocomplete="new-password" placeholder="새 비밀번호 (변경시에만)" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <button onclick="window.saveProfileSettings()" class="w-full min-h-[44px] py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">저장</button>
-                <button onclick="window.openAdditionalLogin()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-user-plus mr-1 text-amber-500"></i>추가 로그인</button>
                 <button onclick="window.openAppInfoModal()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-circle-info mr-1 text-amber-500"></i>앱 정보 / 개인정보 처리방침</button>
                 <button onclick="window.logoutLocalUser()" class="profile-basic-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">현재 트레이너 로그아웃</button>
                 <button onclick="window.checkStorageProtection(true)" class="profile-admin-section w-full min-h-[44px] py-3 bg-stone-100 text-stone-700 rounded-xl text-xs font-black active-scale"><i class="fa-solid fa-shield-halved mr-1 text-amber-500"></i>기기 저장 보호 확인</button>
@@ -1440,8 +1426,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v106';
-        const APP_DISPLAY_VERSION = '1.06';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v107';
+        const APP_DISPLAY_VERSION = '1.07';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3292,11 +3278,16 @@
                 try { return JSON.parse(store.getItem(key) || '[]'); } catch (err) { return []; }
             };
             const ids = [...read(sessionStorage, LOGGED_SESSION_KEY), ...read(localStorage, LOGGED_LOCAL_KEY)];
-            return [...new Set(ids)].filter(id => window.trainerProfiles[id]);
+            const validIds = [...new Set(ids)].filter(id => window.trainerProfiles[id]);
+            const storedActive = sessionStorage.getItem(ACTIVE_LOGIN_KEY) || localStorage.getItem(ACTIVE_LOGIN_KEY);
+            const selected = validIds.includes(storedActive) ? storedActive : (validIds[validIds.length - 1] || null);
+            return selected ? [selected] : [];
         }
 
         function writeLoggedIds(store, key, ids) {
-            store.setItem(key, JSON.stringify([...new Set(ids)].filter(id => window.trainerProfiles[id])));
+            const validIds = [...new Set(ids)].filter(id => window.trainerProfiles[id]);
+            const selected = validIds[validIds.length - 1];
+            store.setItem(key, JSON.stringify(selected ? [selected] : []));
         }
 
         function refreshActiveProfile() {
@@ -3331,24 +3322,6 @@
             return `<button onclick="window.openProfileSettingsModal()" title="설정" aria-label="설정" class="header-control header-control-icon header-settings-button shrink-0 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold active-scale border border-stone-700"><i class="fa-solid fa-gear text-amber-500"></i></button>`;
         }
 
-        function renderProfileTrainerSwitcher() {
-            const section = document.getElementById('profile-trainer-switch-section');
-            const list = document.getElementById('profile-trainer-switch-list');
-            if (!section || !list) return;
-            const ids = (window.loggedInTrainerIds || []).filter(id => window.trainerProfiles[id]);
-            section.classList.toggle('hidden', ids.length <= 1);
-            list.innerHTML = ids.map(id => {
-                const profile = window.trainerProfiles[id];
-                const active = id === window.activeLoginId;
-                const activeClasses = 'bg-amber-500 text-stone-950 border-amber-500';
-                const inactiveClasses = 'bg-white text-stone-700 border-stone-200';
-                return `<button ${active ? 'disabled' : `onclick="window.switchActiveTrainer('${encodeURIComponent(id)}')"`} class="w-full min-h-[42px] px-3 rounded-xl border text-xs font-black flex items-center justify-between gap-2 active-scale ${active ? activeClasses : inactiveClasses}">
-                    <span class="truncate">${escapeHtml(profile.trainerName)} 트레이너</span>
-                    <span class="text-[10px] font-black ${active ? 'text-stone-900' : 'text-amber-600'}">${active ? '활성' : '전환'}</span>
-                </button>`;
-            }).join('');
-        }
-
         function renderHeaderActions(view = 'dashboard') {
             const container = document.getElementById('header-action-container');
             if (!container) return;
@@ -3370,11 +3343,6 @@
 
             const basicBtn = document.getElementById('profile-tab-basic');
             const adminBtn = document.getElementById('profile-tab-admin');
-            const switchSection = document.getElementById('profile-trainer-switch-section');
-            if (switchSection) {
-                const ids = (window.loggedInTrainerIds || []).filter(id => window.trainerProfiles[id]);
-                switchSection.classList.toggle('hidden', target !== 'basic' || ids.length <= 1);
-            }
             const passwordSection = document.getElementById('profile-password-section');
             if (passwordSection) {
                 passwordSection.classList.toggle('hidden', target !== 'basic' || isCloudProfile() || isLicenseProfile());
@@ -3469,8 +3437,6 @@
             const title = document.getElementById('auth-title');
             const subtitle = document.getElementById('auth-subtitle');
             const submit = document.getElementById('auth-submit-btn');
-            const secondary = document.getElementById('auth-secondary-btn');
-            const cancel = document.getElementById('auth-cancel-btn');
             const reset = document.getElementById('auth-reset-btn');
             overlay.classList.remove('hidden');
             if (trainerRow) trainerRow.classList.add('hidden');
@@ -3483,8 +3449,6 @@
             title.innerText = 'GOFITGYM 로그인';
             subtitle.innerText = '관리자 또는 승인된 사용자만 접속할 수 있습니다.';
             submit.classList.add('hidden');
-            secondary.classList.add('hidden');
-            cancel.classList.toggle('hidden', !window.activeLoginId);
             reset.classList.add('hidden');
             document.getElementById('auth-login-id').value = '';
             document.getElementById('auth-password').value = '';
@@ -3548,41 +3512,6 @@
             window.switchMainView('dashboard');
         }
 
-        window.switchActiveTrainer = async function(encodedLoginId) {
-            const loginId = decodeURIComponent(encodedLoginId);
-            if (!window.trainerProfiles[loginId]) return;
-            if (!window.loggedInTrainerIds.includes(loginId)) return showToast('먼저 로그인해주세요.');
-            flushWorkoutSave();
-            saveDatabase({ silent: true });
-            stopCloudSync();
-            window.activeLoginId = loginId;
-            sessionStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
-            localStorage.setItem(ACTIVE_LOGIN_KEY, loginId);
-            refreshActiveProfile();
-            const allowed = await verifyStoredProfileAccess(window.appProfile);
-            if (!allowed) {
-                removeLoggedTrainer(loginId);
-                return showToast('사용 허가가 해제된 계정입니다.');
-            }
-            window.activeMemberId = null;
-            window.setDetailProgressExpanded(false);
-            window.setLessonEditMode(false, false);
-            window.signedLessonsExpanded = false;
-            loadDatabase();
-            if (isActiveCloudProfile()) startCloudSync();
-            window.switchMainView('dashboard');
-            window.closeProfileSettingsModal();
-            showToast(`${getTrainerName()} 트레이너로 전환되었습니다.`);
-        }
-
-        window.toggleAuthCreateMode = function() {
-            showToast('새 사용자는 사용 허가 요청으로 등록합니다.');
-        }
-
-        window.cancelAdditionalLogin = function() {
-            hideLoginOverlay();
-        }
-
         window.confirmResetLocalLoginInfo = function() {
             const ok = confirm('로그인 정보만 초기화할까요? 회원/스케줄 데이터는 다음 새 트레이너 계정으로 옮겨집니다.');
             if (!ok) return;
@@ -3613,7 +3542,6 @@
             if (googleCalendarSection) googleCalendarSection.classList.toggle('hidden', !isGoogleCalendarAllowedForActiveProfile());
             const passwordSection = document.getElementById('profile-password-section');
             if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile() || isLicenseProfile());
-            renderProfileTrainerSwitcher();
             renderCloudStatus();
             renderGoogleCalendarStatus();
             window.switchProfileSettingsTab('basic');
@@ -3698,11 +3626,6 @@
             renderGoogleCalendarStatus();
             window.closeProfileSettingsModal();
             showToast('트레이너 설정이 저장되었습니다.');
-        }
-
-        window.openAdditionalLogin = function() {
-            window.closeProfileSettingsModal();
-            window.openCloudAuthModal('login');
         }
 
         window.logoutLocalUser = function() {
@@ -5142,10 +5065,10 @@
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
             const sessionStats = getSessionShareStats(m);
-            const remainingSessionText = `\n잔여세션: ${sessionStats.remaining}/${sessionStats.total}`;
+            const progressSessionText = `\n진행세션: ${sessionStats.completed}/${sessionStats.total}`;
             const memberName = formatMemberHonorificName(m.name);
             const workoutDate = formatWorkoutDateForShare(w.date);
-            const text = `[GOFITGYM]\n${memberName} ${workoutDate} 운동일지\n담당: ${m.trainer || getTrainerName()}${remainingSessionText}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
+            const text = `[GOFITGYM]\n${memberName} ${workoutDate} 운동일지\n담당: ${m.trainer || getTrainerName()}${progressSessionText}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
             return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
         }
 
