@@ -1397,8 +1397,8 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v104';
-        const APP_DISPLAY_VERSION = '1.04';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v105';
+        const APP_DISPLAY_VERSION = '1.05';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5619,6 +5619,7 @@
             const timezone = getGoogleCalendarTimezone();
             return {
                 summary: getGoogleCalendarEventTitle(schedule),
+                location: '',
                 description: [
                     'GOFITGYM PT Manager에서 등록한 예약입니다.',
                     `담당: ${getTrainerName()}`,
@@ -5708,8 +5709,12 @@
 
         async function findExistingGoogleCalendarEvents(schedule, options = {}) {
             const byScheduleId = await findGoogleCalendarEventsByScheduleId(schedule, options);
-            if (byScheduleId.length) return byScheduleId;
-            return findGoogleCalendarEventsByTimeAndTitle(schedule, options);
+            const byTimeAndTitle = await findGoogleCalendarEventsByTimeAndTitle(schedule, options);
+            const map = new Map();
+            [...byScheduleId, ...byTimeAndTitle].forEach(event => {
+                if (event && event.id) map.set(String(event.id), event);
+            });
+            return [...map.values()];
         }
 
         async function deleteGoogleCalendarEventById(eventId, options = {}) {
@@ -5724,6 +5729,18 @@
                 console.error('Google Calendar duplicate delete failed.', err);
                 return false;
             }
+        }
+
+        async function cleanupGoogleCalendarDuplicateEvents(schedule, keepEventId, options = {}) {
+            if (!schedule || !keepEventId) return 0;
+            const events = await findExistingGoogleCalendarEvents(schedule, options);
+            let deleted = 0;
+            for (const event of events) {
+                if (!event || !event.id || event.status === 'cancelled') continue;
+                if (String(event.id) === String(keepEventId)) continue;
+                if (await deleteGoogleCalendarEventById(event.id, options)) deleted++;
+            }
+            return deleted;
         }
 
         async function syncScheduleToGoogleCalendar(schedule, options = {}) {
@@ -5783,6 +5800,7 @@
                 schedule.googleCalendarEventId = result.id || schedule.googleCalendarEventId || '';
                 schedule.googleCalendarHtmlLink = result.htmlLink || schedule.googleCalendarHtmlLink || '';
                 schedule.googleCalendarSyncedAt = new Date().toISOString();
+                await cleanupGoogleCalendarDuplicateEvents(schedule, schedule.googleCalendarEventId, options);
                 delete schedule.googleCalendarError;
                 localSaveSchedule(schedule);
                 if (options.manual) showToast('구글 캘린더에 반영했습니다.');
