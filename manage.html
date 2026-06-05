@@ -1397,7 +1397,8 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v102';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v103';
+        const APP_DISPLAY_VERSION = '1.03';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3586,7 +3587,7 @@
 
         window.openAppInfoModal = function() {
             const version = document.getElementById('app-info-version');
-            if (version) version.innerText = APP_CACHE_VERSION.replace('gofitgym-pt-', '');
+            if (version) version.innerText = APP_DISPLAY_VERSION;
             const modal = document.getElementById('modal-app-info');
             modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
