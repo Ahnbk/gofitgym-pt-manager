@@ -172,6 +172,19 @@
         .cal-move-blocked {
             cursor: not-allowed !important;
         }
+        .cal-schedule-event {
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        #modal-schedule-action,
+        #modal-schedule-action * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
         
         /* Font scaling based on zoom */
         .cal-evt-text {
@@ -1333,9 +1346,10 @@
         var scheduleLongPressTriggered = false;
         var scheduleActionScheduleId = null;
         var scheduleMoveState = null;
+        var scheduleNativeMenuGuardReady = false;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v93';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v94';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5174,6 +5188,17 @@
                     event.stopPropagation();
                 }
             }, true);
+
+            if (!window.scheduleNativeMenuGuardReady) {
+                window.scheduleNativeMenuGuardReady = true;
+                document.addEventListener('contextmenu', event => {
+                    const target = event.target;
+                    if (target && target.closest && target.closest('#view-schedule, #modal-schedule-action')) {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }
+                }, true);
+            }
         }
 
         function formatDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -5278,12 +5303,22 @@
             element.addEventListener('pointerdown', event => {
                 if (isScheduleMoveActive()) return;
                 if (event.pointerType === 'mouse' && event.button !== 0) return;
+                if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 clearScheduleLongPress();
                 window.scheduleLongPressTriggered = false;
+                if (element.setPointerCapture && event.pointerId != null) {
+                    try { element.setPointerCapture(event.pointerId); } catch (err) {}
+                }
                 window.scheduleLongPressState = {
                     id: schedule.id,
                     x: event.clientX,
-                    y: event.clientY
+                    y: event.clientY,
+                    pointerId: event.pointerId,
+                    pointerType: event.pointerType,
+                    moved: false
                 };
                 window.scheduleLongPressTimer = setTimeout(() => {
                     window.scheduleLongPressTriggered = true;
@@ -5299,16 +5334,55 @@
                 if (!state) return;
                 const dx = event.clientX - state.x;
                 const dy = event.clientY - state.y;
-                if (Math.hypot(dx, dy) > 12) clearScheduleLongPress();
+                if (Math.hypot(dx, dy) > 12) {
+                    state.moved = true;
+                    clearScheduleLongPress();
+                }
             });
 
-            ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
-                element.addEventListener(type, clearScheduleLongPress);
+            element.addEventListener('pointerup', event => {
+                const state = window.scheduleLongPressState;
+                const wasTouch = event.pointerType === 'touch' || event.pointerType === 'pen';
+                if (wasTouch) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                if (element.releasePointerCapture && event.pointerId != null) {
+                    try { element.releasePointerCapture(event.pointerId); } catch (err) {}
+                }
+                clearScheduleLongPress();
+                if (!wasTouch) return;
+                if (window.scheduleLongPressTriggered || Date.now() < window.calendarSuppressClickUntil) {
+                    window.scheduleLongPressTriggered = false;
+                    return;
+                }
+                if (!state || state.moved || isScheduleMoveActive()) return;
+                window.calendarSuppressClickUntil = Date.now() + 350;
+                window.openScheduleModal(schedule.date, schedule.time, schedule);
+            });
+
+            ['pointercancel', 'pointerleave'].forEach(type => {
+                element.addEventListener(type, event => {
+                    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    clearScheduleLongPress();
+                });
+            });
+
+            ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(type => {
+                element.addEventListener(type, event => {
+                    if (event.touches && event.touches.length > 1) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                }, { passive: false });
             });
 
             element.addEventListener('contextmenu', event => {
-                if (isScheduleMoveActive()) return;
                 event.preventDefault();
+                event.stopPropagation();
+                if (isScheduleMoveActive()) return;
                 clearScheduleLongPress();
                 window.calendarSuppressClickUntil = Date.now() + 500;
                 window.openScheduleActionMenu(schedule.id);
@@ -5524,9 +5598,10 @@
                 if (cell) {
                     const b = document.createElement('div');
                     const movingSource = isScheduleMoveActive() && String(window.scheduleMoveState.id) === String(evt.id);
-                    b.className = `absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10 ${movingSource ? 'cal-moving-source' : ''}`;
+                    b.className = `cal-schedule-event absolute inset-[2px] ${evt.color || 'bg-blue-500/90'} rounded border border-black/20 px-1 py-0.5 flex items-center justify-center overflow-hidden shadow-sm active-scale z-10 ${movingSource ? 'cal-moving-source' : ''}`;
                     b.innerHTML = `<span class="font-black text-white cal-evt-text" style="font-size: ${getScheduleTitleFontSize(evt.title)}">${escapeHtml(evt.title)}</span>`;
-                    b.style.touchAction = 'manipulation';
+                    b.style.touchAction = 'none';
+                    b.draggable = false;
                     attachScheduleLongPress(b, evt);
                     b.onclick = (e) => {
                         e.stopPropagation();
