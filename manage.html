@@ -1382,7 +1382,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v96';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v97';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5508,7 +5508,7 @@
             const timezone = getGoogleCalendarTimezone();
             const title = String(schedule.title || 'PT 예약').trim();
             return {
-                summary: `[GOFITGYM] ${title}`,
+                summary: `[G] ${title}`,
                 location: 'GOFITGYM',
                 description: [
                     'GOFITGYM PT Manager에서 등록한 예약입니다.',
