@@ -1397,7 +1397,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v100';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v101';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2991,6 +2991,17 @@
 
         function getCompletedCount(m) {
             return (m.lessons || []).filter(l => l.signature && l.signature !== 'LATER').length;
+        }
+
+        function getSessionShareStats(m) {
+            const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
+            const total = Number((m && m.totalSessions) || lessons.length || 0);
+            const completed = lessons.filter(l => l.signature && l.signature !== 'LATER').length;
+            return {
+                completed,
+                total,
+                remaining: Math.max(0, total - completed)
+            };
         }
 
         function isMemberCompleted(m) {
@@ -5085,9 +5096,11 @@
 
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
+            const sessionStats = getSessionShareStats(m);
+            const remainingSessionText = `\n잔여세션: ${sessionStats.remaining}/${sessionStats.total}`;
             const memberName = formatMemberHonorificName(m.name);
             const workoutDate = formatWorkoutDateForShare(w.date);
-            const text = `[GOFITGYM]\n${memberName} ${workoutDate} 운동일지\n담당: ${m.trainer || getTrainerName()}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
+            const text = `[GOFITGYM]\n${memberName} ${workoutDate} 운동일지\n담당: ${m.trainer || getTrainerName()}${remainingSessionText}${nextScheduleText}\n\n${w.content}\n\n오늘도 고생하셨습니다!`;
             return { title: `${m.name} ${w.date || ''} 운동일지`.trim(), text };
         }
 
