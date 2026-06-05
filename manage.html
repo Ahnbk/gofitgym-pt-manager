@@ -1382,7 +1382,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v97';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v98';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5661,6 +5661,7 @@
             if (!upcoming.length) return showToast('오늘 이후 예약이 없습니다.');
             const ok = confirm(`오늘 이후 예약 ${upcoming.length}건을 구글 캘린더에 반영할까요?\n기본 캘린더에 60분 일정, 10분 전 알림으로 등록됩니다.`);
             if (!ok) return;
+            showToast('구글 캘린더 반영 중입니다. 앱을 끄지 마세요.');
             await syncSchedulesToGoogleCalendar(upcoming);
         }
 
