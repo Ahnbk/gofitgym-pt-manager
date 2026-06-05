@@ -822,7 +822,7 @@
                     </div>
                     <div id="profile-trainer-switch-list" class="grid grid-cols-1 gap-1.5"></div>
                 </div>
-                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                <div id="profile-google-calendar-section" class="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
                             <p class="text-xs font-black text-stone-800"><i class="fa-solid fa-cloud text-amber-500 mr-1"></i>관리자 클라우드 동기화</p>
@@ -1382,7 +1382,7 @@
         var googleCalendarScriptPromise = null;
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v95';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v96';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -1406,6 +1406,7 @@
         const FIREBASE_SDK_VERSION = '11.6.1';
         const CLOUD_LOGIN_PREFIX = 'cloud:';
         const CLOUD_SYNC_DELAY_MS = 800;
+        const GOOGLE_CALENDAR_ALLOWED_EMAILS = ['rebirth1013@gmail.com'];
         const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
         const GOOGLE_CALENDAR_ID = 'primary';
         const GOOGLE_CALENDAR_DEFAULT_DURATION_MINUTES = 60;
@@ -1649,6 +1650,10 @@
             return ALLOWED_CLOUD_EMAILS.includes(normalizeCloudEmail(email));
         }
 
+        function isAllowedGoogleCalendarEmail(email) {
+            return GOOGLE_CALENDAR_ALLOWED_EMAILS.includes(normalizeCloudEmail(email));
+        }
+
         function isCloudProfile(profile = window.appProfile) {
             return !!(profile && profile.cloudUid);
         }
@@ -1659,6 +1664,14 @@
 
         function isActiveCloudProfile() {
             return !!(window.cloudUser && window.activeLoginId === getCloudLoginId(window.cloudUser.uid));
+        }
+
+        function getActiveGoogleCalendarEmail(profile = window.appProfile) {
+            return normalizeCloudEmail((window.cloudUser && window.cloudUser.email) || (profile && (profile.cloudEmail || profile.email)));
+        }
+
+        function isGoogleCalendarAllowedForActiveProfile(profile = window.appProfile) {
+            return isActiveCloudProfile() && isAllowedGoogleCalendarEmail(getActiveGoogleCalendarEmail(profile));
         }
 
         function isActiveLicenseProfile() {
@@ -1860,7 +1873,7 @@
             const payload = {
                 trainerName,
                 email: window.cloudUser.email || '',
-                googleCalendarClientId: normalizeGoogleCalendarClientId(profile && profile.googleCalendarClientId),
+                googleCalendarClientId: isGoogleCalendarAllowedForActiveProfile(profile) ? normalizeGoogleCalendarClientId(profile && profile.googleCalendarClientId) : '',
                 updatedAt: window.firebaseApi.serverTimestamp()
             };
             if (profile && profile.privacyConsentAt) {
@@ -1886,7 +1899,7 @@
                 cloudUid: user.uid,
                 cloudEmail: user.email || '',
                 cloudMode: true,
-                googleCalendarClientId: existing.googleCalendarClientId || (remoteProfile && remoteProfile.googleCalendarClientId) || '',
+                googleCalendarClientId: isAllowedGoogleCalendarEmail(user.email) ? (existing.googleCalendarClientId || (remoteProfile && remoteProfile.googleCalendarClientId) || '') : '',
                 privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || (remoteProfile && remoteProfile.privacyConsentAt) || '',
                 privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || (remoteProfile && remoteProfile.privacyConsentVersion) || '',
                 createdAt: existing.createdAt || new Date().toISOString()
@@ -3490,6 +3503,8 @@
             document.getElementById('profile-new-password').value = '';
             const googleClientInput = document.getElementById('profile-google-calendar-client-id');
             if (googleClientInput) googleClientInput.value = getGoogleCalendarClientId();
+            const googleCalendarSection = document.getElementById('profile-google-calendar-section');
+            if (googleCalendarSection) googleCalendarSection.classList.toggle('hidden', !isGoogleCalendarAllowedForActiveProfile());
             const passwordSection = document.getElementById('profile-password-section');
             if (passwordSection) passwordSection.classList.toggle('hidden', isCloudProfile() || isLicenseProfile());
             renderProfileTrainerSwitcher();
@@ -3524,7 +3539,9 @@
             const trainerName = document.getElementById('profile-trainer-name').value.trim();
             const currentPassword = document.getElementById('profile-current-password').value;
             const newPassword = document.getElementById('profile-new-password').value;
-            const googleCalendarClientId = normalizeGoogleCalendarClientId(document.getElementById('profile-google-calendar-client-id')?.value || '');
+            const googleCalendarClientId = isGoogleCalendarAllowedForActiveProfile()
+                ? normalizeGoogleCalendarClientId(document.getElementById('profile-google-calendar-client-id')?.value || '')
+                : '';
             if (!trainerName) return showToast('트레이너 이름을 입력해주세요.');
 
             const changingPassword = newPassword.length > 0;
@@ -5321,6 +5338,7 @@
         }
 
         function getGoogleCalendarClientId() {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return '';
             return normalizeGoogleCalendarClientId(window.appProfile && window.appProfile.googleCalendarClientId);
         }
 
@@ -5331,6 +5349,10 @@
         function renderGoogleCalendarStatus() {
             const status = document.getElementById('profile-google-calendar-status');
             if (!status) return;
+            if (!isGoogleCalendarAllowedForActiveProfile()) {
+                status.innerText = '관리자 계정에서만 사용할 수 있습니다.';
+                return;
+            }
             if (!getGoogleCalendarClientId()) {
                 status.innerText = 'OAuth 클라이언트 ID를 입력하면 사용할 수 있습니다.';
             } else if (hasGoogleCalendarToken()) {
@@ -5341,6 +5363,7 @@
         }
 
         function saveGoogleCalendarClientIdFromSettings() {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return '';
             const input = document.getElementById('profile-google-calendar-client-id');
             const clientId = normalizeGoogleCalendarClientId(input ? input.value : getGoogleCalendarClientId());
             if (!window.appProfile) return clientId;
@@ -5379,6 +5402,7 @@
         }
 
         async function requestGoogleCalendarAccess(options = {}) {
+            if (!isGoogleCalendarAllowedForActiveProfile()) throw new Error('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
             const clientId = normalizeGoogleCalendarClientId(options.clientId || getGoogleCalendarClientId());
             if (!clientId) throw new Error('Google OAuth 클라이언트 ID가 필요합니다.');
             if (hasGoogleCalendarToken() && window.googleCalendarTokenClientId === clientId) return window.googleCalendarAccessToken;
@@ -5425,6 +5449,7 @@
         }
 
         window.connectGoogleCalendar = async function() {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return showToast('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
             const clientId = saveGoogleCalendarClientIdFromSettings();
             if (!clientId) return showToast('Google OAuth 클라이언트 ID를 입력해주세요.');
             try {
@@ -5437,6 +5462,7 @@
         }
 
         window.disconnectGoogleCalendar = function() {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return showToast('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
             const token = window.googleCalendarAccessToken;
             if (token && window.google && window.google.accounts && window.google.accounts.oauth2) {
                 try { window.google.accounts.oauth2.revoke(token, () => {}); } catch (err) {}
@@ -5533,6 +5559,10 @@
 
         async function syncScheduleToGoogleCalendar(schedule, options = {}) {
             if (!schedule) return null;
+            if (!isGoogleCalendarAllowedForActiveProfile()) {
+                if (options.manual) showToast('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
+                return null;
+            }
             if (!getGoogleCalendarClientId()) {
                 if (options.manual) showToast('설정에서 Google OAuth 클라이언트 ID를 입력해주세요.');
                 return null;
@@ -5581,6 +5611,7 @@
         }
 
         async function deleteGoogleCalendarEventForSchedule(schedule, options = {}) {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return false;
             if (!schedule || !schedule.googleCalendarEventId || !getGoogleCalendarClientId()) return false;
             if (options.interactive === false && !hasGoogleCalendarToken()) return false;
             try {
@@ -5598,6 +5629,7 @@
 
         async function syncSchedulesToGoogleCalendar(targetSchedules, options = {}) {
             const list = (targetSchedules || []).filter(Boolean);
+            if (!isGoogleCalendarAllowedForActiveProfile()) return showToast('구글 캘린더 연동은 관리자 계정에서만 사용할 수 있습니다.');
             if (!list.length) return showToast('반영할 예약이 없습니다.');
             if (!getGoogleCalendarClientId()) return showToast('설정에서 Google OAuth 클라이언트 ID를 입력해주세요.');
 
@@ -5785,6 +5817,7 @@
                 subtitle.innerText = `${formatDisplayDate(schedule.date)} ${schedule.time || ''} · ${googleState}`;
             }
             if (googleBtn) {
+                googleBtn.classList.toggle('hidden', !isGoogleCalendarAllowedForActiveProfile());
                 googleBtn.innerHTML = schedule.googleCalendarEventId
                     ? '<i class="fa-brands fa-google mr-1.5 text-amber-500"></i>구글 캘린더 다시 반영'
                     : '<i class="fa-brands fa-google mr-1.5 text-amber-500"></i>구글 캘린더 등록';
