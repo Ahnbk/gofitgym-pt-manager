@@ -1497,10 +1497,11 @@
         var googleCalendarTokenClientId = '';
         var googleCalendarScriptPromise = null;
         var googleCalendarBulkSyncState = { active: false, done: false };
+        var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v114';
-        const APP_DISPLAY_VERSION = '1.14';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v115';
+        const APP_DISPLAY_VERSION = '1.15';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2144,6 +2145,7 @@
             }
             if (!window.cloudAuthFlowActive) startCloudSync();
             renderCloudStatus();
+            if (window.activeLoginId === getCloudLoginId(user.uid)) scheduleGoogleCalendarStartupAutoConnect(900);
         }
 
         function stopCloudSync() {
@@ -3637,6 +3639,7 @@
             loadDatabase();
             updateTrainerUi();
             setTimeout(() => ensurePersistentStorage(false), 700);
+            scheduleGoogleCalendarStartupAutoConnect();
         }
 
         function updateTrainerUi() {
@@ -4255,13 +4258,21 @@
 
             const ids = new Set(todaySchedules.map(s => String(s.id)));
             let calendarDeleted = 0;
-            if (hasGoogleCalendarToken()) {
+            const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
+                showCheckingToast: !!getGoogleCalendarClientId(),
+                showConnectedToast: true,
+                showErrorToast: false
+            });
+            if (calendarReady) {
                 for (const schedule of todaySchedules) {
                     if (await deleteGoogleCalendarEventForSchedule(schedule, { interactive: false, manual: false })) calendarDeleted++;
                 }
             }
             window.schedules = window.schedules.filter(s => !ids.has(String(s.id)));
             todaySchedules.forEach(s => localDeleteSchedule(s.id));
+            if (calendarReady) {
+                calendarDeleted += await cleanupDeletedSchedulesFromGoogleCalendar(todaySchedules, { interactive: false });
+            }
 
             const scheduleViewOpen = !document.getElementById('view-schedule').classList.contains('hidden');
             if (scheduleViewOpen) window.initCalendar();
@@ -5813,6 +5824,44 @@
             renderScheduleGoogleCalendarBlock();
         }
 
+        async function ensureGoogleCalendarConnectedForScheduleChange(options = {}) {
+            if (!isGoogleCalendarAllowedForActiveProfile()) return false;
+            const clientId = getGoogleCalendarClientId();
+            if (!clientId) return false;
+            if (hasGoogleCalendarToken() && window.googleCalendarTokenClientId === clientId) return true;
+            if (options.showCheckingToast) showToast('구글 캘린더 연결을 확인하고 있습니다.');
+            try {
+                await requestGoogleCalendarAccess({ clientId, prompt: options.prompt == null ? '' : options.prompt });
+                renderGoogleCalendarStatus();
+                renderScheduleGoogleCalendarBlock();
+                if (options.showConnectedToast !== false) showToast('구글 캘린더가 연결되었습니다.');
+                return true;
+            } catch (err) {
+                console.warn('Google Calendar auto-connect failed.', err);
+                renderGoogleCalendarStatus();
+                renderScheduleGoogleCalendarBlock();
+                if (options.showErrorToast) showToast(`구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`);
+                return false;
+            }
+        }
+
+        function scheduleGoogleCalendarStartupAutoConnect(delay = 1400) {
+            const loginId = window.activeLoginId;
+            if (!loginId) return;
+            setTimeout(async () => {
+                if (window.activeLoginId !== loginId) return;
+                if (window.googleCalendarStartupConnectLoginId === loginId) return;
+                if (!isGoogleCalendarAllowedForActiveProfile() || !getGoogleCalendarClientId() || hasGoogleCalendarToken()) return;
+                window.googleCalendarStartupConnectLoginId = loginId;
+                await ensureGoogleCalendarConnectedForScheduleChange({
+                    showCheckingToast: false,
+                    showConnectedToast: true,
+                    showErrorToast: false,
+                    prompt: ''
+                });
+            }, delay);
+        }
+
         function formatGoogleCalendarError(err) {
             const message = String((err && (err.message || err.error_description || err.error)) || err || '').trim();
             if (!message) return '알 수 없는 오류';
@@ -6425,6 +6474,22 @@
             return { success, skipped, staleDeleted, failed, total: list.length };
         }
 
+        async function cleanupDeletedSchedulesFromGoogleCalendar(deletedSchedules = [], options = {}) {
+            const today = formatDate(new Date());
+            const deletedFuture = (deletedSchedules || []).filter(schedule => schedule && schedule.date >= today);
+            if (!deletedFuture.length) return 0;
+            const remainingUpcoming = (window.schedules || []).filter(schedule => schedule && schedule.date >= today);
+            const scanSchedules = [...remainingUpcoming, ...deletedFuture];
+            try {
+                const managedEvents = await listGoogleCalendarManagedEventsForSchedules(scanSchedules, options);
+                const eventIndex = createGoogleCalendarEventIndex(managedEvents);
+                return await cleanupGoogleCalendarStaleEvents(eventIndex, remainingUpcoming, options);
+            } catch (err) {
+                console.warn('Google Calendar deleted schedule cleanup failed.', err);
+                return 0;
+            }
+        }
+
         window.syncUpcomingSchedulesToGoogleCalendar = async function() {
             saveGoogleCalendarClientIdFromSettings();
             const today = formatDate(new Date());
@@ -6666,7 +6731,12 @@
             schedule.time = time;
             localSaveSchedule(schedule);
             let calendarUpdated = false;
-            if (schedule.googleCalendarEventId || hasGoogleCalendarToken()) {
+            const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
+                showCheckingToast: !!getGoogleCalendarClientId(),
+                showConnectedToast: true,
+                showErrorToast: false
+            });
+            if (calendarReady) {
                 calendarUpdated = !!(await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: false, cleanupDuplicates: false }));
             }
             window.scheduleMoveState = null;
@@ -6925,7 +6995,12 @@
             }
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal();
 
-            if (hasGoogleCalendarToken()) {
+            const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
+                showCheckingToast: !!getGoogleCalendarClientId(),
+                showConnectedToast: true,
+                showErrorToast: false
+            });
+            if (calendarReady) {
                 let synced = 0;
                 for (const schedule of changedSchedules) {
                     if (await syncScheduleToGoogleCalendar(schedule, { interactive: false, manual: false, cleanupDuplicates: false })) synced++;
@@ -6957,7 +7032,12 @@
             const deleteTargets = deleteFuture ? recurringTargets : [target];
             const deleteIds = new Set(deleteTargets.map(schedule => String(schedule.id)));
             let calendarDeleted = 0;
-            if (hasGoogleCalendarToken()) {
+            const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
+                showCheckingToast: !!getGoogleCalendarClientId(),
+                showConnectedToast: true,
+                showErrorToast: false
+            });
+            if (calendarReady) {
                 for (const schedule of deleteTargets) {
                     if (await deleteGoogleCalendarEventForSchedule(schedule, { interactive: false, manual: false })) calendarDeleted++;
                 }
@@ -6965,6 +7045,9 @@
             window.schedules = window.schedules.filter(s => !deleteIds.has(String(s.id)));
             saveDatabase({ skipCloud: true });
             deleteIds.forEach(scheduleId => deleteCloudDocument('schedules', scheduleId));
+            if (calendarReady) {
+                calendarDeleted += await cleanupDeletedSchedulesFromGoogleCalendar(deleteTargets, { interactive: false });
+            }
             window.initCalendar(); window.renderMemberList(); window.closeScheduleModal(); 
             const calendarText = calendarDeleted ? ` 구글 캘린더 ${calendarDeleted}건 삭제` : '';
             showToast(deleteFuture ? `반복 일정 ${deleteIds.size}건을 삭제했습니다.${calendarText}` : `일정을 삭제했습니다.${calendarText}`);
