@@ -1056,6 +1056,9 @@
                 <button onclick="window.cancelActionMemberTodaySchedule()" id="member-action-cancel-schedule-btn" class="hidden w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 취소
                 </button>
+                <button onclick="window.openMemberHoldChoiceModal()" id="member-action-hold-edit-btn" class="hidden w-full py-3 bg-sky-50 text-sky-700 border border-sky-100 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-right-left mr-1.5"></i>보류 / 인계 상태 변경
+                </button>
                 <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동
                 </button>
@@ -1496,8 +1499,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v110';
-        const APP_DISPLAY_VERSION = '1.10';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v111';
+        const APP_DISPLAY_VERSION = '1.11';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4206,6 +4209,13 @@
                     ? `<i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 ${todaySchedules.length}건 취소`
                     : `<i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 취소${times ? ` (${times})` : ''}`;
             }
+            const holdEditBtn = document.getElementById('member-action-hold-edit-btn');
+            if (holdEditBtn) {
+                holdEditBtn.classList.toggle('hidden', !hold);
+                holdEditBtn.innerHTML = isMemberTransferred(m)
+                    ? '<i class="fa-solid fa-right-left mr-1.5"></i>보류 / 인계 정보 수정'
+                    : '<i class="fa-solid fa-right-left mr-1.5"></i>인계로 변경';
+            }
             const holdBtn = document.getElementById('member-action-hold-btn');
             holdBtn.className = hold
                 ? 'w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black active-scale'
@@ -4285,11 +4295,14 @@
         window.openMemberHoldChoiceModal = function() {
             const m = window.members.find(x => x.id === window.memberActionMemberId);
             if (!m) return;
-            document.getElementById('hold-choice-title').innerText = `${m.name} 상태 이동`;
-            document.getElementById('hold-choice-subtitle').innerText = '보류 또는 인계 상태를 선택하세요.';
-            document.getElementById('hold-transfer-date').value = formatDate(new Date());
-            document.getElementById('hold-transfer-teacher').value = '';
-            window.setMemberHoldChoice('hold');
+            const editing = isMemberOnHold(m);
+            document.getElementById('hold-choice-title').innerText = `${m.name} 상태 ${editing ? '변경' : '이동'}`;
+            document.getElementById('hold-choice-subtitle').innerText = editing
+                ? '현재 상태를 보류 또는 인계로 변경하세요.'
+                : '보류 또는 인계 상태를 선택하세요.';
+            document.getElementById('hold-transfer-date').value = m.transferDate || formatDate(new Date());
+            document.getElementById('hold-transfer-teacher').value = m.transferTeacher || '';
+            window.setMemberHoldChoice(isMemberTransferred(m) ? 'transfer' : 'hold');
             const modal = document.getElementById('modal-member-hold-choice');
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
@@ -4308,7 +4321,7 @@
             const transferFields = document.getElementById('hold-transfer-fields');
             if (holdBtn && transferBtn) {
                 holdBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${window.memberHoldChoiceType === 'hold' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
-                transferBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${window.memberHoldChoiceType === 'transfer' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                transferBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${window.memberHoldChoiceType === 'transfer' ? 'bg-sky-600 text-white' : 'text-stone-500'}`;
             }
             if (transferFields) transferFields.classList.toggle('hidden', window.memberHoldChoiceType !== 'transfer');
             if (window.memberHoldChoiceType === 'transfer') {
@@ -4319,8 +4332,9 @@
         window.executeMemberHoldChoice = function() {
             const m = window.members.find(x => x.id === window.memberActionMemberId);
             if (!m) return;
+            const wasOnHold = isMemberOnHold(m);
             m.status = 'hold';
-            m.holdAt = new Date().toISOString();
+            if (!wasOnHold || !m.holdAt) m.holdAt = new Date().toISOString();
             m.holdType = window.memberHoldChoiceType === 'transfer' ? 'transfer' : 'hold';
             if (m.holdType === 'transfer') {
                 const transferDate = document.getElementById('hold-transfer-date').value || formatDate(new Date());
@@ -4336,7 +4350,7 @@
             window.switchMemberStatusTab('hold');
             window.closeMemberHoldChoiceModal();
             window.closeMemberActionMenu();
-            showToast(`${m.name} 회원을 ${getMemberHoldLabel(m)} 상태로 이동했습니다.`);
+            showToast(`${m.name} 회원을 ${getMemberHoldLabel(m)} 상태로 ${wasOnHold ? '변경' : '이동'}했습니다.`);
         }
 
         window.renderMemberList = function() {
@@ -4414,15 +4428,23 @@
                     : 'bg-stone-100 text-stone-500 font-bold';
                 const holdLabel = getMemberHoldLabel(m);
                 const holdDetail = getMemberHoldDetail(m);
+                const transferred = isMemberTransferred(m);
+                const holdBadgeClass = transferred
+                    ? 'bg-sky-100 text-sky-700 border border-sky-200'
+                    : 'bg-stone-800 text-amber-400';
+                const holdCardClass = transferred
+                    ? 'border-sky-300 bg-sky-50'
+                    : 'border-stone-400 bg-stone-50';
+                const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
-                    ? `<span class="text-[9px] bg-stone-800 text-amber-400 font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
+                    ? `<span class="text-[9px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
                     : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] ${remainingBadgeClass} px-2 py-0.5 rounded-full">잔여 ${remaining}회</span>`);
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
 
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? 'border-stone-400 bg-stone-50' : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
+                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -4435,7 +4457,7 @@
                         <span class="text-lg font-black ${m._todayTime ? 'text-amber-500' : 'text-stone-900'}">${percent}%</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
-                        <div class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                        <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                     </div>
                 `;
                 bindMemberCardPress(card, m.id);
