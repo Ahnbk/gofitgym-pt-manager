@@ -617,7 +617,7 @@
                         완료 <span id="member-tab-completed-count" class="ml-1 text-stone-400">0</span>
                     </button>
                     <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
-                        보류 <span id="member-tab-hold-count" class="ml-1 text-stone-400">0</span>
+                        보류 / 인계 <span id="member-tab-hold-count" class="ml-1 text-stone-400">0</span>
                     </button>
                 </div>
             </div>
@@ -698,6 +698,9 @@
                     <div class="flex items-center space-x-2 justify-end flex-wrap gap-y-2">
                         <button onclick="window.openAddSessionModal()" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow active-scale flex items-center">
                             <i class="fa-solid fa-rotate-right mr-1.5"></i>재등록
+                        </button>
+                        <button onclick="window.openMemberMemoModal()" id="detail-memo-btn" class="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
+                            <i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모
                         </button>
                         <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
                             <i class="fa-solid fa-share-nodes mr-1"></i>일지 공유
@@ -1054,11 +1057,51 @@
                     <i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 취소
                 </button>
                 <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
-                    <i class="fa-solid fa-pause mr-1.5"></i>보류 탭으로 이동
+                    <i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동
                 </button>
                 <button onclick="window.closeMemberActionMenu()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
                     취소
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0-0-2. Member Hold / Transfer Choice Modal -->
+    <div id="modal-member-hold-choice" role="dialog" aria-modal="true" aria-label="보류 또는 인계 선택" class="fixed inset-0 bg-stone-900/75 backdrop-blur-sm flex items-end md:items-center justify-center p-4 modal-safe-area z-[76] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div class="min-w-0">
+                    <h3 id="hold-choice-title" class="font-black text-amber-500 text-base truncate">회원 상태 이동</h3>
+                    <p id="hold-choice-subtitle" class="text-[11px] text-stone-400 mt-1">보류 또는 인계 상태를 선택하세요.</p>
+                </div>
+                <button onclick="window.closeMemberHoldChoiceModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1">
+                    <button onclick="window.setMemberHoldChoice('hold')" id="hold-choice-type-hold" class="min-h-[44px] rounded-xl text-xs font-black bg-stone-900 text-white active-scale">
+                        <i class="fa-solid fa-pause mr-1.5 text-amber-500"></i>보류
+                    </button>
+                    <button onclick="window.setMemberHoldChoice('transfer')" id="hold-choice-type-transfer" class="min-h-[44px] rounded-xl text-xs font-black text-stone-500 active-scale">
+                        <i class="fa-solid fa-right-left mr-1.5"></i>인계
+                    </button>
+                </div>
+                <div id="hold-transfer-fields" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">인계 날짜 *</label>
+                        <input type="date" id="hold-transfer-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">인수받을 선생님 *</label>
+                        <input type="text" id="hold-transfer-teacher" placeholder="예: 김선생" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </div>
+                <p class="text-[11px] leading-relaxed text-stone-500 font-bold bg-stone-50 rounded-xl p-3">
+                    인계로 이동한 회원도 보류 / 인계 탭에서 함께 관리됩니다.
+                </p>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeMemberHoldChoiceModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.executeMemberHoldChoice()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale">이동</button>
             </div>
         </div>
     </div>
@@ -1136,6 +1179,29 @@
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeAddSessionModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
                 <button onclick="window.executeAddSession()" class="flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale">추가하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- A-1-1. Member Memo Modal -->
+    <div id="modal-member-memo" role="dialog" aria-modal="true" aria-label="회원 메모" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div class="min-w-0">
+                    <h3 id="member-memo-title" class="font-black text-amber-500 text-base truncate"><i class="fa-solid fa-note-sticky mr-1.5"></i>회원 메모</h3>
+                    <p class="text-[11px] text-stone-400 mt-1">상담 내용이나 수업 시 유의사항을 기록하세요.</p>
+                </div>
+                <button onclick="window.closeMemberMemoModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <textarea id="member-memo-text" rows="8" placeholder="예: 허리 통증 주의, 상담 내용, 선호 운동, 연락 시 참고사항" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-2xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                <p class="text-[11px] leading-relaxed text-stone-500 font-bold">
+                    저장하면 이 회원 데이터에 함께 보관되며 백업과 클라우드 동기화 대상에 포함됩니다.
+                </p>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeMemberMemoModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.saveMemberMemo()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale">저장</button>
             </div>
         </div>
     </div>
@@ -1381,6 +1447,7 @@
         var memberLongPressTimer = null;
         var memberLongPressTriggered = false;
         var memberActionMemberId = null;
+        var memberHoldChoiceType = 'hold';
         var detailProgressExpanded = false;
         var lessonEditMode = false;
         var signedLessonsExpanded = false;
@@ -1429,8 +1496,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v109';
-        const APP_DISPLAY_VERSION = '1.09';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v110';
+        const APP_DISPLAY_VERSION = '1.10';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3042,10 +3109,24 @@
         function normalizeDatabase() {
             window.members = (window.members || []).map(m => {
                 if (typeof m.status === 'undefined') m.status = '';
+                if (typeof m.memo !== 'string') m.memo = '';
                 if (m.status !== 'hold') {
                     delete m.holdAt;
+                    delete m.holdType;
+                    delete m.transferDate;
+                    delete m.transferTeacher;
                 } else if (!m.holdAt) {
                     m.holdAt = new Date().toISOString();
+                }
+                if (m.status === 'hold') {
+                    if (!['hold', 'transfer'].includes(m.holdType)) m.holdType = 'hold';
+                    if (m.holdType !== 'transfer') {
+                        delete m.transferDate;
+                        delete m.transferTeacher;
+                    } else {
+                        if (typeof m.transferDate !== 'string') m.transferDate = '';
+                        if (typeof m.transferTeacher !== 'string') m.transferTeacher = '';
+                    }
                 }
                 m.lessons = Array.isArray(m.lessons) ? m.lessons : [];
                 const targetTotal = Math.max(parseInt(m.totalSessions) || 0, m.lessons.length);
@@ -3087,6 +3168,22 @@
 
         function isMemberOnHold(m) {
             return !!(m && m.status === 'hold');
+        }
+
+        function isMemberTransferred(m) {
+            return !!(isMemberOnHold(m) && m.holdType === 'transfer');
+        }
+
+        function getMemberHoldLabel(m) {
+            return isMemberTransferred(m) ? '인계' : '보류';
+        }
+
+        function getMemberHoldDetail(m) {
+            if (!isMemberTransferred(m)) return '';
+            const parts = [];
+            if (m.transferDate) parts.push(`인계일 ${formatDisplayDate(m.transferDate)}`);
+            if (m.transferTeacher) parts.push(`${m.transferTeacher} 선생님`);
+            return parts.join(' · ');
         }
 
         function normalizeScheduleMatchText(value) {
@@ -4092,12 +4189,14 @@
             window.memberActionMemberId = memberId;
             const modal = document.getElementById('modal-member-action');
             const hold = isMemberOnHold(m);
+            const holdLabel = getMemberHoldLabel(m);
+            const holdDetail = getMemberHoldDetail(m);
             const completed = isMemberCompleted(m);
             const comp = getCompletedCount(m);
             const todaySchedules = getTodaySchedulesForMember(m);
             document.getElementById('member-action-title').innerText = m.name;
             document.getElementById('member-action-subtitle').innerText = hold
-                ? `보류 중 · ${comp}/${m.totalSessions || 0}회 완료`
+                ? `${holdLabel} 중${holdDetail ? ` · ${holdDetail}` : ''} · ${comp}/${m.totalSessions || 0}회 완료`
                 : `${completed ? '완료' : '진행중'} · ${comp}/${m.totalSessions || 0}회 완료`;
             const cancelBtn = document.getElementById('member-action-cancel-schedule-btn');
             if (cancelBtn) {
@@ -4113,7 +4212,7 @@
                 : 'w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale';
             holdBtn.innerHTML = hold
                 ? '<i class="fa-solid fa-play mr-1.5"></i>진행중으로 복귀'
-                : '<i class="fa-solid fa-pause mr-1.5"></i>보류 탭으로 이동';
+                : '<i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동';
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -4170,6 +4269,9 @@
             if (isMemberOnHold(m)) {
                 m.status = '';
                 delete m.holdAt;
+                delete m.holdType;
+                delete m.transferDate;
+                delete m.transferTeacher;
                 localSaveMember(m);
                 window.switchMemberStatusTab(isMemberCompleted(m) ? 'completed' : 'active');
                 window.closeMemberActionMenu();
@@ -4177,12 +4279,64 @@
                 return;
             }
 
+            window.openMemberHoldChoiceModal();
+        }
+
+        window.openMemberHoldChoiceModal = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m) return;
+            document.getElementById('hold-choice-title').innerText = `${m.name} 상태 이동`;
+            document.getElementById('hold-choice-subtitle').innerText = '보류 또는 인계 상태를 선택하세요.';
+            document.getElementById('hold-transfer-date').value = formatDate(new Date());
+            document.getElementById('hold-transfer-teacher').value = '';
+            window.setMemberHoldChoice('hold');
+            const modal = document.getElementById('modal-member-hold-choice');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeMemberHoldChoiceModal = function() {
+            const modal = document.getElementById('modal-member-hold-choice');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.setMemberHoldChoice = function(type) {
+            window.memberHoldChoiceType = type === 'transfer' ? 'transfer' : 'hold';
+            const holdBtn = document.getElementById('hold-choice-type-hold');
+            const transferBtn = document.getElementById('hold-choice-type-transfer');
+            const transferFields = document.getElementById('hold-transfer-fields');
+            if (holdBtn && transferBtn) {
+                holdBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${window.memberHoldChoiceType === 'hold' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                transferBtn.className = `min-h-[44px] rounded-xl text-xs font-black active-scale ${window.memberHoldChoiceType === 'transfer' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+            }
+            if (transferFields) transferFields.classList.toggle('hidden', window.memberHoldChoiceType !== 'transfer');
+            if (window.memberHoldChoiceType === 'transfer') {
+                setTimeout(() => document.getElementById('hold-transfer-teacher').focus(), 80);
+            }
+        }
+
+        window.executeMemberHoldChoice = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m) return;
             m.status = 'hold';
             m.holdAt = new Date().toISOString();
+            m.holdType = window.memberHoldChoiceType === 'transfer' ? 'transfer' : 'hold';
+            if (m.holdType === 'transfer') {
+                const transferDate = document.getElementById('hold-transfer-date').value || formatDate(new Date());
+                const transferTeacher = document.getElementById('hold-transfer-teacher').value.trim();
+                if (!transferTeacher) return showToast('인수받을 선생님을 입력해주세요.');
+                m.transferDate = transferDate;
+                m.transferTeacher = transferTeacher;
+            } else {
+                delete m.transferDate;
+                delete m.transferTeacher;
+            }
             localSaveMember(m);
             window.switchMemberStatusTab('hold');
+            window.closeMemberHoldChoiceModal();
             window.closeMemberActionMenu();
-            showToast(`${m.name} 회원을 보류 탭으로 이동했습니다.`);
+            showToast(`${m.name} 회원을 ${getMemberHoldLabel(m)} 상태로 이동했습니다.`);
         }
 
         window.renderMemberList = function() {
@@ -4258,9 +4412,14 @@
                 const remainingBadgeClass = remaining <= 3
                     ? 'bg-amber-500 text-stone-950 font-black'
                     : 'bg-stone-100 text-stone-500 font-bold';
+                const holdLabel = getMemberHoldLabel(m);
+                const holdDetail = getMemberHoldDetail(m);
                 const statusBadge = hold
-                    ? `<span class="text-[9px] bg-stone-800 text-amber-400 font-black px-2 py-0.5 rounded-full">보류</span>`
+                    ? `<span class="text-[9px] bg-stone-800 text-amber-400 font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
                     : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] ${remainingBadgeClass} px-2 py-0.5 rounded-full">잔여 ${remaining}회</span>`);
+                const holdDetailText = hold && holdDetail
+                    ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
+                    : '';
 
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? 'border-stone-400 bg-stone-50' : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
@@ -4271,6 +4430,7 @@
                                 <h3 class="text-base font-black text-stone-800">${timePrefix}${m.name}</h3>
                                 ${statusBadge}
                             </div>
+                            ${holdDetailText}
                         </div>
                         <span class="text-lg font-black ${m._todayTime ? 'text-amber-500' : 'text-stone-900'}">${percent}%</span>
                     </div>
@@ -4286,7 +4446,7 @@
                 const empty = document.createElement('div');
                 empty.className = "sm:col-span-2 lg:col-span-3 bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-xs font-bold text-stone-400";
                 empty.innerText = window.memberStatusFilter === 'hold'
-                    ? '보류 중인 회원이 없습니다.'
+                    ? '보류 또는 인계 중인 회원이 없습니다.'
                     : (window.memberStatusFilter === 'completed' ? '완료된 회원이 없습니다.' : '진행중인 회원이 없습니다.');
                 container.appendChild(empty);
             }
@@ -4321,7 +4481,7 @@
             const newM = {
                 id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
                 registrationDate: document.getElementById('reg-date-input').value,
-                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: []
+                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: [], memo: ''
             };
             window.members.push(newM);
             localSaveMember(newM);
@@ -4378,12 +4538,54 @@
             showToast(`재등록 세션 ${count}회가 추가되었습니다.`);
         }
 
+        window.openMemberMemoModal = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            document.getElementById('member-memo-title').innerHTML = `<i class="fa-solid fa-note-sticky mr-1.5"></i>${escapeHtml(m.name)} 메모`;
+            document.getElementById('member-memo-text').value = m.memo || '';
+            const modal = document.getElementById('modal-member-memo');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('member-memo-text').focus();
+            }, 10);
+        }
+
+        window.closeMemberMemoModal = function() {
+            const modal = document.getElementById('modal-member-memo');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.saveMemberMemo = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            m.memo = document.getElementById('member-memo-text').value.trim();
+            localSaveMember(m);
+            updateMemberMemoButton(m);
+            window.closeMemberMemoModal();
+            showToast(m.memo ? '회원 메모를 저장했습니다.' : '회원 메모를 비웠습니다.');
+        }
+
         // ================= MEMBER DETAIL =================
+        function updateMemberMemoButton(m) {
+            const btn = document.getElementById('detail-memo-btn');
+            if (!btn) return;
+            const hasMemo = !!(m && String(m.memo || '').trim());
+            btn.className = hasMemo
+                ? 'px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
+                : 'px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
+            btn.innerHTML = hasMemo
+                ? '<i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모 있음'
+                : '<i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모';
+        }
+
         function populateMemberDetail(m) {
             document.getElementById('detail-member-name').innerText = m.name;
             document.getElementById('detail-member-trainer').innerText = formatTrainerLabel(m.trainer || getTrainerName());
             document.getElementById('detail-reg-date').innerText = m.registrationDate;
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
+            updateMemberMemoButton(m);
         }
 
         function isWorkoutFieldFocused() {
