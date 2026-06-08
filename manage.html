@@ -1500,8 +1500,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v115';
-        const APP_DISPLAY_VERSION = '1.15';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v116';
+        const APP_DISPLAY_VERSION = '1.16';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4465,7 +4465,7 @@
                             </div>
                             ${holdDetailText}
                         </div>
-                        <span class="text-lg font-black ${m._todayTime ? 'text-amber-500' : 'text-stone-900'}">${percent}%</span>
+                        <span class="text-lg font-black ${remaining <= 3 || m._todayTime ? 'text-amber-500' : 'text-stone-900'}">잔여 ${remaining}회</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
                         <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
@@ -5196,13 +5196,31 @@
         window.saveActiveSignature = function() {
             if(window.signaturePad.isEmpty()) return showToast("사인을 입력하세요!");
             const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m || !m.lessons || !m.lessons[window.currentEditingLessonIndex]) return showToast('서명할 회차를 찾지 못했습니다.');
+            const lesson = m.lessons[window.currentEditingLessonIndex];
+            const wasCompleted = isMemberCompleted(m);
+            const wasLessonSigned = !!(lesson.signature && lesson.signature !== 'LATER');
             const today = new Date();
-            m.lessons[window.currentEditingLessonIndex].signature = getOptimizedSignatureDataUrl();
-            m.lessons[window.currentEditingLessonIndex].date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
-            m.lessons[window.currentEditingLessonIndex].trainer = getTrainerName();
+            lesson.signature = getOptimizedSignatureDataUrl();
+            lesson.date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+            lesson.trainer = getTrainerName();
             localSaveMember(m);
             window.renderMemberLessons();
             window.closeSignModal();
+            const completedByThisSignature = !wasCompleted && !wasLessonSigned && isMemberCompleted(m);
+            if (completedByThisSignature) {
+                setTimeout(() => {
+                    const renew = confirm(`${m.name} 회원의 마지막 회차 서명이 완료되었습니다.\n재등록하시겠습니까?`);
+                    if (renew) {
+                        window.openAddSessionModal();
+                        return;
+                    }
+                    window.memberStatusFilter = 'completed';
+                    window.backToDashboard();
+                    showToast(`${m.name} 회원을 완료 탭으로 이동했습니다.`);
+                }, 360);
+                return;
+            }
             showToast('서명이 안전하게 저장되었습니다.');
         }
 
