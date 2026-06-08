@@ -1499,8 +1499,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v112';
-        const APP_DISPLAY_VERSION = '1.12';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v113';
+        const APP_DISPLAY_VERSION = '1.13';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4438,7 +4438,7 @@
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
                     ? `<span class="text-[9px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-[9px] ${remainingBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`);
+                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${remainingBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`);
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
