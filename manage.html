@@ -1500,8 +1500,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v117';
-        const APP_DISPLAY_VERSION = '1.17';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v118';
+        const APP_DISPLAY_VERSION = '1.18';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4465,7 +4465,7 @@
                             </div>
                             ${holdDetailText}
                         </div>
-                        <span class="text-[10px] font-black ${remaining <= 3 || m._todayTime ? 'text-amber-500' : 'text-stone-900'}">잔여 ${remaining}회</span>
+                        <span class="self-end text-[10px] font-black ${remaining <= 3 || m._todayTime ? 'text-amber-500' : 'text-stone-900'}">잔여 ${remaining}회</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
                         <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
