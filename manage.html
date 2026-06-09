@@ -764,8 +764,12 @@
             <!-- Tab Content 2 -->
             <div id="tab-workout" class="space-y-3 hidden">
                 <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                    <div>
+                    <div class="space-y-2">
                         <h3 class="font-bold text-stone-800 text-sm">개인 운동 기록지</h3>
+                        <div id="workout-sort-controls" class="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+                            <button onclick="window.setWorkoutSortOrder('desc')" id="workout-sort-desc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">최신순</button>
+                            <button onclick="window.setWorkoutSortOrder('asc')" id="workout-sort-asc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">오래된순</button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2 sm:justify-end">
                         <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-[11px] font-black active-scale shadow-sm flex items-center">
@@ -1276,6 +1280,37 @@
         </div>
     </div>
 
+    <!-- A-1-3. Workout Log Editor Modal -->
+    <div id="modal-workout-editor" role="dialog" aria-modal="true" aria-label="운동일지 편집" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90dvh] shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
+                <div class="min-w-0">
+                    <h3 id="workout-editor-title" class="font-black text-amber-500 text-base truncate"><i class="fa-solid fa-dumbbell mr-1.5"></i>운동일지</h3>
+                    <p class="text-[11px] text-stone-400 mt-1">입력 내용은 자동 저장됩니다.</p>
+                </div>
+                <button onclick="window.closeWorkoutEditor()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto">
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">날짜</label>
+                    <input type="text" id="workout-editor-date" oninput="window.updateActiveWorkoutField('date', this.value)" class="w-full text-base bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-black text-stone-900">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">운동 내용</label>
+                    <textarea id="workout-editor-content" oninput="window.updateActiveWorkoutField('content', this.value)" placeholder="운동 내용, 세트 수, 주의사항 등을 기록하세요." class="w-full min-h-[42dvh] text-base leading-7 text-stone-800 bg-stone-50 border border-stone-200 rounded-2xl px-4 py-4 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+            </div>
+            <div class="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="window.shareActiveWorkoutLog()" class="min-h-[44px] bg-amber-500 text-stone-950 rounded-xl text-[11px] font-black active-scale"><i class="fa-solid fa-share-nodes mr-1"></i>공유</button>
+                    <button onclick="window.copyActiveWorkoutLog()" class="min-h-[44px] bg-white text-stone-700 border border-stone-200 rounded-xl text-[11px] font-black active-scale"><i class="fa-regular fa-copy mr-1"></i>복사</button>
+                    <button onclick="window.deleteActiveWorkoutLog()" class="min-h-[44px] bg-red-50 text-red-600 border border-red-100 rounded-xl text-[11px] font-black active-scale"><i class="fa-solid fa-trash-can mr-1"></i>삭제</button>
+                    <button onclick="window.closeWorkoutEditor()" class="min-h-[44px] bg-stone-900 text-white rounded-xl text-[11px] font-black active-scale">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- A-2. Delete Member Confirm Modal -->
     <div id="modal-delete-confirm" role="dialog" aria-modal="true" aria-label="회원 삭제 확인" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -1531,6 +1566,8 @@
         var workoutSaveTimer = null;
         var pendingWorkoutSave = false;
         var workoutLogsExpanded = false;
+        var activeWorkoutId = null;
+        var workoutSortOrder = localStorage.getItem('gofitgym_workout_sort_order') || 'desc';
         var firebaseApp = null;
         var firebaseAuth = null;
         var firebaseDb = null;
@@ -1567,8 +1604,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v123';
-        const APP_DISPLAY_VERSION = '1.23';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v124';
+        const APP_DISPLAY_VERSION = '1.24';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4760,7 +4797,9 @@
         function isWorkoutFieldFocused() {
             const active = document.activeElement;
             if (!active || !active.id) return false;
-            return active.id.startsWith('workout-date-') || active.id.startsWith('workout-content-');
+            return active.id.startsWith('workout-date-')
+                || active.id.startsWith('workout-content-')
+                || active.id.startsWith('workout-editor-');
         }
 
         window.refreshActiveMemberDetail = function(options = {}) {
@@ -4777,6 +4816,7 @@
             flushWorkoutSave();
             window.activeMemberId = id;
             window.workoutLogsExpanded = false;
+            window.activeWorkoutId = null;
             const m = window.members.find(x => x.id === id);
             if(!m) return;
 
@@ -5371,51 +5411,100 @@
         }
 
         // ================= WORKOUT =================
+        function getWorkoutSortTime(w) {
+            const raw = String((w && w.date) || '').trim();
+            let date = null;
+            const full = raw.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+            const short = raw.match(/^(\d{1,2})[./-](\d{1,2})$/);
+            if (full) date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]));
+            else if (short) {
+                const today = new Date();
+                date = new Date(today.getFullYear(), Number(short[1]) - 1, Number(short[2]));
+            }
+            const dateTime = date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+            return dateTime || Number(w && w.id) || 0;
+        }
+
+        function getSortedWorkouts(workouts) {
+            const direction = window.workoutSortOrder === 'asc' ? 1 : -1;
+            return [...workouts].sort((a, b) => {
+                const byDate = (getWorkoutSortTime(a) - getWorkoutSortTime(b)) * direction;
+                if (byDate) return byDate;
+                return ((Number(a.id) || 0) - (Number(b.id) || 0)) * direction;
+            });
+        }
+
+        function renderWorkoutSortControls() {
+            const desc = document.getElementById('workout-sort-desc');
+            const asc = document.getElementById('workout-sort-asc');
+            if (!desc || !asc) return;
+            const active = 'bg-stone-900 text-white shadow-sm';
+            const idle = 'text-stone-500';
+            desc.className = `px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale ${window.workoutSortOrder === 'desc' ? active : idle}`;
+            asc.className = `px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale ${window.workoutSortOrder === 'asc' ? active : idle}`;
+        }
+
+        function getWorkoutCardPreview(content) {
+            const text = String(content || '').trim();
+            if (!text) return '내용을 입력하려면 카드를 눌러주세요.';
+            return text.replace(/\s+/g, ' ').slice(0, 110);
+        }
+
+        function getWorkoutCardTitle(content) {
+            const firstLine = String(content || '').split(/\r?\n/).map(line => line.trim()).find(Boolean);
+            if (!firstLine) return '운동일지';
+            return firstLine.slice(0, 22);
+        }
+
+        function formatWorkoutCardDate(dateStr) {
+            const display = formatWorkoutDateForShare(dateStr);
+            return display === '날짜 미입력' ? '날짜 미입력' : display.replace(/\s*요일$/, '');
+        }
+
         window.renderMemberWorkouts = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if(!m) return;
-            const container = document.getElementById('workout-rows-container'); container.innerHTML = '';
+            const container = document.getElementById('workout-rows-container');
+            container.innerHTML = '';
+            renderWorkoutSortControls();
             const workouts = Array.isArray(m.workouts) ? m.workouts : [];
-            const renderWorkoutRow = (w) => {
-                const div = document.createElement('div');
-                div.className = "bg-white border border-stone-200 p-3 rounded-xl";
-                div.innerHTML = `
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
-                        <input type="text" id="workout-date-${w.id}" value="${escapeHtml(w.date)}" oninput="window.updateW(${w.id}, 'date', this.value)" class="text-xs font-bold w-20 bg-transparent outline-none border-b border-stone-300">
-                        <div class="flex items-center gap-2 w-full sm:w-auto">
-                            <button onclick="window.shareWorkoutLog(${w.id})" class="inline-flex flex-1 sm:flex-none items-center justify-center h-9 px-3 bg-amber-500 hover:bg-amber-600 text-stone-950 rounded-lg active-scale text-[11px] font-black" aria-label="운동일지 공유">
-                                <i class="fa-solid fa-share-nodes text-xs mr-1.5"></i>공유
-                            </button>
-                            <button onclick="window.copyWorkoutLog(${w.id})" class="inline-flex items-center justify-center w-9 h-9 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg active-scale border border-stone-200" aria-label="운동일지 복사">
-                                <i class="fa-regular fa-copy text-xs"></i>
-                            </button>
-                            <button onclick="window.delW(${w.id})" class="inline-flex items-center justify-center w-9 h-9 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg active-scale border border-red-100 ml-1" aria-label="운동일지 삭제">
-                                <i class="fa-solid fa-trash-can text-[10px]"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <textarea id="workout-content-${w.id}" oninput="window.updateW(${w.id}, 'content', this.value)" class="w-full min-h-[72px] text-xs text-stone-600 bg-stone-50 border border-stone-100 p-2 rounded outline-none focus:border-amber-500">${escapeHtml(w.content)}</textarea>
+            if (!workouts.length) {
+                container.innerHTML = `
+                    <button onclick="window.addNewWorkoutRow()" class="w-full min-h-[140px] rounded-2xl border border-dashed border-stone-300 bg-white text-stone-500 text-sm font-black active-scale">
+                        <i class="fa-solid fa-plus text-amber-500 mr-1.5"></i>첫 운동일지를 작성하세요
+                    </button>
                 `;
-                container.appendChild(div);
-            };
-
-            if (!workouts.length) return;
-            if (workouts.length > 1) {
-                const toggle = document.createElement('button');
-                toggle.type = 'button';
-                toggle.onclick = window.toggleWorkoutLogs;
-                toggle.className = 'w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-amber-50 border border-amber-100 text-left active-scale';
-                toggle.innerHTML = `
-                    <div>
-                        <p class="text-xs font-black text-amber-700">이전 일지 ${workouts.length - 1}개 ${window.workoutLogsExpanded ? '펼침' : '접힘'}</p>
-                        <p class="text-[9px] font-bold text-amber-600">${window.workoutLogsExpanded ? '터치하면 이전 일지를 다시 접습니다.' : '최근 일지는 아래에 유지하고 이전 기록을 접어둡니다.'}</p>
-                    </div>
-                    <i class="fa-solid ${window.workoutLogsExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-amber-600 text-xs"></i>
-                `;
-                container.appendChild(toggle);
-                if (window.workoutLogsExpanded) workouts.slice(1).forEach(renderWorkoutRow);
+                return;
             }
-            renderWorkoutRow(workouts[0]);
+
+            const grid = document.createElement('div');
+            grid.className = 'grid [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] gap-3';
+            getSortedWorkouts(workouts).forEach(w => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.onclick = () => window.openWorkoutEditor(w.id);
+                card.className = 'min-h-[156px] bg-white border border-stone-200 rounded-2xl p-3 text-left shadow-sm active-scale hover:border-amber-300 hover:bg-amber-50/40 transition-colors flex flex-col justify-between';
+                card.innerHTML = `
+                    <div class="space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-[11px] font-black text-amber-600">${escapeHtml(formatWorkoutCardDate(w.date))}</p>
+                                <p class="text-sm font-black text-stone-900 leading-tight mt-1">${escapeHtml(getWorkoutCardTitle(w.content))}</p>
+                            </div>
+                            <span class="shrink-0 w-7 h-7 rounded-lg bg-stone-100 text-stone-500 flex items-center justify-center">
+                                <i class="fa-solid fa-pen text-[10px]"></i>
+                            </span>
+                        </div>
+                        <p class="text-[12px] leading-relaxed text-stone-600" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(getWorkoutCardPreview(w.content))}</p>
+                    </div>
+                    <div class="pt-3 mt-3 border-t border-stone-100 text-[10px] font-black text-stone-400 flex items-center justify-between">
+                        <span>터치하여 보기/수정</span>
+                        <i class="fa-solid fa-chevron-right text-amber-500"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            container.appendChild(grid);
         }
 
         function queueWorkoutSave() {
@@ -5442,10 +5531,13 @@
         window.addNewWorkoutRow = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             const d = new Date();
-            m.workouts.unshift({ id: Date.now(), date: `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, content: '' });
-            window.workoutLogsExpanded = false;
+            const newWorkout = { id: Date.now(), date: `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`, content: '' };
+            m.workouts.unshift(newWorkout);
+            window.workoutSortOrder = 'desc';
+            localStorage.setItem('gofitgym_workout_sort_order', window.workoutSortOrder);
             localSaveMember(m);
             window.renderMemberWorkouts();
+            window.openWorkoutEditor(newWorkout.id);
         }
         window.updateW = function(id, k, v) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
@@ -5456,18 +5548,90 @@
             if (isActiveCloudProfile()) markCloudWritePending('members', m);
             queueWorkoutSave();
         }
-        window.toggleWorkoutLogs = function() {
-            window.workoutLogsExpanded = !window.workoutLogsExpanded;
+        window.setWorkoutSortOrder = function(order) {
+            window.workoutSortOrder = order === 'asc' ? 'asc' : 'desc';
+            localStorage.setItem('gofitgym_workout_sort_order', window.workoutSortOrder);
             window.renderMemberWorkouts();
         }
+
+        window.toggleWorkoutLogs = function() {
+            window.setWorkoutSortOrder(window.workoutSortOrder === 'asc' ? 'desc' : 'asc');
+        }
+
+        window.updateActiveWorkoutField = function(k, v) {
+            if (window.activeWorkoutId == null) return;
+            window.updateW(window.activeWorkoutId, k, v);
+            if (k === 'date') {
+                const title = document.getElementById('workout-editor-title');
+                if (title) title.innerHTML = `<i class="fa-solid fa-dumbbell mr-1.5"></i>${escapeHtml(v || '날짜 미입력')} 운동일지`;
+            }
+        }
+
+        function syncWorkoutEditorDraft(id) {
+            if (String(window.activeWorkoutId) !== String(id)) return;
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const workout = m && m.workouts.find(w => String(w.id) === String(id));
+            if (!workout) return;
+            const dateEl = document.getElementById('workout-editor-date');
+            const contentEl = document.getElementById('workout-editor-content');
+            if (dateEl) workout.date = dateEl.value.trim();
+            if (contentEl) workout.content = contentEl.value.trim();
+        }
+
+        window.openWorkoutEditor = function(id) {
+            flushWorkoutSave();
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            const workout = m && m.workouts.find(w => String(w.id) === String(id));
+            if (!workout) return showToast('운동일지를 찾지 못했습니다.');
+            window.activeWorkoutId = workout.id;
+            document.getElementById('workout-editor-title').innerHTML = `<i class="fa-solid fa-dumbbell mr-1.5"></i>${escapeHtml(workout.date || '날짜 미입력')} 운동일지`;
+            document.getElementById('workout-editor-date').value = workout.date || '';
+            document.getElementById('workout-editor-content').value = workout.content || '';
+            const modal = document.getElementById('modal-workout-editor');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('workout-editor-content').focus();
+            }, 10);
+        }
+
+        window.closeWorkoutEditor = function(options = {}) {
+            if (window.activeWorkoutId != null) syncWorkoutEditorDraft(window.activeWorkoutId);
+            flushWorkoutSave();
+            window.activeWorkoutId = null;
+            const modal = document.getElementById('modal-workout-editor');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (!options.skipRender) window.renderMemberWorkouts();
+            }, 300);
+        }
+
+        window.copyActiveWorkoutLog = function() {
+            if (window.activeWorkoutId == null) return showToast('선택된 운동일지가 없습니다.');
+            window.copyWorkoutLog(window.activeWorkoutId);
+        }
+
+        window.shareActiveWorkoutLog = function() {
+            if (window.activeWorkoutId == null) return showToast('선택된 운동일지가 없습니다.');
+            window.shareWorkoutLog(window.activeWorkoutId);
+        }
+
+        window.deleteActiveWorkoutLog = function() {
+            if (window.activeWorkoutId == null) return showToast('선택된 운동일지가 없습니다.');
+            window.delW(window.activeWorkoutId);
+        }
+
         window.delW = function(id) { 
             const m = window.members.find(x => x.id === window.activeMemberId);
             const workout = m && m.workouts.find(w => w.id === id);
             if (!workout) return;
             const ok = confirm(`${workout.date || '날짜 미입력'} 운동일지를 삭제할까요?\n삭제 후에는 복구할 수 없습니다.`);
             if (!ok) return;
+            const wasActive = String(window.activeWorkoutId) === String(id);
             m.workouts = m.workouts.filter(w => w.id !== id); 
             localSaveMember(m);
+            if (wasActive) window.closeWorkoutEditor({ skipRender: true });
             window.renderMemberWorkouts();
             showToast('운동일지를 삭제했습니다.');
         }
@@ -5497,7 +5661,8 @@
         function getWorkoutSharePayload(id) {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m) return null;
-            const w = m.workouts.find(item => item.id === id);
+            syncWorkoutEditorDraft(id);
+            const w = m.workouts.find(item => String(item.id) === String(id));
             if (!w) return null;
 
             const dateEl = document.getElementById(`workout-date-${id}`);
