@@ -1500,8 +1500,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v120';
-        const APP_DISPLAY_VERSION = '1.20';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v121';
+        const APP_DISPLAY_VERSION = '1.21';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4918,14 +4918,20 @@
                 const row = document.createElement('div');
                 row.className = `lesson-row flex justify-between items-center p-3 border-b border-stone-50 transition-colors ${rowClass}`;
                 row.onclick = () => { if (!window.lessonEditMode) window.openSignatureDrawingModal(i); };
+                const lessonInfoHtml = isSigned
+                    ? `<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <p class="text-base font-black text-stone-900 leading-tight">${escapeHtml(statusText)}${renewalBadge}</p>
+                            <p class="text-[11px] font-bold text-stone-500 leading-tight">${escapeHtml(subText)}</p>
+                        </div>`
+                    : `<div>
+                            <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}</p>
+                            <p class="text-[9px] text-stone-400">${escapeHtml(subText)}</p>
+                        </div>`;
                 
                 row.innerHTML = `
                     <div class="flex items-center space-x-3">
                         <span class="font-black text-xs text-stone-400 w-4">${String(l.no).padStart(2,'0')}</span>
-                        <div>
-                            <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}</p>
-                            <p class="text-[9px] text-stone-400">${escapeHtml(subText)}</p>
-                        </div>
+                        ${lessonInfoHtml}
                     </div>
                     <div class="flex space-x-2 items-center">
                         ${rightContent}
