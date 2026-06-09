@@ -702,11 +702,8 @@
                         <button onclick="window.openMemberMemoModal()" id="detail-memo-btn" class="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
                             <i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모
                         </button>
-                        <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
-                            <i class="fa-solid fa-share-nodes mr-1"></i>일지 공유
-                        </button>
-                        <button onclick="window.openPdfPreviewModal()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 rounded-xl text-xs font-black shadow active-scale flex items-center">
-                            <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 다운로드
+                        <button onclick="window.openConsultationModal()" id="detail-consultation-btn" class="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
+                            <i class="fa-solid fa-clipboard-question text-amber-500 mr-1.5"></i>상담기록
                         </button>
                         <button onclick="window.confirmDeleteActiveMember()" class="px-2.5 py-2 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 rounded-xl text-xs font-bold active-scale transition-colors">
                             <i class="fa-solid fa-trash-can"></i>
@@ -766,13 +763,21 @@
 
             <!-- Tab Content 2 -->
             <div id="tab-workout" class="space-y-3 hidden">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 flex justify-between items-center">
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div>
                         <h3 class="font-bold text-stone-800 text-sm">개인 운동 기록지</h3>
                     </div>
-                    <button onclick="window.addNewWorkoutRow()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 text-xs font-bold rounded-xl shadow-sm active-scale">
-                        <i class="fa-solid fa-plus mr-1 text-amber-500"></i>일지 추가
-                    </button>
+                    <div class="flex flex-wrap gap-2 sm:justify-end">
+                        <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-[11px] font-black active-scale shadow-sm flex items-center">
+                            <i class="fa-solid fa-share-nodes mr-1.5"></i>전체일지 공유
+                        </button>
+                        <button onclick="window.openPdfPreviewModal()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 rounded-xl text-[11px] font-black shadow active-scale flex items-center">
+                            <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 다운로드
+                        </button>
+                        <button onclick="window.addNewWorkoutRow()" class="px-3 py-2 bg-stone-100 text-stone-800 hover:bg-stone-200 text-[11px] font-black rounded-xl shadow-sm active-scale border border-stone-200">
+                            <i class="fa-solid fa-plus mr-1 text-amber-500"></i>일지 추가
+                        </button>
+                    </div>
                 </div>
                 <div id="workout-rows-container" class="space-y-3"></div>
             </div>
@@ -1209,6 +1214,68 @@
         </div>
     </div>
 
+    <!-- A-1-2. Consultation Record Modal -->
+    <div id="modal-consultation" role="dialog" aria-modal="true" aria-label="상담기록" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-md max-h-[88dvh] shadow-2xl overflow-hidden flex flex-col">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center shrink-0">
+                <div class="min-w-0">
+                    <h3 id="consultation-title" class="font-black text-amber-500 text-base truncate"><i class="fa-solid fa-clipboard-question mr-1.5"></i>상담기록</h3>
+                    <p class="text-[11px] text-stone-400 mt-1">초기 상담과 수업 참고사항을 간략히 기록합니다.</p>
+                </div>
+                <button onclick="window.closeConsultationModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-3 overflow-y-auto">
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">아침 기상시간 및 취침시간</label>
+                    <input type="text" id="consult-sleep" placeholder="예: 07:00 기상 / 23:30 취침" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">식사시간 기록</label>
+                    <textarea id="consult-meals" rows="2" placeholder="예: 아침 08:00 / 점심 12:30 / 저녁 19:00" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">음주빈도</label>
+                    <input type="text" id="consult-alcohol" placeholder="예: 월 0회 / 주 0회" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">원하는 운동목표</label>
+                    <textarea id="consult-goal" rows="2" placeholder="예: 체중감량, 근력증가, 통증 개선, 체형교정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">일과 운동 외의 활동</label>
+                    <textarea id="consult-activity" rows="2" placeholder="예: 직업 특성, 오래 앉아있는 시간, 취미활동" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">최근 병원진료를 받았거나 받을 예정이 있는지</label>
+                    <input type="text" id="consult-hospital" placeholder="예: 없음 / 있음 / 예정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">진료를 받았다면 어떤 것 때문인지</label>
+                    <textarea id="consult-hospital-reason" rows="2" placeholder="예: 허리 통증, 무릎 통증, 어깨 불편감" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">간단한 운동테스트 결과</label>
+                    <textarea id="consult-test" rows="2" placeholder="예: 균형, 가동성, 통증 반응, 기본 체력" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">쪼그려앉기 / 만세해보기</label>
+                    <textarea id="consult-squat-overhead" rows="2" placeholder="쪼그려앉기:&#10;만세해보기:" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">기타 사항</label>
+                    <textarea id="consult-etc" rows="3" placeholder="기타 상담 내용이나 주의사항" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                </div>
+                <p class="text-[11px] leading-relaxed text-stone-500 font-bold">
+                    저장하면 이 회원 데이터에 함께 보관되며 백업과 클라우드 동기화 대상에 포함됩니다.
+                </p>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100 shrink-0">
+                <button onclick="window.closeConsultationModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.saveConsultationRecord()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale">저장</button>
+            </div>
+        </div>
+    </div>
+
     <!-- A-2. Delete Member Confirm Modal -->
     <div id="modal-delete-confirm" role="dialog" aria-modal="true" aria-label="회원 삭제 확인" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
@@ -1500,8 +1567,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v122';
-        const APP_DISPLAY_VERSION = '1.22';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v123';
+        const APP_DISPLAY_VERSION = '1.23';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4600,6 +4667,74 @@
             showToast(m.memo ? '회원 메모를 저장했습니다.' : '회원 메모를 비웠습니다.');
         }
 
+        const CONSULTATION_FIELDS = [
+            ['sleep', 'consult-sleep'],
+            ['meals', 'consult-meals'],
+            ['alcohol', 'consult-alcohol'],
+            ['goal', 'consult-goal'],
+            ['activity', 'consult-activity'],
+            ['hospital', 'consult-hospital'],
+            ['hospitalReason', 'consult-hospital-reason'],
+            ['test', 'consult-test'],
+            ['squatOverhead', 'consult-squat-overhead'],
+            ['etc', 'consult-etc']
+        ];
+
+        function hasConsultationRecord(m) {
+            const data = (m && m.consultation) || {};
+            return CONSULTATION_FIELDS.some(([key]) => String(data[key] || '').trim());
+        }
+
+        function updateConsultationButton(m) {
+            const btn = document.getElementById('detail-consultation-btn');
+            if (!btn) return;
+            const hasRecord = hasConsultationRecord(m);
+            btn.className = hasRecord
+                ? 'px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
+                : 'px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
+            btn.innerHTML = hasRecord
+                ? '<i class="fa-solid fa-clipboard-check text-amber-500 mr-1.5"></i>상담기록 있음'
+                : '<i class="fa-solid fa-clipboard-question text-amber-500 mr-1.5"></i>상담기록';
+        }
+
+        window.openConsultationModal = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            const data = m.consultation || {};
+            document.getElementById('consultation-title').innerHTML = `<i class="fa-solid fa-clipboard-question mr-1.5"></i>${escapeHtml(m.name)} 상담기록`;
+            CONSULTATION_FIELDS.forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                if (el) el.value = data[key] || '';
+            });
+            const modal = document.getElementById('modal-consultation');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('consult-sleep').focus();
+            }, 10);
+        }
+
+        window.closeConsultationModal = function() {
+            const modal = document.getElementById('modal-consultation');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.saveConsultationRecord = function() {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m) return;
+            const data = {};
+            CONSULTATION_FIELDS.forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                data[key] = el ? el.value.trim() : '';
+            });
+            m.consultation = data;
+            localSaveMember(m);
+            updateConsultationButton(m);
+            window.closeConsultationModal();
+            showToast(hasConsultationRecord(m) ? '상담기록을 저장했습니다.' : '상담기록을 비웠습니다.');
+        }
+
         // ================= MEMBER DETAIL =================
         function updateMemberMemoButton(m) {
             const btn = document.getElementById('detail-memo-btn');
@@ -4619,6 +4754,7 @@
             document.getElementById('detail-reg-date').innerText = m.registrationDate;
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
             updateMemberMemoButton(m);
+            updateConsultationButton(m);
         }
 
         function isWorkoutFieldFocused() {
@@ -7106,13 +7242,13 @@
             const m = window.members.find(x => x.id === window.activeMemberId);
             const comp = m.lessons.filter(l => l.signature && l.signature !== 'LATER').length;
             const memberName = formatMemberHonorificName(m.name);
-            const latestWorkout = m.workouts[0] || null;
-            const latestWorkoutText = latestWorkout
-                ? `[${latestWorkout.date || '날짜 미입력'}]\n${latestWorkout.content || ''}`
-                : '기록 없음';
+            const workoutLogs = (m.workouts || [])
+                .filter(w => String(w.date || '').trim() || String(w.content || '').trim())
+                .map(w => `[${w.date || '날짜 미입력'}]\n${w.content || ''}`)
+                .join('\n\n');
             const nextSchedule = getNextScheduleForMember(m);
             const nextScheduleText = nextSchedule ? `\n- 다음 예약: ${formatScheduleForShare(nextSchedule)}` : '';
-            document.getElementById('share-text-preview').value = `[GOFITGYM] ${memberName}\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 최근일지:\n${latestWorkoutText}${nextScheduleText}\n\n오늘도 고생하셨습니다!`;
+            document.getElementById('share-text-preview').value = `[GOFITGYM] ${memberName}\n\n- 세션진행: ${comp} / ${m.totalSessions}회 완료\n- 전체 운동일지:\n${workoutLogs || '기록 없음'}${nextScheduleText}\n\n오늘도 고생하셨습니다!`;
             const sm = document.getElementById('share-modal');
             sm.classList.remove('hidden'); setTimeout(() => sm.classList.remove('opacity-0'), 10);
         }
