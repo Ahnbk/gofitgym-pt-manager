@@ -1500,8 +1500,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v121';
-        const APP_DISPLAY_VERSION = '1.21';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v122';
+        const APP_DISPLAY_VERSION = '1.22';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -5264,19 +5264,22 @@
             };
 
             if (!workouts.length) return;
-            renderWorkoutRow(workouts[0]);
-
             if (workouts.length > 1) {
                 const toggle = document.createElement('button');
                 toggle.type = 'button';
                 toggle.onclick = window.toggleWorkoutLogs;
-                toggle.className = 'w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-100 text-stone-600 text-xs font-black active-scale border border-stone-200';
-                toggle.innerHTML = window.workoutLogsExpanded
-                    ? `<i class="fa-solid fa-chevron-up text-[10px]"></i>이전 일지 접기`
-                    : `<i class="fa-solid fa-chevron-down text-[10px]"></i>이전 일지 ${workouts.length - 1}개 펼치기`;
+                toggle.className = 'w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-amber-50 border border-amber-100 text-left active-scale';
+                toggle.innerHTML = `
+                    <div>
+                        <p class="text-xs font-black text-amber-700">이전 일지 ${workouts.length - 1}개 ${window.workoutLogsExpanded ? '펼침' : '접힘'}</p>
+                        <p class="text-[9px] font-bold text-amber-600">${window.workoutLogsExpanded ? '터치하면 이전 일지를 다시 접습니다.' : '최근 일지는 아래에 유지하고 이전 기록을 접어둡니다.'}</p>
+                    </div>
+                    <i class="fa-solid ${window.workoutLogsExpanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-amber-600 text-xs"></i>
+                `;
                 container.appendChild(toggle);
                 if (window.workoutLogsExpanded) workouts.slice(1).forEach(renderWorkoutRow);
             }
+            renderWorkoutRow(workouts[0]);
         }
 
         function queueWorkoutSave() {
