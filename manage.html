@@ -734,7 +734,7 @@
                     <i class="fa-solid fa-signature mr-1.5 text-amber-500"></i>레슨 체크 서명
                 </button>
                 <button onclick="window.switchDetailTab('workout')" id="tab-workout-btn" class="flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200">
-                    <i class="fa-solid fa-dumbbell mr-1.5 text-stone-400"></i>운동 루틴 일지
+                    <i class="fa-solid fa-dumbbell mr-1.5 text-stone-400"></i>운동일지
                 </button>
             </div>
 
@@ -763,23 +763,20 @@
 
             <!-- Tab Content 2 -->
             <div id="tab-workout" class="space-y-3 hidden">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                    <div class="space-y-2">
-                        <h3 class="font-bold text-stone-800 text-sm">개인 운동 기록지</h3>
-                        <div id="workout-sort-controls" class="inline-flex rounded-xl bg-stone-100 p-1 border border-stone-200">
-                            <button onclick="window.setWorkoutSortOrder('desc')" id="workout-sort-desc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">최신순</button>
-                            <button onclick="window.setWorkoutSortOrder('asc')" id="workout-sort-asc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">오래된순</button>
-                        </div>
+                <div class="bg-white rounded-2xl px-3 py-2 shadow-sm border border-stone-200/80 flex flex-wrap justify-between items-center gap-2">
+                    <div id="workout-sort-controls" class="inline-flex min-h-[38px] rounded-xl bg-stone-100 p-1 border border-stone-200">
+                        <button onclick="window.setWorkoutSortOrder('desc')" id="workout-sort-desc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">최신순</button>
+                        <button onclick="window.setWorkoutSortOrder('asc')" id="workout-sort-asc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">오래된순</button>
                     </div>
                     <div class="flex flex-wrap gap-2 sm:justify-end">
-                        <button onclick="window.openShareModal()" class="px-3 py-2 bg-amber-500 text-stone-950 rounded-xl text-[11px] font-black active-scale shadow-sm flex items-center">
+                        <button onclick="window.openShareModal()" class="min-h-[38px] px-3 py-2 bg-white text-stone-700 border border-stone-200 rounded-xl text-[11px] font-black active-scale shadow-sm flex items-center">
                             <i class="fa-solid fa-share-nodes mr-1.5"></i>전체일지 공유
                         </button>
-                        <button onclick="window.openPdfPreviewModal()" class="px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 rounded-xl text-[11px] font-black shadow active-scale flex items-center">
+                        <button onclick="window.openPdfPreviewModal()" class="min-h-[38px] px-3 py-2 bg-stone-900 text-white hover:bg-stone-800 rounded-xl text-[11px] font-black shadow active-scale flex items-center">
                             <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 다운로드
                         </button>
-                        <button onclick="window.addNewWorkoutRow()" class="px-3 py-2 bg-stone-100 text-stone-800 hover:bg-stone-200 text-[11px] font-black rounded-xl shadow-sm active-scale border border-stone-200">
-                            <i class="fa-solid fa-plus mr-1 text-amber-500"></i>일지 추가
+                        <button onclick="window.addNewWorkoutRow()" class="min-h-[38px] px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black rounded-xl shadow-sm active-scale flex items-center">
+                            <i class="fa-solid fa-plus mr-1.5"></i>일지 추가
                         </button>
                     </div>
                 </div>
@@ -1604,8 +1601,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v124';
-        const APP_DISPLAY_VERSION = '1.24';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v125';
+        const APP_DISPLAY_VERSION = '1.25';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
