@@ -1821,8 +1821,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v134';
-        const APP_DISPLAY_VERSION = '1.34';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v135';
+        const APP_DISPLAY_VERSION = '1.35';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4175,8 +4175,10 @@
                     .settlement-pdf-table .center { text-align:center; }
                     .settlement-pdf-table .left { text-align:center; }
                     .settlement-pdf-section-title { margin:0 0 8px; font-size:14px; line-height:1; font-weight:900; color:#1c1917; }
-                    .settlement-proof-sign { height:30px; text-align:center; padding:2px !important; }
-                    .settlement-proof-sign-img { display:block; max-width:112px; max-height:26px; margin:0 auto; object-fit:contain; }
+                    .settlement-proof-table th { padding:3px 2px; font-size:7.8px; line-height:1.05; }
+                    .settlement-proof-table td { height:28px; padding:1px 2px; font-size:7.8px; line-height:1.05; }
+                    .settlement-proof-sign { height:28px; text-align:center; padding:1px !important; }
+                    .settlement-proof-sign-img { display:block; max-width:108px; max-height:24px; margin:0 auto; object-fit:contain; }
                     .settlement-proof-separator { border-left:2px solid #a8a29e !important; }
                     .settlement-pdf-footer { margin-top:12px; padding-top:9px; border-top:2px solid #1c1917; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
                     .settlement-pdf-logo { padding:6px 9px; border-radius:6px; background:#1c1917; color:#f59e0b; font-size:12px; font-weight:900; line-height:1; }
@@ -4309,7 +4311,7 @@
             proofChunks.forEach((rows) => {
                 const buildProofCells = (row, isRightGroup = false) => {
                     const separatorClass = isRightGroup ? ' settlement-proof-separator' : '';
-                    if (!row) return `<td class="${separatorClass}">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>`;
+                    if (!row) return `<td class="${separatorClass}">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td class="settlement-proof-sign">&nbsp;</td>`;
                     const signatureHtml = row.signature && row.signature.startsWith('data:image')
                         ? `<img src="${row.signature}" class="settlement-proof-sign-img">`
                         : escapeHtml(row.signatureStatus || '서명완료');
@@ -4324,11 +4326,11 @@
                 const proofRowsHtml = rows.length ? Array.from({ length: proofRowsPerSide }, (_, index) => {
                     const leftRow = rows[index] || null;
                     const rightRow = rows[index + proofRowsPerSide] || null;
-                    return `<tr>${buildProofCells(leftRow)}${buildProofCells(rightRow, true)}</tr>`;
+                    return `<tr class="settlement-proof-row">${buildProofCells(leftRow)}${buildProofCells(rightRow, true)}</tr>`;
                 }).join('') : `<tr><td colspan="10" class="center" style="height:42px;">선택한 월의 수업 증빙 기록이 없습니다.</td></tr>`;
                 const body = `
                     <h3 class="settlement-pdf-section-title">수업 날짜 · 서명 증빙</h3>
-                    <table class="settlement-pdf-table">
+                    <table class="settlement-pdf-table settlement-proof-table">
                         <thead><tr>
                             <th style="width:32px;">번호</th><th style="width:70px;">수업일</th><th style="width:70px;">회원명</th><th style="width:48px;">회차</th><th>서명</th>
                             <th class="settlement-proof-separator" style="width:32px;">번호</th><th style="width:70px;">수업일</th><th style="width:70px;">회원명</th><th style="width:48px;">회차</th><th>서명</th>
