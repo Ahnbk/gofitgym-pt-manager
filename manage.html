@@ -1601,8 +1601,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v127';
-        const APP_DISPLAY_VERSION = '1.27';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v128';
+        const APP_DISPLAY_VERSION = '1.28';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4535,9 +4535,11 @@
                 const remaining = getRemainingLessonCount(m, comp);
                 
                 const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
-                const remainingBadgeClass = remaining <= 3
-                    ? 'bg-amber-500 text-stone-950 font-black'
-                    : 'bg-stone-100 text-stone-500 font-bold';
+                const lowRemaining = !completed && !hold && remaining <= 3;
+                const progressBadgeClass = 'bg-stone-100 text-stone-500 font-bold';
+                const remainingBadgeClass = lowRemaining
+                    ? 'inline-flex items-center justify-center min-w-[34px] h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 rounded-full shadow-sm'
+                    : 'text-[10px] font-black text-stone-900';
                 const holdLabel = getMemberHoldLabel(m);
                 const holdDetail = getMemberHoldDetail(m);
                 const transferred = isMemberTransferred(m);
@@ -4550,7 +4552,7 @@
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
                     ? `<span class="text-[9px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${remainingBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`);
+                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`);
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
@@ -4566,7 +4568,7 @@
                             </div>
                             ${holdDetailText}
                         </div>
-                        <span class="self-end text-[10px] font-black ${remaining <= 3 || m._todayTime ? 'text-amber-500' : 'text-stone-900'}">잔여 ${remaining}회</span>
+                        <span class="self-end ${remainingBadgeClass}">잔여 ${remaining}회</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
                         <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
