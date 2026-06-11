@@ -829,7 +829,6 @@
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 min-w-0">
                                 <h2 id="detail-member-name" class="text-base font-black text-stone-900 truncate">회원명</h2>
-                                <span id="detail-member-trainer" class="shrink-0 text-[10px] bg-stone-800 text-amber-500 px-2 py-0.5 rounded-md font-bold whitespace-nowrap">트레이너</span>
                             </div>
                             <p class="text-[11px] text-stone-600 whitespace-nowrap overflow-hidden text-ellipsis">등록일: <span id="detail-reg-date">2026-06-01</span> · 총 <span id="detail-total-sessions">30</span>회 세션</p>
                         </div>
@@ -837,6 +836,9 @@
 
                     <!-- Quick Actions -->
                     <div class="flex items-center justify-end flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
+                        <button onclick="window.openEditMemberModal()" class="min-h-[38px] px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-black shadow active-scale flex items-center">
+                            <i class="fa-solid fa-user-pen mr-1.5"></i>회원정보 수정
+                        </button>
                         <button onclick="window.openAddSessionModal()" class="min-h-[38px] px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black shadow active-scale flex items-center">
                             <i class="fa-solid fa-rotate-right mr-1.5"></i>재등록
                         </button>
@@ -1287,7 +1289,7 @@
     <div id="modal-member" role="dialog" aria-modal="true" aria-label="신규 회원 등록" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" id="modal-member-box">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
-                <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
+                <h3 id="member-modal-title" class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
                 <button onclick="window.closeNewMemberModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-4 max-h-[70dvh] overflow-y-auto">
@@ -1338,7 +1340,7 @@
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeNewMemberModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs">취소</button>
-                <button onclick="window.submitNewMember()" class="flex-1 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs shadow-md">등록 생성</button>
+                <button onclick="window.submitMemberForm()" id="member-modal-submit-btn" class="flex-1 py-3 bg-amber-500 text-stone-900 font-black rounded-xl text-xs shadow-md">등록 생성</button>
             </div>
         </div>
     </div>
@@ -1819,8 +1821,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v131';
-        const APP_DISPLAY_VERSION = '1.31';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v132';
+        const APP_DISPLAY_VERSION = '1.32';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4611,11 +4613,6 @@
             if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
             renderBackupStatus();
             renderCloudStatus();
-            const detailTrainer = document.getElementById('detail-member-trainer');
-            if (window.activeMemberId && detailTrainer) {
-                const m = window.members.find(x => x.id === window.activeMemberId);
-                if (m) detailTrainer.innerText = formatTrainerLabel(m.trainer || getTrainerName());
-            }
             const detailView = document.getElementById('view-member-detail');
             if (detailView && !detailView.classList.contains('hidden') && window.activeMemberId) {
                 if (subtitle) subtitle.innerText = `${getTrainerName()} Trainer`;
@@ -5565,7 +5562,162 @@
             updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 결제 금액을 입력하세요.');
         }
 
+        function setMemberFormMode(mode = 'create') {
+            window.memberFormMode = mode === 'edit' ? 'edit' : 'create';
+            const editing = window.memberFormMode === 'edit';
+            const title = document.getElementById('member-modal-title');
+            const submitBtn = document.getElementById('member-modal-submit-btn');
+            const modal = document.getElementById('modal-member');
+            if (modal) modal.setAttribute('aria-label', editing ? '회원정보 수정' : '신규 회원 등록');
+            if (title) {
+                title.innerHTML = editing
+                    ? '<i class="fa-solid fa-user-pen mr-1.5"></i>회원정보 수정'
+                    : '<i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록';
+            }
+            if (submitBtn) submitBtn.innerText = editing ? '수정 저장' : '등록 생성';
+        }
+
+        function normalizeDateInputValue(value, fallback = formatDate(new Date())) {
+            const raw = String(value || '').trim();
+            if (!raw) return fallback;
+            const full = raw.match(/^(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/);
+            if (full) return `${full[1]}-${String(full[2]).padStart(2, '0')}-${String(full[3]).padStart(2, '0')}`;
+            const short = raw.match(/^(\d{1,2})[/.](\d{1,2})$/);
+            if (short) {
+                const year = new Date().getFullYear();
+                return `${year}-${String(short[1]).padStart(2, '0')}-${String(short[2]).padStart(2, '0')}`;
+            }
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime()) ? fallback : formatDate(parsed);
+        }
+
+        function getPrimaryMemberPayment(member) {
+            const payments = Array.isArray(member && member.payments) ? member.payments : [];
+            return payments.find(payment => payment && payment.type === 'initial') || payments[0] || null;
+        }
+
+        function updatePrimaryMemberPayment(member, { date, amount, sessions }) {
+            member.payments = Array.isArray(member.payments) ? member.payments : [];
+            let payment = getPrimaryMemberPayment(member);
+            if (!payment) {
+                payment = buildMemberPayment({
+                    id: 'payment_' + Date.now(),
+                    type: 'initial',
+                    date,
+                    amount,
+                    sessions,
+                    startNo: 1,
+                    count: sessions
+                });
+                member.payments.unshift(payment);
+            } else {
+                const next = buildMemberPayment({
+                    id: payment.id || ('payment_' + Date.now()),
+                    type: payment.type || 'initial',
+                    date,
+                    amount,
+                    sessions,
+                    renewalId: payment.renewalId || '',
+                    startNo: payment.startNo || 1,
+                    count: sessions
+                });
+                Object.assign(payment, next);
+                if (!payment.renewalId) payment.type = 'initial';
+            }
+            (member.lessons || []).forEach(lesson => {
+                if (!lesson.paymentId && !lesson.renewalId) lesson.paymentId = payment.id;
+            });
+            return payment;
+        }
+
+        function clearLegacyCompletedLessons(member) {
+            (member.lessons || []).forEach(lesson => {
+                if (!isLegacyCompletedLesson(lesson)) return;
+                lesson.signature = '';
+                lesson.legacyCompleted = false;
+                delete lesson.legacySettlement;
+                delete lesson.legacySettlementMonth;
+                delete lesson.legacyNote;
+                lesson.date = '';
+                lesson.trainer = '';
+            });
+        }
+
+        function resizeMemberLessons(member, targetTotal, defaultPaymentId = '') {
+            member.lessons = Array.isArray(member.lessons) ? member.lessons : [];
+            const currentTotal = member.lessons.length;
+            if (targetTotal > currentTotal) {
+                for (let i = currentTotal; i < targetTotal; i++) {
+                    member.lessons.push({ no: i + 1, date: '', trainer: '', signature: '', paymentId: defaultPaymentId });
+                }
+            } else if (targetTotal < currentTotal) {
+                const removeCount = currentTotal - targetTotal;
+                const removableIndexes = [];
+                for (let i = member.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
+                    if (!isSignedLesson(member.lessons[i])) removableIndexes.push(i);
+                }
+                if (removableIndexes.length < removeCount) {
+                    return { ok: false, message: '실제 서명 완료 회차가 많아서 총 횟수를 더 줄일 수 없습니다.' };
+                }
+                removableIndexes.forEach(index => member.lessons.splice(index, 1));
+            }
+            member.lessons.forEach((lesson, index) => {
+                lesson.no = index + 1;
+                if (typeof lesson.date === 'undefined') lesson.date = '';
+                if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
+                if (typeof lesson.signature === 'undefined') lesson.signature = '';
+                if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
+            });
+            return { ok: true };
+        }
+
+        function applyLegacyCompletions(member, legacyCount, settlementCount, settlementMonth) {
+            const pending = [];
+            const later = [];
+            (member.lessons || []).forEach(lesson => {
+                if (isSignedLesson(lesson)) return;
+                if (lesson.signature === 'LATER') later.push(lesson);
+                else pending.push(lesson);
+            });
+            const targets = [...pending, ...later];
+            if (targets.length < legacyCount) return false;
+            targets.slice(0, legacyCount).forEach((lesson, index) => {
+                lesson.legacyCompleted = true;
+                lesson.signature = 'LEGACY_DONE';
+                lesson.trainer = getTrainerName();
+                lesson.legacyNote = '종이 기록 반영';
+                if (index < settlementCount) {
+                    const day = String(Math.min(index + 1, 28)).padStart(2, '0');
+                    lesson.date = `${settlementMonth}-${day}`;
+                    lesson.legacySettlement = true;
+                    lesson.legacySettlementMonth = settlementMonth;
+                } else {
+                    lesson.date = '';
+                    delete lesson.legacySettlement;
+                    delete lesson.legacySettlementMonth;
+                }
+            });
+            return true;
+        }
+
+        function syncRenamedMemberSchedules(oldName, newName) {
+            const before = String(oldName || '').trim();
+            const after = String(newName || '').trim();
+            if (!before || !after || before === after) return;
+            (window.schedules || []).forEach(schedule => {
+                const title = String(schedule.title || '');
+                if (!title.includes(before)) return;
+                schedule.title = title.split(before).join(after);
+                localSaveSchedule(schedule);
+                if (isGoogleCalendarAllowedForActiveProfile() && hasGoogleCalendarToken()) {
+                    syncScheduleToGoogleCalendar(schedule, { interactive: false }).catch(() => {});
+                }
+            });
+        }
+
         function resetNewMemberForm() {
+            window.memberFormMemberId = null;
+            setMemberFormMode('create');
             document.getElementById('reg-name').value = '';
             document.getElementById('reg-sessions').value = '10';
             document.getElementById('reg-remaining-sessions').value = '10';
@@ -5590,6 +5742,83 @@
             const m = document.getElementById('modal-member');
             m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
         }
+
+        window.openEditMemberModal = function() {
+            const member = window.members.find(x => x.id === window.activeMemberId);
+            if (!member) return showToast('수정할 회원을 찾지 못했습니다.');
+            window.memberFormMemberId = member.id;
+            setMemberFormMode('edit');
+            const total = (member.lessons || []).length || member.totalSessions || 0;
+            const payment = getPrimaryMemberPayment(member);
+            document.getElementById('reg-name').value = member.name || '';
+            document.getElementById('reg-sessions').value = String(total || 1);
+            document.getElementById('reg-remaining-sessions').value = String(getRemainingLessonCount(member));
+            document.getElementById('reg-date-input').value = normalizeDateInputValue(member.registrationDate);
+            document.getElementById('reg-payment-date').value = normalizeDateInputValue(payment && payment.date, normalizeDateInputValue(member.registrationDate));
+            document.getElementById('reg-payment-amount').value = payment && Number(payment.amount) > 0 ? String(Math.round(Number(payment.amount))) : '';
+            const legacySettlementLessons = (member.lessons || []).filter(lesson => isLegacyCompletedLesson(lesson) && lesson.legacySettlement);
+            const firstSettlementMonth = legacySettlementLessons[0] && legacySettlementLessons[0].legacySettlementMonth;
+            document.getElementById('reg-legacy-settlement-count').value = String(legacySettlementLessons.length);
+            document.getElementById('reg-legacy-settlement-month').value = firstSettlementMonth || getCurrentMonthKey(new Date());
+            window.registrationRemainingManual = true;
+            window.updateRegistrationUnitPricePreview();
+            window.updateRegistrationLegacyPreview();
+            const modal = document.getElementById('modal-member');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            setTimeout(() => document.getElementById('reg-name').focus(), 120);
+        }
+
+        window.submitMemberForm = function() {
+            if (window.memberFormMode === 'edit') return window.saveEditedMemberFromForm();
+            return window.submitNewMember();
+        }
+
+        window.saveEditedMemberFromForm = function() {
+            const member = window.members.find(x => x.id === window.memberFormMemberId);
+            if (!member) return showToast('수정할 회원을 찾지 못했습니다.');
+            const oldName = member.name || '';
+            const name = document.getElementById('reg-name').value.trim();
+            const sessions = parseInt(document.getElementById('reg-sessions').value, 10) || 0;
+            const remainingSessions = parseInt(document.getElementById('reg-remaining-sessions').value, 10) || 0;
+            const desiredCompleted = sessions - remainingSessions;
+            const signedCount = (member.lessons || []).filter(isSignedLesson).length;
+            const desiredLegacyCount = desiredCompleted - signedCount;
+            const legacySettlementCount = parseInt(document.getElementById('reg-legacy-settlement-count').value, 10) || 0;
+            const legacySettlementMonth = document.getElementById('reg-legacy-settlement-month').value || getCurrentMonthKey(new Date());
+            const registrationDate = document.getElementById('reg-date-input').value || formatDate(new Date());
+            const paymentDate = document.getElementById('reg-payment-date').value || registrationDate;
+            const paymentAmount = parseCurrencyInput(document.getElementById('reg-payment-amount').value);
+            if (!name) return showToast('이름을 입력하세요!');
+            if (sessions < 1) return showToast('총 횟수를 올바르게 입력하세요!');
+            if (remainingSessions < 0 || remainingSessions > sessions) return showToast('잔여 횟수는 총 횟수 안에서 입력하세요!');
+            if (sessions < signedCount) return showToast('총 횟수는 실제 서명 완료 수업보다 작게 설정할 수 없습니다.');
+            if (desiredLegacyCount < 0) return showToast('잔여 횟수가 실제 서명 완료 수업보다 많습니다.');
+            if (legacySettlementCount < 0 || legacySettlementCount > desiredLegacyCount) return showToast('이번 달 정산 반영 횟수를 이전 완료분 안에서 입력하세요!');
+            if (paymentAmount <= 0) return showToast('결제 금액을 입력하세요!');
+
+            const primaryPayment = updatePrimaryMemberPayment(member, { date: paymentDate, amount: paymentAmount, sessions });
+            clearLegacyCompletedLessons(member);
+            const resizeResult = resizeMemberLessons(member, sessions, primaryPayment.id);
+            if (!resizeResult.ok) return showToast(resizeResult.message);
+            if (!applyLegacyCompletions(member, desiredLegacyCount, legacySettlementCount, legacySettlementMonth)) {
+                return showToast('이전 완료분을 적용할 수 있는 미서명 회차가 부족합니다.');
+            }
+            member.name = name;
+            member.trainer = member.trainer || getTrainerName();
+            member.registrationDate = registrationDate;
+            member.totalSessions = member.lessons.length;
+            rebuildRenewalSummaries(member);
+            syncRenamedMemberSchedules(oldName, name);
+            localSaveMember(member);
+            populateMemberDetail(member);
+            window.renderMemberLessons();
+            window.renderMemberWorkouts();
+            window.renderMemberList();
+            window.closeNewMemberModal();
+            showToast('회원정보가 수정되었습니다.');
+        }
+
         window.submitNewMember = function() {
             const name = document.getElementById('reg-name').value.trim();
             const sessions = parseInt(document.getElementById('reg-sessions').value) || 0;
@@ -5830,7 +6059,6 @@
 
         function populateMemberDetail(m) {
             document.getElementById('detail-member-name').innerText = m.name;
-            document.getElementById('detail-member-trainer').innerText = formatTrainerLabel(m.trainer || getTrainerName());
             document.getElementById('detail-reg-date').innerText = m.registrationDate;
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
             updateMemberMemoButton(m);
