@@ -938,7 +938,7 @@
                 <i class="fa-regular fa-calendar-days text-lg mb-1"></i>
                 <span class="text-[10px] font-bold">스케줄 예약 관리</span>
             </button>
-            <button onclick="window.switchMainView('settlement')" id="nav-settlement" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
+            <button onclick="window.requestSettlementAccess()" id="nav-settlement" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
                 <i class="fa-solid fa-file-invoice-dollar text-lg mb-1"></i>
                 <span class="text-[10px] font-bold">정산</span>
             </button>
@@ -1297,26 +1297,43 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-stone-500 font-bold mb-1.5">등록 세션 수 *</label>
-                        <input type="number" id="reg-sessions" placeholder="예: 10" value="10" min="1" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 횟수 *</label>
+                        <input type="number" id="reg-sessions" placeholder="예: 10" value="10" min="1" oninput="window.syncRegistrationRemainingWithSessions()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
                     <div>
-                        <label class="block text-xs text-stone-500 font-bold mb-1.5">개시일 *</label>
-                        <input type="date" id="reg-date-input" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">현재 잔여 횟수 *</label>
+                        <input type="number" id="reg-remaining-sessions" placeholder="예: 6" value="10" min="0" oninput="window.markRegistrationRemainingManual()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">개시일 *</label>
+                        <input type="date" id="reg-date-input" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
                         <label class="block text-xs text-stone-500 font-bold mb-1.5">결제일 *</label>
                         <input type="date" id="reg-payment-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액 *</label>
-                        <input type="number" id="reg-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">이번 달 정산 반영</label>
+                        <input type="number" id="reg-legacy-settlement-count" value="0" min="0" oninput="window.updateRegistrationLegacyPreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">반영 기준월</label>
+                        <input type="month" id="reg-legacy-settlement-month" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액 *</label>
+                    <input type="number" id="reg-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <div id="reg-unit-price-preview" class="rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-2 text-[11px] font-black text-amber-700">
                     1회 단가를 계산하려면 결제 금액을 입력하세요.
+                </div>
+                <div id="reg-legacy-preview" class="rounded-xl bg-stone-50 border border-stone-200 px-3.5 py-2 text-[11px] font-black text-stone-600">
+                    결제 횟수와 잔여 횟수가 같으면 이전 완료분은 없습니다.
                 </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
@@ -1359,6 +1376,30 @@
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeAddSessionModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
                 <button onclick="window.executeAddSession()" class="flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale">추가하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- A-1-1. Settlement Password Modal -->
+    <div id="modal-settlement-password" role="dialog" aria-modal="true" aria-label="정산 비밀번호 확인" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-lock mr-1.5"></i>정산 확인</h3>
+                    <p class="text-[11px] text-stone-400 mt-1">로그인 비밀번호를 다시 입력하세요.</p>
+                </div>
+                <button onclick="window.closeSettlementPasswordModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <label class="block">
+                    <span class="block text-xs text-stone-500 font-bold mb-1.5">비밀번호</span>
+                    <input type="password" id="settlement-password-input" autocomplete="current-password" onkeydown="if(event.key === 'Enter') window.confirmSettlementPassword()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 outline-none focus:border-amber-500 font-medium">
+                </label>
+                <p id="settlement-password-message" class="hidden text-[11px] font-bold text-red-500"></p>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeSettlementPasswordModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.confirmSettlementPassword()" id="settlement-password-submit" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale">정산 열기</button>
             </div>
         </div>
     </div>
@@ -1778,8 +1819,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v130';
-        const APP_DISPLAY_VERSION = '1.30';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v131';
+        const APP_DISPLAY_VERSION = '1.31';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3427,6 +3468,7 @@
                     if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
                     if (typeof lesson.signature === 'undefined') lesson.signature = '';
                     if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
+                    if (lesson.signature === 'LEGACY_DONE') lesson.legacyCompleted = true;
                 });
                 m.totalSessions = m.lessons.length;
                 m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
@@ -3452,18 +3494,30 @@
         }
 
         function getCompletedCount(m) {
-            return (m.lessons || []).filter(l => l.signature && l.signature !== 'LATER').length;
+            return (m.lessons || []).filter(isCompletedLesson).length;
         }
 
         function getSessionShareStats(m) {
             const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
             const total = Number((m && m.totalSessions) || lessons.length || 0);
-            const completed = lessons.filter(l => l.signature && l.signature !== 'LATER').length;
+            const completed = lessons.filter(isCompletedLesson).length;
             return {
                 completed,
                 total,
                 remaining: Math.max(0, total - completed)
             };
+        }
+
+        function isLegacyCompletedLesson(lesson) {
+            return !!(lesson && (lesson.legacyCompleted === true || lesson.signature === 'LEGACY_DONE'));
+        }
+
+        function isSignedLesson(lesson) {
+            return !!(lesson && lesson.signature && lesson.signature !== 'LATER' && !isLegacyCompletedLesson(lesson));
+        }
+
+        function isCompletedLesson(lesson) {
+            return isSignedLesson(lesson) || isLegacyCompletedLesson(lesson);
         }
 
         function isMemberCompleted(m) {
@@ -3829,7 +3883,21 @@
         }
 
         function isSettlementSignedLesson(lesson) {
-            return !!(lesson && lesson.signature && lesson.signature !== 'LATER');
+            return isSignedLesson(lesson) || !!(isLegacyCompletedLesson(lesson) && lesson.legacySettlement);
+        }
+
+        function getSettlementLessonDate(lesson, fallbackYear = new Date().getFullYear()) {
+            if (!lesson) return null;
+            const explicitMonth = String(lesson.legacySettlementMonth || '').trim();
+            if (isLegacyCompletedLesson(lesson) && explicitMonth && String(lesson.date || '').match(/^\d{1,2}[/.]\d{1,2}$/)) {
+                const match = String(lesson.date).match(/^(\d{1,2})[/.](\d{1,2})$/);
+                const year = Number(explicitMonth.slice(0, 4)) || fallbackYear;
+                const month = Number(match[1]) - 1;
+                const day = Number(match[2]);
+                const date = new Date(year, month, day);
+                return Number.isNaN(date.getTime()) ? null : date;
+            }
+            return parseSettlementDate(lesson.date, fallbackYear);
         }
 
         function getMemberPaymentForLesson(member, lesson) {
@@ -3862,7 +3930,11 @@
                 });
                 (member.lessons || []).forEach(lesson => {
                     if (!isSettlementSignedLesson(lesson)) return;
-                    const date = parseSettlementDate(lesson.date, now.getFullYear());
+                    if (lesson.legacySettlementMonth) {
+                        keys.add(lesson.legacySettlementMonth);
+                        return;
+                    }
+                    const date = getSettlementLessonDate(lesson, now.getFullYear());
                     const key = dateToMonthKey(date);
                     if (key) keys.add(key);
                 });
@@ -3918,8 +3990,9 @@
             (window.members || []).forEach(member => {
                 (member.lessons || []).forEach(lesson => {
                     if (!isSettlementSignedLesson(lesson)) return;
-                    const signedDate = parseSettlementDate(lesson.date, fallbackYear);
-                    if (!signedDate || dateToMonthKey(signedDate) !== monthKey) return;
+                    const signedDate = getSettlementLessonDate(lesson, fallbackYear);
+                    const lessonMonthKey = lesson.legacySettlementMonth || dateToMonthKey(signedDate);
+                    if (!signedDate || lessonMonthKey !== monthKey) return;
                     const payment = getMemberPaymentForLesson(member, lesson);
                     const unitPrice = Number(payment && payment.unitPrice) || 0;
                     const paymentKey = payment ? String(payment.id || payment.renewalId || 'payment') : 'missing';
@@ -3939,8 +4012,8 @@
                         memberName: member.name || '',
                         lessonNo: lesson.no || '',
                         trainer: lesson.trainer || member.trainer || getTrainerName(),
-                        signatureStatus: '서명완료',
-                        signature: lesson.signature,
+                        signatureStatus: isLegacyCompletedLesson(lesson) ? '이전기록' : '서명완료',
+                        signature: isSignedLesson(lesson) ? lesson.signature : '',
                         unitPrice,
                         missingPrice: unitPrice <= 0
                     });
@@ -4055,7 +4128,7 @@
                         <td class="px-3 py-2 font-black text-stone-900">${escapeHtml(row.memberName)}</td>
                         <td class="px-3 py-2 font-bold text-stone-700">${String(row.lessonNo).padStart(2, '0')}회차</td>
                         <td class="px-3 py-2 font-bold text-stone-600">${escapeHtml(row.trainer)}</td>
-                        <td class="px-3 py-2"><span class="inline-flex px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black">${row.signatureStatus}</span></td>
+                        <td class="px-3 py-2"><span class="inline-flex px-2 py-1 rounded-full ${row.signatureStatus === '이전기록' ? 'bg-stone-100 text-stone-700' : 'bg-emerald-50 text-emerald-700'} text-[10px] font-black">${row.signatureStatus}</span></td>
                         <td class="px-3 py-2 text-right font-bold ${row.missingPrice ? 'text-red-600' : 'text-stone-700'}">${row.missingPrice ? '단가 미입력' : formatWon(row.unitPrice)}</td>
                     </tr>
                 `).join('');
@@ -4094,10 +4167,11 @@
                     .settlement-pdf-card strong { display:block; font-size:16px; font-weight:900; color:#1c1917; }
                     .settlement-pdf-note { margin:8px 0 12px; padding:9px 11px; border-radius:8px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-size:9px; line-height:1.45; font-weight:800; }
                     .settlement-pdf-table { width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid #d6d3d1; }
-                    .settlement-pdf-table th { border:1px solid #d6d3d1; background:#f5f5f4; color:#292524; padding:5px 4px; font-size:8.5px; line-height:1.1; font-weight:900; }
-                    .settlement-pdf-table td { border:1px solid #d6d3d1; padding:5px 4px; font-size:8.5px; line-height:1.15; font-weight:700; vertical-align:middle; }
+                    .settlement-pdf-table th { border:1px solid #d6d3d1; background:#f5f5f4; color:#292524; padding:5px 4px; font-size:8.5px; line-height:1.1; font-weight:900; text-align:center; vertical-align:middle; }
+                    .settlement-pdf-table td { border:1px solid #d6d3d1; padding:5px 4px; font-size:8.5px; line-height:1.15; font-weight:700; text-align:center; vertical-align:middle; }
                     .settlement-pdf-table .right { text-align:right; }
                     .settlement-pdf-table .center { text-align:center; }
+                    .settlement-pdf-table .left { text-align:left; }
                     .settlement-pdf-section-title { margin:0 0 8px; font-size:14px; line-height:1; font-weight:900; color:#1c1917; }
                     .settlement-proof-sign { height:34px; text-align:center; padding:2px !important; }
                     .settlement-proof-sign-img { display:block; max-width:118px; max-height:30px; margin:0 auto; object-fit:contain; }
@@ -4189,12 +4263,12 @@
                 <table class="settlement-pdf-table">
                     <thead><tr><th>항목</th><th class="right">금액</th><th>비고</th></tr></thead>
                     <tbody>
-                        <tr><td>영업지원금</td><td class="right">${formatWon(data.supportFund)}</td><td>설정값</td></tr>
-                        <tr><td>총 수업비</td><td class="right">${formatWon(data.lessonPayTotal)}</td><td>서명 완료 기준</td></tr>
-                        <tr><td>인센티브</td><td class="right">${formatWon(data.incentive)}</td><td>월매출 기준</td></tr>
-                        <tr><td>세전 지급액</td><td class="right">${formatWon(data.preTax)}</td><td>영업지원금 + 수업비 + 인센티브</td></tr>
-                        <tr><td>세금 3.3%</td><td class="right">${formatWon(data.tax)}</td><td>세전 지급액 × 3.3%</td></tr>
-                        <tr><td><strong>최종 지급액</strong></td><td class="right"><strong>${formatWon(data.finalPay)}</strong></td><td>세전 지급액 - 세금</td></tr>
+                        <tr><td class="left">영업지원금</td><td class="right">${formatWon(data.supportFund)}</td><td class="left">설정값</td></tr>
+                        <tr><td class="left">총 수업비</td><td class="right">${formatWon(data.lessonPayTotal)}</td><td class="left">서명 완료 기준</td></tr>
+                        <tr><td class="left">인센티브</td><td class="right">${formatWon(data.incentive)}</td><td class="left">월매출 기준</td></tr>
+                        <tr><td class="left">세전 지급액</td><td class="right">${formatWon(data.preTax)}</td><td class="left">영업지원금 + 수업비 + 인센티브</td></tr>
+                        <tr><td class="left">세금 3.3%</td><td class="right">${formatWon(data.tax)}</td><td class="left">세전 지급액 × 3.3%</td></tr>
+                        <tr><td class="left"><strong>최종 지급액</strong></td><td class="right"><strong>${formatWon(data.finalPay)}</strong></td><td class="left">세전 지급액 - 세금</td></tr>
                     </tbody>
                 </table>
             `;
@@ -4209,7 +4283,7 @@
                         </tr></thead>
                         <tbody>${rows.length ? rows.map(row => `
                             <tr>
-                                <td class="center">${row.no}</td><td>${escapeHtml(row.memberName)}</td><td class="right">${formatWon(row.unitPrice)}</td><td class="right">${formatWon(row.exVat)}</td><td class="right">${row.count}회</td><td class="right">${Math.round(row.rate * 100)}%</td><td class="right">${formatWon(row.lessonPay)}</td><td>${row.missingPrice ? '단가 미입력' : ''}</td>
+                                <td class="center">${row.no}</td><td class="left">${escapeHtml(row.memberName)}</td><td class="right">${formatWon(row.unitPrice)}</td><td class="right">${formatWon(row.exVat)}</td><td class="center">${row.count}회</td><td class="center">${Math.round(row.rate * 100)}%</td><td class="right">${formatWon(row.lessonPay)}</td><td class="left">${row.missingPrice ? '단가 미입력' : ''}</td>
                             </tr>`).join('') : `<tr><td colspan="8" class="center" style="height:42px;">선택한 월의 서명 완료 수업이 없습니다.</td></tr>`}</tbody>
                     </table>`;
                 appendSettlementPdfPage(buildSettlementPdfPage({ title: 'LESSON SETTLEMENT', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
@@ -4221,7 +4295,7 @@
                     <table class="settlement-pdf-table">
                         <thead><tr><th style="width:42px;">번호</th><th style="width:86px;">날짜</th><th>회원명</th><th>내용</th><th class="right">금액</th></tr></thead>
                         <tbody>${rows.length ? rows.map((row, index) => `
-                            <tr><td class="center">${index + 1}</td><td>${escapeHtml(row.dateText)}</td><td>${escapeHtml(row.memberName)}</td><td>${escapeHtml(row.content)}</td><td class="right">${formatWon(row.amount)}</td></tr>
+                            <tr><td class="center">${index + 1}</td><td class="center">${escapeHtml(row.dateText)}</td><td class="left">${escapeHtml(row.memberName)}</td><td class="left">${escapeHtml(row.content)}</td><td class="right">${formatWon(row.amount)}</td></tr>
                         `).join('') : `<tr><td colspan="5" class="center" style="height:42px;">선택한 월의 결제 매출기록이 없습니다.</td></tr>`}</tbody>
                     </table>`;
                 appendSettlementPdfPage(buildSettlementPdfPage({ title: 'MONTHLY SALES', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
@@ -4233,10 +4307,10 @@
                     <table class="settlement-pdf-table">
                         <thead><tr><th style="width:34px;">번호</th><th style="width:78px;">수업일</th><th>회원명</th><th style="width:58px;">회차</th><th>담당</th><th style="width:132px;">서명</th><th class="right">정산 단가</th></tr></thead>
                         <tbody>${rows.length ? rows.map(row => {
-                            const signatureHtml = row.signature && row.signature !== 'LATER'
+                            const signatureHtml = row.signature && row.signature.startsWith('data:image')
                                 ? `<img src="${row.signature}" class="settlement-proof-sign-img">`
-                                : '서명완료';
-                            return `<tr><td class="center">${row.no}</td><td>${escapeHtml(row.dateText)}</td><td>${escapeHtml(row.memberName)}</td><td class="center">${String(row.lessonNo).padStart(2, '0')}회차</td><td>${escapeHtml(row.trainer)}</td><td class="settlement-proof-sign">${signatureHtml}</td><td class="right">${row.missingPrice ? '단가 미입력' : formatWon(row.unitPrice)}</td></tr>`;
+                                : escapeHtml(row.signatureStatus || '서명완료');
+                            return `<tr><td class="center">${row.no}</td><td class="center">${escapeHtml(row.dateText)}</td><td class="left">${escapeHtml(row.memberName)}</td><td class="center">${String(row.lessonNo).padStart(2, '0')}회차</td><td class="left">${escapeHtml(row.trainer)}</td><td class="settlement-proof-sign">${signatureHtml}</td><td class="right">${row.missingPrice ? '단가 미입력' : formatWon(row.unitPrice)}</td></tr>`;
                         }).join('') : `<tr><td colspan="7" class="center" style="height:42px;">선택한 월의 수업 증빙 기록이 없습니다.</td></tr>`}</tbody>
                     </table>`;
                 appendSettlementPdfPage(buildSettlementPdfPage({ title: 'SIGNATURE PROOF', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
@@ -4316,6 +4390,94 @@
                 return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
             }
             return btoa(unescape(encodeURIComponent(text)));
+        }
+
+        function setSettlementPasswordMessage(message = '') {
+            const el = document.getElementById('settlement-password-message');
+            if (!el) return;
+            el.innerText = message;
+            el.classList.toggle('hidden', !message);
+        }
+
+        function setSettlementPasswordBusy(busy) {
+            const btn = document.getElementById('settlement-password-submit');
+            if (!btn) return;
+            btn.disabled = !!busy;
+            btn.classList.toggle('opacity-70', !!busy);
+            btn.classList.toggle('pointer-events-none', !!busy);
+            btn.innerHTML = busy ? '<i class="fa-solid fa-spinner fa-spin mr-1"></i>확인 중' : '정산 열기';
+        }
+
+        async function verifySettlementPassword(password) {
+            if (!password) throw new Error('EMPTY_PASSWORD');
+            if (isCloudProfile() || isLicenseProfile()) {
+                const loaded = await initializeCloudAuth();
+                if (!loaded || !window.firebaseAuth || !window.firebaseApi) throw new Error('AUTH_UNAVAILABLE');
+                const expectedEmail = normalizeCloudEmail((window.appProfile && window.appProfile.email) || '');
+                let user = window.firebaseAuth.currentUser;
+                if (!user || (expectedEmail && normalizeCloudEmail(user.email) !== expectedEmail)) {
+                    if (!expectedEmail) throw new Error('AUTH_UNAVAILABLE');
+                    await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, expectedEmail, password);
+                    return true;
+                }
+                if (window.firebaseApi.EmailAuthProvider && window.firebaseApi.reauthenticateWithCredential) {
+                    const credential = window.firebaseApi.EmailAuthProvider.credential(user.email, password);
+                    await window.firebaseApi.reauthenticateWithCredential(user, credential);
+                    return true;
+                }
+                await window.firebaseApi.signInWithEmailAndPassword(window.firebaseAuth, user.email, password);
+                return true;
+            }
+            if (window.appProfile && window.appProfile.passwordSalt && window.appProfile.passwordHash) {
+                const hash = await hashPassword(password, window.appProfile.passwordSalt);
+                if (hash === window.appProfile.passwordHash) return true;
+            }
+            throw new Error('PASSWORD_MISMATCH');
+        }
+
+        window.requestSettlementAccess = function() {
+            if (!window.activeLoginId || !window.appProfile) return showToast('먼저 로그인해주세요.');
+            setSettlementPasswordMessage('');
+            setSettlementPasswordBusy(false);
+            const input = document.getElementById('settlement-password-input');
+            if (input) input.value = '';
+            const modal = document.getElementById('modal-settlement-password');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                if (input) input.focus();
+            }, 10);
+        }
+
+        window.closeSettlementPasswordModal = function() {
+            const modal = document.getElementById('modal-settlement-password');
+            if (!modal) return;
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.confirmSettlementPassword = async function() {
+            const input = document.getElementById('settlement-password-input');
+            const password = input ? input.value : '';
+            setSettlementPasswordMessage('');
+            setSettlementPasswordBusy(true);
+            try {
+                await verifySettlementPassword(password);
+                window.closeSettlementPasswordModal();
+                window.switchMainView('settlement');
+                showToast('정산 화면을 열었습니다.');
+            } catch (err) {
+                console.warn('Settlement password check failed.', err);
+                const code = err && err.code ? err.code : String(err && err.message || '');
+                const message = code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('PASSWORD_MISMATCH')
+                    ? '비밀번호가 일치하지 않습니다.'
+                    : (code.includes('EMPTY_PASSWORD') ? '비밀번호를 입력해주세요.' : '로그인 세션을 확인하지 못했습니다. 다시 로그인해주세요.');
+                setSettlementPasswordMessage(message);
+                showToast(message);
+                if (input) input.focus();
+            } finally {
+                setSettlementPasswordBusy(false);
+            }
         }
 
         function createSalt() {
@@ -5351,6 +5513,54 @@
             updateUnitPricePreview('reg-payment-amount', 'reg-sessions', 'reg-unit-price-preview', '1회 단가를 계산하려면 결제 금액을 입력하세요.');
         }
 
+        function getRegistrationSessionCounts() {
+            const sessions = parseInt(document.getElementById('reg-sessions')?.value, 10) || 0;
+            const remaining = parseInt(document.getElementById('reg-remaining-sessions')?.value, 10) || 0;
+            const legacyCompleted = Math.max(0, sessions - remaining);
+            const settlementCount = parseInt(document.getElementById('reg-legacy-settlement-count')?.value, 10) || 0;
+            return { sessions, remaining, legacyCompleted, settlementCount };
+        }
+
+        window.markRegistrationRemainingManual = function() {
+            window.registrationRemainingManual = true;
+            const { sessions, remaining, legacyCompleted, settlementCount } = getRegistrationSessionCounts();
+            if (remaining > sessions) document.getElementById('reg-remaining-sessions').value = sessions;
+            const nextLegacyCompleted = Math.max(0, sessions - Math.min(remaining, sessions));
+            if (settlementCount > nextLegacyCompleted) document.getElementById('reg-legacy-settlement-count').value = nextLegacyCompleted;
+            window.updateRegistrationLegacyPreview();
+        }
+
+        window.syncRegistrationRemainingWithSessions = function() {
+            const sessions = parseInt(document.getElementById('reg-sessions')?.value, 10) || 0;
+            const remainingInput = document.getElementById('reg-remaining-sessions');
+            if (remainingInput) {
+                const currentRemaining = parseInt(remainingInput.value, 10) || 0;
+                if (!window.registrationRemainingManual || currentRemaining > sessions) remainingInput.value = sessions;
+            }
+            window.updateRegistrationUnitPricePreview();
+            window.updateRegistrationLegacyPreview();
+        }
+
+        window.updateRegistrationLegacyPreview = function() {
+            const preview = document.getElementById('reg-legacy-preview');
+            if (!preview) return;
+            const { sessions, remaining, legacyCompleted, settlementCount } = getRegistrationSessionCounts();
+            if (remaining > sessions) {
+                preview.innerText = '잔여 횟수는 결제 횟수보다 클 수 없습니다.';
+                preview.className = 'rounded-xl bg-red-50 border border-red-100 px-3.5 py-2 text-[11px] font-black text-red-600';
+                return;
+            }
+            if (settlementCount > legacyCompleted) {
+                preview.innerText = '이번 달 정산 반영 횟수는 이전 완료분보다 클 수 없습니다.';
+                preview.className = 'rounded-xl bg-red-50 border border-red-100 px-3.5 py-2 text-[11px] font-black text-red-600';
+                return;
+            }
+            preview.className = 'rounded-xl bg-stone-50 border border-stone-200 px-3.5 py-2 text-[11px] font-black text-stone-600';
+            preview.innerText = legacyCompleted > 0
+                ? `이전 완료 ${legacyCompleted}회 · 이번 달 정산 반영 ${settlementCount}회 · 현재 잔여 ${remaining}회`
+                : '결제 횟수와 잔여 횟수가 같으면 이전 완료분은 없습니다.';
+        }
+
         window.updateRenewalUnitPricePreview = function() {
             updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 결제 금액을 입력하세요.');
         }
@@ -5358,11 +5568,16 @@
         function resetNewMemberForm() {
             document.getElementById('reg-name').value = '';
             document.getElementById('reg-sessions').value = '10';
+            document.getElementById('reg-remaining-sessions').value = '10';
+            document.getElementById('reg-legacy-settlement-count').value = '0';
             const today = formatDate(new Date());
             document.getElementById('reg-date-input').value = today;
             document.getElementById('reg-payment-date').value = today;
+            document.getElementById('reg-legacy-settlement-month').value = getCurrentMonthKey(new Date());
             document.getElementById('reg-payment-amount').value = '';
+            window.registrationRemainingManual = false;
             window.updateRegistrationUnitPricePreview();
+            window.updateRegistrationLegacyPreview();
         }
 
         window.openNewMemberModal = function() {
@@ -5378,11 +5593,17 @@
         window.submitNewMember = function() {
             const name = document.getElementById('reg-name').value.trim();
             const sessions = parseInt(document.getElementById('reg-sessions').value) || 0;
+            const remainingSessions = parseInt(document.getElementById('reg-remaining-sessions').value) || 0;
+            const legacyCompleted = Math.max(0, sessions - remainingSessions);
+            const legacySettlementCount = parseInt(document.getElementById('reg-legacy-settlement-count').value) || 0;
+            const legacySettlementMonth = document.getElementById('reg-legacy-settlement-month').value || getCurrentMonthKey(new Date());
             const registrationDate = document.getElementById('reg-date-input').value || formatDate(new Date());
             const paymentDate = document.getElementById('reg-payment-date').value || registrationDate;
             const paymentAmount = parseCurrencyInput(document.getElementById('reg-payment-amount').value);
             if(!name) return showToast("이름을 입력하세요!");
             if(sessions < 1) return showToast("세션 수를 올바르게 입력하세요!");
+            if(remainingSessions < 0 || remainingSessions > sessions) return showToast("잔여 횟수는 결제 횟수 안에서 입력하세요!");
+            if(legacySettlementCount < 0 || legacySettlementCount > legacyCompleted) return showToast("이번 달 정산 반영 횟수를 이전 완료분 안에서 입력하세요!");
             if(paymentAmount <= 0) return showToast("결제 금액을 입력하세요!");
             
             const paymentId = 'payment_' + Date.now();
@@ -5395,11 +5616,30 @@
                 startNo: 1,
                 count: sessions
             });
+            const lessons = Array.from({ length: sessions }, (_, i) => {
+                const no = i + 1;
+                const legacy = i < legacyCompleted;
+                const settlement = legacy && i < legacySettlementCount;
+                const lesson = { no, date: '', trainer: '', signature: '', paymentId };
+                if (legacy) {
+                    lesson.legacyCompleted = true;
+                    lesson.signature = 'LEGACY_DONE';
+                    lesson.trainer = getTrainerName();
+                    lesson.legacyNote = '종이 기록 반영';
+                    if (settlement) {
+                        const day = String(Math.min(i + 1, 28)).padStart(2, '0');
+                        lesson.date = `${legacySettlementMonth}-${day}`;
+                        lesson.legacySettlement = true;
+                        lesson.legacySettlementMonth = legacySettlementMonth;
+                    }
+                }
+                return lesson;
+            });
             const newM = {
                 id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
                 registrationDate,
                 payments: [payment],
-                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '', paymentId })),
+                lessons,
                 workouts: [],
                 memo: ''
             };
@@ -5787,8 +6027,7 @@
                 const removableIndexes = [];
                 for (let i = m.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
                     const lesson = m.lessons[i];
-                    const isSigned = lesson.signature && lesson.signature !== 'LATER';
-                    if (isSigned) continue;
+                    if (isCompletedLesson(lesson)) continue;
                     removableIndexes.push(i);
                 }
                 if (removableIndexes.length < removeCount) return showToast('정리할 수 있는 미서명 회차가 부족합니다.');
@@ -5859,7 +6098,7 @@
                 toggleRow.className = "w-full flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100 text-left active-scale";
                 toggleRow.innerHTML = `
                     <div>
-                        <p class="text-xs font-black text-amber-700">완료 서명 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
+                        <p class="text-xs font-black text-amber-700">완료 기록 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
                         <p class="text-[9px] font-bold text-amber-600">${hideSigned ? '최근 서명 기록을 접어두고 다음 서명만 보여줍니다.' : '터치하면 완료 기록을 다시 접습니다.'}</p>
                     </div>
                     <i class="fa-solid ${hideSigned ? 'fa-chevron-down' : 'fa-chevron-up'} text-amber-600 text-xs"></i>
@@ -5868,7 +6107,8 @@
             }
 
             const renderLessonRow = (l, i, mode = 'history') => {
-                const isSigned = l.signature && l.signature !== 'LATER';
+                const isSigned = isSignedLesson(l);
+                const isLegacyCompleted = isLegacyCompletedLesson(l);
                 const isLater = l.signature === 'LATER';
                 const isRenewalStart = isRenewalStartLesson(m, l, i);
                 const renewalBadge = isRenewalStart ? `<button onclick="event.stopPropagation(); window.editLessonRenewalDate(${i})" class="inline-flex items-center text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 ml-1 align-middle"><i class="fa-solid fa-rotate-right mr-1"></i>재등록추가</button>` : '';
@@ -5884,6 +6124,11 @@
                     subText = `${renewalDateText}${l.date || '날짜 미정'} · 서명완료`;
                     rightContent = `<img src="${l.signature}" class="h-6 object-contain bg-white border border-stone-200 rounded p-0.5 shadow-sm">`;
                     rowClass = 'bg-amber-500/5';
+                } else if (isLegacyCompleted) {
+                    statusText = `${String(l.no).padStart(2,'0')}회차 이전 기록 완료`;
+                    subText = `${renewalDateText}종이 기록 반영 · 서명 없음`;
+                    rightContent = `<span class="text-[10px] font-black text-stone-600 bg-stone-200 px-2.5 py-1 rounded-md shadow-sm">이전기록</span>`;
+                    rowClass = 'bg-stone-50';
                 } else if (isLater) {
                     statusText = `${String(l.no).padStart(2,'0')}회차 서명 보류`;
                     subText = `${renewalDateText}${l.date || '날짜 미정'} · 터치하여 서명`;
@@ -5896,7 +6141,11 @@
 
                 const row = document.createElement('div');
                 row.className = `lesson-row flex justify-between items-center p-3 border-b border-stone-50 transition-colors ${rowClass}`;
-                row.onclick = () => { if (!window.lessonEditMode) window.openSignatureDrawingModal(i); };
+                row.onclick = () => {
+                    if (window.lessonEditMode) return;
+                    if (isLegacyCompleted) return showToast('이전 종이 기록으로 완료 처리된 회차입니다.');
+                    window.openSignatureDrawingModal(i);
+                };
                 const lessonInfoHtml = isSigned
                     ? `<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                             <p class="text-base font-black text-stone-900 leading-tight">${escapeHtml(statusText)}${renewalBadge}</p>
@@ -5921,10 +6170,11 @@
             };
 
             lessons.forEach((l, i) => {
-                const isSigned = l.signature && l.signature !== 'LATER';
+                const isSigned = isSignedLesson(l);
+                const isLegacyCompleted = isLegacyCompletedLesson(l);
                 const isLater = l.signature === 'LATER';
-                if (isSigned && hideSigned) return;
-                if (isSigned || isLater) renderLessonRow(l, i, 'history');
+                if ((isSigned || isLegacyCompleted) && hideSigned) return;
+                if (isSigned || isLegacyCompleted || isLater) renderLessonRow(l, i, 'history');
             });
 
             if (nextEmptyIndex >= 0 && remaining > 0) {
@@ -6082,7 +6332,7 @@
             
             const m = window.members.find(x => x.id === window.activeMemberId);
             const l = m.lessons[index];
-            const isSigned = l.signature && l.signature !== 'LATER';
+            const isSigned = isSignedLesson(l);
 
             const canvasWrap = document.getElementById('signature-canvas-wrapper');
             const prevWrap = document.getElementById('signature-preview-wrapper');
@@ -6188,7 +6438,7 @@
             if (!m || !m.lessons || !m.lessons[window.currentEditingLessonIndex]) return showToast('서명할 회차를 찾지 못했습니다.');
             const lesson = m.lessons[window.currentEditingLessonIndex];
             const wasCompleted = isMemberCompleted(m);
-            const wasLessonSigned = !!(lesson.signature && lesson.signature !== 'LATER');
+            const wasLessonSigned = isCompletedLesson(lesson);
             const today = new Date();
             lesson.signature = getOptimizedSignatureDataUrl();
             lesson.date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
@@ -8208,7 +8458,7 @@
 
         window.openShareModal = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
-            const comp = m.lessons.filter(l => l.signature && l.signature !== 'LATER').length;
+            const comp = getCompletedCount(m);
             const memberName = formatMemberHonorificName(m.name);
             const workoutLogs = (m.workouts || [])
                 .filter(w => String(w.date || '').trim() || String(w.content || '').trim())
@@ -8343,12 +8593,14 @@
                 const buildLessonCells = (item, isRightGroup = false) => {
                     const separatorClass = isRightGroup ? ' pdf-lesson-separator' : '';
                     if (item) {
-                        const isSigned = item.signature && item.signature !== 'LATER';
+                        const isSigned = isSignedLesson(item);
+                        const isLegacyCompleted = isLegacyCompletedLesson(item);
                         const isLater = item.signature === 'LATER';
                         const lessonIndex = m.lessons.findIndex(l => l.no === item.no);
                         const lessonDate = item.date || (isRenewalStartLesson(m, item, lessonIndex) ? `재등록 ${formatDisplayDate(item.renewalDate)}` : '');
                         let sigContent = '';
                         if (isSigned) sigContent = `<img src="${item.signature}" class="pdf-sign-img">`;
+                        else if (isLegacyCompleted) sigContent = `<span style="color:#57534e; font-size:9px; font-weight:bold;">이전기록 완료</span>`;
                         else if (isLater) sigContent = `<span style="color:#a8a29e; font-size:9px; font-weight:bold;">나중에 서명</span>`;
 
                         return `<td class="pdf-lesson-no${separatorClass}">${item.no}</td><td class="pdf-lesson-date">${escapeHtml(lessonDate)}</td><td class="pdf-lesson-trainer">${escapeHtml(item.trainer)}</td><td class="pdf-sign-cell">${sigContent}</td>`;
