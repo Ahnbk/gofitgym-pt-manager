@@ -24,8 +24,6 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
-    <!-- SheetJS for settlement Excel reports -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
         
@@ -746,9 +744,6 @@
                     <button onclick="window.openSettlementPdfPreviewModal()" class="min-h-[40px] px-4 rounded-xl bg-stone-900 text-white text-xs font-black shadow-sm active-scale flex items-center">
                         <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 미리보기
                     </button>
-                    <button onclick="window.shareSettlementExcelReport()" class="min-h-[40px] px-4 rounded-xl bg-emerald-500 text-white text-xs font-black shadow-sm active-scale flex items-center">
-                        <i class="fa-solid fa-file-excel mr-1.5"></i>엑셀 공유
-                    </button>
                 </div>
             </div>
 
@@ -756,10 +751,10 @@
             <div class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
                 <div class="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
                     <h3 class="text-sm font-black text-stone-900">서명 수업 정산표</h3>
-                    <span class="text-[10px] font-bold text-stone-400">시트 A:J 기준</span>
+                    <span class="text-[10px] font-bold text-stone-400">월별 정산 기준</span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[820px] text-xs">
+                    <table class="w-full min-w-[700px] text-xs">
                         <thead class="bg-stone-50 text-stone-500">
                             <tr>
                                 <th class="px-3 py-2 text-left font-black">번호</th>
@@ -768,7 +763,6 @@
                                 <th class="px-3 py-2 text-right font-black">부가세 제외</th>
                                 <th class="px-3 py-2 text-right font-black">수업진행</th>
                                 <th class="px-3 py-2 text-right font-black">배분</th>
-                                <th class="px-3 py-2 text-right font-black">1회 수업비</th>
                                 <th class="px-3 py-2 text-right font-black">수업비합</th>
                             </tr>
                         </thead>
@@ -1784,8 +1778,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v129';
-        const APP_DISPLAY_VERSION = '1.29';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v130';
+        const APP_DISPLAY_VERSION = '1.30';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4028,12 +4022,11 @@
                         <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.exVat)}</td>
                         <td class="px-3 py-2 text-right font-black text-stone-900">${row.count}회</td>
                         <td class="px-3 py-2 text-right font-bold text-amber-600">${Math.round(row.rate * 100)}%</td>
-                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.oneLessonPay)}</td>
                         <td class="px-3 py-2 text-right font-black text-stone-900">${formatWon(row.lessonPay)}</td>
                     </tr>
                 `).join('');
             } else {
-                renderTableEmpty(lessonBody, 8, '선택한 월의 서명 완료 수업이 없습니다.');
+                renderTableEmpty(lessonBody, 7, '선택한 월의 서명 완료 수업이 없습니다.');
             }
 
             const paymentBody = document.getElementById('settlement-payment-body');
@@ -4082,85 +4075,6 @@
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 1000);
             if (message) showToast(message);
-        }
-
-        async function ensureXlsxLibraryLoaded() {
-            if (window.XLSX) return true;
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-            return !!window.XLSX;
-        }
-
-        function worksheetFromRows(rows) {
-            return window.XLSX.utils.aoa_to_sheet(rows);
-        }
-
-        window.shareSettlementExcelReport = async function() {
-            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-            try {
-                await ensureXlsxLibraryLoaded();
-                if (!window.XLSX) return showToast('엑셀 생성 모듈을 불러오지 못했습니다.');
-                const data = buildSettlementData(ensureSettlementMonthSelect());
-                const monthLabel = getMonthLabel(data.monthKey);
-                const trainer = getTrainerName();
-                const wb = window.XLSX.utils.book_new();
-                const summaryRows = [
-                    ['GOFITGYM 월별 정산 보고'],
-                    ['정산월', monthLabel],
-                    ['보고자', trainer],
-                    ['정산기간', getSettlementMonthRangeText(data.monthKey)],
-                    [],
-                    ['당월 매출', Math.round(data.salesTotal)],
-                    ['PT 배분율', `${Math.round(data.rate * 100)}%`],
-                    ['서명 수업', data.completedLessons],
-                    ['영업지원금', Math.round(data.supportFund)],
-                    ['총 수업비', Math.round(data.lessonPayTotal)],
-                    ['인센티브', Math.round(data.incentive)],
-                    ['세전 지급액', Math.round(data.preTax)],
-                    ['세금 3.3%', Math.round(data.tax)],
-                    ['최종 지급액', Math.round(data.finalPay)]
-                ];
-                const lessonRows = [
-                    ['번호', '이름', 'PT 1회 단가', '부가세 제외', '수업진행갯수', 'PT 배분', '1회당수업비', '수업비합', '비고'],
-                    ...data.lessonRows.map(row => [row.no, row.memberName, Math.round(row.unitPrice), Math.round(row.exVat), row.count, `${Math.round(row.rate * 100)}%`, Math.round(row.oneLessonPay), Math.round(row.lessonPay), row.missingPrice ? '단가 미입력' : ''])
-                ];
-                const paymentRows = [
-                    ['번호', '날짜', '회원명', '내용', '금액'],
-                    ...data.payments.map((row, index) => [index + 1, row.dateText, row.memberName, row.content, Math.round(row.amount)])
-                ];
-                const proofRows = [
-                    ['번호', '수업일', '회원명', '회차', '담당', '서명상태', '정산 단가', '비고'],
-                    ...data.proofRows.map(row => [row.no, row.dateText, row.memberName, `${String(row.lessonNo).padStart(2, '0')}회차`, row.trainer, row.signatureStatus, Math.round(row.unitPrice), row.missingPrice ? '단가 미입력' : ''])
-                ];
-                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(summaryRows), '요약');
-                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(lessonRows), '수업정산');
-                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(paymentRows), '매출기록');
-                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(proofRows), '수업증빙');
-                const output = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                const blob = new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const safeTrainer = trainer.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '');
-                const fileName = `GOFITGYM_${safeTrainer}_${data.monthKey}_정산보고.xlsx`;
-                const file = new File([blob], fileName, { type: blob.type });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: 'GOFITGYM 정산 보고',
-                        text: `${trainer} 트레이너 ${monthLabel} 정산 보고서입니다.`,
-                        files: [file]
-                    });
-                    showToast('정산 보고서 공유창을 열었습니다.');
-                    return;
-                }
-                downloadBlobAsFile(blob, fileName, '공유 미지원 환경이라 정산 보고서를 다운로드했습니다.');
-            } catch (err) {
-                if (err && err.name === 'AbortError') return;
-                console.error(err);
-                showToast('정산 보고서 생성 또는 공유에 실패했습니다.');
-            }
         }
 
         function getSettlementPdfStyles() {
@@ -4291,12 +4205,12 @@
                     <h3 class="settlement-pdf-section-title">수업 정산표</h3>
                     <table class="settlement-pdf-table">
                         <thead><tr>
-                            <th style="width:34px;">번호</th><th>이름</th><th class="right">PT 1회 단가</th><th class="right">부가세 제외</th><th class="right">수업진행</th><th class="right">배분</th><th class="right">1회 수업비</th><th class="right">수업비합</th><th>비고</th>
+                            <th style="width:34px;">번호</th><th>이름</th><th class="right">PT 1회 단가</th><th class="right">부가세 제외</th><th class="right">수업진행</th><th class="right">배분</th><th class="right">수업비합</th><th>비고</th>
                         </tr></thead>
                         <tbody>${rows.length ? rows.map(row => `
                             <tr>
-                                <td class="center">${row.no}</td><td>${escapeHtml(row.memberName)}</td><td class="right">${formatWon(row.unitPrice)}</td><td class="right">${formatWon(row.exVat)}</td><td class="right">${row.count}회</td><td class="right">${Math.round(row.rate * 100)}%</td><td class="right">${formatWon(row.oneLessonPay)}</td><td class="right">${formatWon(row.lessonPay)}</td><td>${row.missingPrice ? '단가 미입력' : ''}</td>
-                            </tr>`).join('') : `<tr><td colspan="9" class="center" style="height:42px;">선택한 월의 서명 완료 수업이 없습니다.</td></tr>`}</tbody>
+                                <td class="center">${row.no}</td><td>${escapeHtml(row.memberName)}</td><td class="right">${formatWon(row.unitPrice)}</td><td class="right">${formatWon(row.exVat)}</td><td class="right">${row.count}회</td><td class="right">${Math.round(row.rate * 100)}%</td><td class="right">${formatWon(row.lessonPay)}</td><td>${row.missingPrice ? '단가 미입력' : ''}</td>
+                            </tr>`).join('') : `<tr><td colspan="8" class="center" style="height:42px;">선택한 월의 서명 완료 수업이 없습니다.</td></tr>`}</tbody>
                     </table>`;
                 appendSettlementPdfPage(buildSettlementPdfPage({ title: 'LESSON SETTLEMENT', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
             });
