@@ -24,6 +24,8 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
+    <!-- SheetJS for settlement Excel reports -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
         
@@ -676,6 +678,151 @@
             </div>
         </div>
 
+        <!-- ================= VIEW C: MONTHLY SETTLEMENT ================= -->
+        <div id="view-settlement" class="space-y-4 hidden pb-10">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/80 space-y-4">
+                <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 class="text-lg font-black text-stone-900">월별 정산</h2>
+                        <p class="text-xs text-stone-500">매월 1일부터 말일까지 결제 매출과 서명 완료 수업을 기준으로 계산합니다.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 md:w-auto">
+                        <label class="block">
+                            <span class="block text-[10px] text-stone-500 font-black mb-1">정산 월</span>
+                            <select id="settlement-month-select" onchange="window.renderSettlementView()" class="w-full min-h-[44px] bg-stone-50 border border-stone-200 rounded-xl px-3 text-xs font-black outline-none focus:border-amber-500"></select>
+                        </label>
+                        <label class="block">
+                            <span class="block text-[10px] text-stone-500 font-black mb-1">영업지원금</span>
+                            <input type="number" id="settlement-support-fund" min="0" step="10000" onchange="window.updateSettlementSupportFund()" class="w-full min-h-[44px] bg-stone-50 border border-stone-200 rounded-xl px-3 text-xs font-black outline-none focus:border-amber-500">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    <div class="rounded-xl bg-amber-50 border border-amber-100 p-3">
+                        <span class="block text-[10px] font-black text-amber-800">당월 매출</span>
+                        <strong id="settlement-sales-total" class="block text-base font-black text-amber-600 mt-1">0원</strong>
+                    </div>
+                    <div class="rounded-xl bg-stone-50 border border-stone-100 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">PT 배분</span>
+                        <strong id="settlement-rate" class="block text-base font-black text-stone-900 mt-1">30%</strong>
+                    </div>
+                    <div class="rounded-xl bg-stone-50 border border-stone-100 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">서명 수업</span>
+                        <strong id="settlement-completed-lessons" class="block text-base font-black text-stone-900 mt-1">0회</strong>
+                    </div>
+                    <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+                        <span class="block text-[10px] font-black text-emerald-700">최종 지급액</span>
+                        <strong id="settlement-final-pay" class="block text-base font-black text-emerald-700 mt-1">0원</strong>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                    <div class="rounded-xl bg-white border border-stone-200 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">총 수업비</span>
+                        <strong id="settlement-lesson-pay-total" class="text-sm font-black text-stone-900">0원</strong>
+                    </div>
+                    <div class="rounded-xl bg-white border border-stone-200 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">인센티브</span>
+                        <strong id="settlement-incentive" class="text-sm font-black text-stone-900">0원</strong>
+                    </div>
+                    <div class="rounded-xl bg-white border border-stone-200 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">세전 지급액</span>
+                        <strong id="settlement-pre-tax" class="text-sm font-black text-stone-900">0원</strong>
+                    </div>
+                    <div class="rounded-xl bg-white border border-stone-200 p-3">
+                        <span class="block text-[10px] font-black text-stone-500">세금 3.3%</span>
+                        <strong id="settlement-tax" class="text-sm font-black text-red-600">0원</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-2 shadow-sm border border-stone-200/80 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200">
+                    <button onclick="window.switchSettlementTab('summary')" id="settlement-tab-summary" class="min-h-[40px] px-4 rounded-lg bg-stone-900 text-white text-xs font-black active-scale">정산 요약</button>
+                    <button onclick="window.switchSettlementTab('proof')" id="settlement-tab-proof" class="min-h-[40px] px-4 rounded-lg text-stone-500 text-xs font-black active-scale">수업 증빙</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.openSettlementPdfPreviewModal()" class="min-h-[40px] px-4 rounded-xl bg-stone-900 text-white text-xs font-black shadow-sm active-scale flex items-center">
+                        <i class="fa-solid fa-file-pdf text-amber-500 mr-1.5"></i>PDF 미리보기
+                    </button>
+                    <button onclick="window.shareSettlementExcelReport()" class="min-h-[40px] px-4 rounded-xl bg-emerald-500 text-white text-xs font-black shadow-sm active-scale flex items-center">
+                        <i class="fa-solid fa-file-excel mr-1.5"></i>엑셀 공유
+                    </button>
+                </div>
+            </div>
+
+            <div id="settlement-summary-panel" class="space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
+                <div class="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-stone-900">서명 수업 정산표</h3>
+                    <span class="text-[10px] font-bold text-stone-400">시트 A:J 기준</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[820px] text-xs">
+                        <thead class="bg-stone-50 text-stone-500">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-black">번호</th>
+                                <th class="px-3 py-2 text-left font-black">이름</th>
+                                <th class="px-3 py-2 text-right font-black">PT 1회 단가</th>
+                                <th class="px-3 py-2 text-right font-black">부가세 제외</th>
+                                <th class="px-3 py-2 text-right font-black">수업진행</th>
+                                <th class="px-3 py-2 text-right font-black">배분</th>
+                                <th class="px-3 py-2 text-right font-black">1회 수업비</th>
+                                <th class="px-3 py-2 text-right font-black">수업비합</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlement-lesson-body" class="divide-y divide-stone-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
+                <div class="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-stone-900">당월 매출기록</h3>
+                    <span class="text-[10px] font-bold text-stone-400">결제일 기준</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[620px] text-xs">
+                        <thead class="bg-stone-50 text-stone-500">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-black">번호</th>
+                                <th class="px-3 py-2 text-left font-black">날짜</th>
+                                <th class="px-3 py-2 text-left font-black">회원명</th>
+                                <th class="px-3 py-2 text-left font-black">내용</th>
+                                <th class="px-3 py-2 text-right font-black">금액</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlement-payment-body" class="divide-y divide-stone-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            </div>
+
+            <div id="settlement-proof-panel" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden hidden">
+                <div class="px-4 py-3 border-b border-stone-100 flex items-center justify-between">
+                    <h3 class="text-sm font-black text-stone-900">수업 날짜 · 서명 기록</h3>
+                    <span id="settlement-proof-count" class="text-[10px] font-bold text-stone-400">0건</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[760px] text-xs">
+                        <thead class="bg-stone-50 text-stone-500">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-black">번호</th>
+                                <th class="px-3 py-2 text-left font-black">수업일</th>
+                                <th class="px-3 py-2 text-left font-black">회원명</th>
+                                <th class="px-3 py-2 text-left font-black">회차</th>
+                                <th class="px-3 py-2 text-left font-black">담당</th>
+                                <th class="px-3 py-2 text-left font-black">서명</th>
+                                <th class="px-3 py-2 text-right font-black">정산 단가</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlement-proof-body" class="divide-y divide-stone-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- ================= VIEW C: CRM MEMBER DETAIL ================= -->
         <div id="view-member-detail" class="space-y-4 hidden pb-10">
             <!-- Member Header Nav -->
@@ -788,7 +935,7 @@
 
     <!-- 3. BOTTOM NAVIGATION -->
     <nav class="app-bottom-nav fixed bottom-0 w-full bg-white border-t border-stone-200 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <div class="max-w-md mx-auto flex justify-around p-2 h-full items-center">
+        <div class="max-w-lg mx-auto flex justify-around p-2 h-full items-center">
             <button onclick="window.switchMainView('dashboard')" id="nav-dashboard" class="flex-1 flex flex-col items-center py-2 text-amber-600 hover:text-stone-600 transition-colors">
                 <i class="fa-solid fa-users text-lg mb-1"></i>
                 <span class="text-[10px] font-bold">회원 관리 (CRM)</span>
@@ -796,6 +943,10 @@
             <button onclick="window.switchMainView('schedule')" id="nav-schedule" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
                 <i class="fa-regular fa-calendar-days text-lg mb-1"></i>
                 <span class="text-[10px] font-bold">스케줄 예약 관리</span>
+            </button>
+            <button onclick="window.switchMainView('settlement')" id="nav-settlement" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
+                <i class="fa-solid fa-file-invoice-dollar text-lg mb-1"></i>
+                <span class="text-[10px] font-bold">정산</span>
             </button>
         </div>
     </nav>
@@ -1145,7 +1296,7 @@
                 <h3 class="font-black text-amber-500 text-base"><i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록</h3>
                 <button onclick="window.closeNewMemberModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div class="p-5 space-y-4 max-h-[70dvh] overflow-y-auto">
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">회원 이름 *</label>
                     <input type="text" id="reg-name" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
@@ -1153,12 +1304,25 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs text-stone-500 font-bold mb-1.5">등록 세션 수 *</label>
-                        <input type="number" id="reg-sessions" placeholder="예: 10" value="10" min="1" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                        <input type="number" id="reg-sessions" placeholder="예: 10" value="10" min="1" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
                     <div>
                         <label class="block text-xs text-stone-500 font-bold mb-1.5">개시일 *</label>
                         <input type="date" id="reg-date-input" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제일 *</label>
+                        <input type="date" id="reg-payment-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액 *</label>
+                        <input type="number" id="reg-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </div>
+                <div id="reg-unit-price-preview" class="rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-2 text-[11px] font-black text-amber-700">
+                    1회 단가를 계산하려면 결제 금액을 입력하세요.
                 </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
@@ -1178,11 +1342,24 @@
             <div class="p-5 space-y-4">
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">추가할 세션 횟수 (직접입력 가능)</label>
-                    <input type="number" id="add-sessions-count" placeholder="예: 8" value="10" min="1" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                    <input type="number" id="add-sessions-count" placeholder="예: 8" value="10" min="1" oninput="window.updateRenewalUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
                 </div>
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">재등록 날짜</label>
                     <input type="date" id="add-session-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제일</label>
+                        <input type="date" id="add-payment-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액</label>
+                        <input type="number" id="add-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRenewalUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                    </div>
+                </div>
+                <div id="add-unit-price-preview" class="rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-[11px] font-black text-emerald-700">
+                    재등록 단가를 계산하려면 결제 금액을 입력하세요.
                 </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
@@ -1517,7 +1694,10 @@
         <div class="flex justify-between items-center p-4 text-white shrink-0">
             <button onclick="window.closePdfPreviewModal()" aria-label="닫기" class="modal-close-btn text-stone-300 text-xl hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             <div class="font-bold text-sm bg-stone-800 px-4 py-1.5 rounded-full shadow-inner" id="pdf-page-indicator">1 / 1 페이지</div>
-            <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
+            <div class="flex items-center gap-2">
+                <button onclick="window.shareCurrentPdfFileNative()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-share-nodes mr-1"></i>공유</button>
+                <button onclick="window.executePDFDownload()" class="bg-amber-500 hover:bg-amber-600 text-stone-900 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm active-scale transition-colors"><i class="fa-solid fa-download mr-1"></i>다운로드</button>
+            </div>
         </div>
         <div class="flex-1 overflow-hidden relative flex items-center">
             <div id="pdf-swipe-container" class="flex overflow-x-auto snap-x snap-mandatory h-full w-full items-center no-scrollbar" onscroll="window.updatePdfPageIndicator()">
@@ -1545,6 +1725,9 @@
         var currentDate = new Date();
         var signaturePad = null;
         var currentPdfElementToExport = null;
+        var currentPdfMode = 'member';
+        var currentPdfFileName = '';
+        var currentPdfShareText = '';
         var memberStatusFilter = 'active';
         var memberLongPressTimer = null;
         var memberLongPressTriggered = false;
@@ -1601,8 +1784,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v128';
-        const APP_DISPLAY_VERSION = '1.28';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v129';
+        const APP_DISPLAY_VERSION = '1.29';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2138,6 +2321,7 @@
                 trainerName,
                 email: window.cloudUser.email || '',
                 googleCalendarClientId: isGoogleCalendarAllowedForActiveProfile(profile) ? normalizeGoogleCalendarClientId(profile && profile.googleCalendarClientId) : '',
+                settlementSupportFund: Math.max(0, Number(profile && profile.settlementSupportFund) || 700000),
                 updatedAt: window.firebaseApi.serverTimestamp()
             };
             if (profile && profile.privacyConsentAt) {
@@ -2164,6 +2348,7 @@
                 cloudEmail: user.email || '',
                 cloudMode: true,
                 googleCalendarClientId: isAllowedGoogleCalendarEmail(user.email) ? (existing.googleCalendarClientId || (remoteProfile && remoteProfile.googleCalendarClientId) || '') : '',
+                settlementSupportFund: Math.max(0, Number(existing.settlementSupportFund || (remoteProfile && remoteProfile.settlementSupportFund)) || 700000),
                 privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || (remoteProfile && remoteProfile.privacyConsentAt) || '',
                 privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || (remoteProfile && remoteProfile.privacyConsentVersion) || '',
                 createdAt: existing.createdAt || new Date().toISOString()
@@ -2192,6 +2377,7 @@
                 emailNameMatchedAt: enteredName ? new Date().toISOString() : (existing.emailNameMatchedAt || ''),
                 licenseMode: true,
                 localOnly: true,
+                settlementSupportFund: Math.max(0, Number(existing.settlementSupportFund) || 700000),
                 privacyConsentAt: existing.privacyConsentAt || (consentMeta && consentMeta.privacyConsentAt) || '',
                 privacyConsentVersion: existing.privacyConsentVersion || (consentMeta && consentMeta.privacyConsentVersion) || '',
                 createdAt: existing.createdAt || new Date().toISOString()
@@ -2325,9 +2511,11 @@
         function refreshCurrentViewAfterCloud() {
             const dashboard = document.getElementById('view-dashboard');
             const schedule = document.getElementById('view-schedule');
+            const settlement = document.getElementById('view-settlement');
             const detail = document.getElementById('view-member-detail');
             if (dashboard && !dashboard.classList.contains('hidden')) window.renderMemberList();
             if (schedule && !schedule.classList.contains('hidden')) window.initCalendar();
+            if (settlement && !settlement.classList.contains('hidden')) window.renderSettlementView();
             if (detail && !detail.classList.contains('hidden') && window.activeMemberId) {
                 const member = window.members.find(m => m.id === window.activeMemberId);
                 if (member) window.refreshActiveMemberDetail({ preserveWorkoutFocus: true });
@@ -3244,9 +3432,25 @@
                     if (typeof lesson.date === 'undefined') lesson.date = '';
                     if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
                     if (typeof lesson.signature === 'undefined') lesson.signature = '';
+                    if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
                 });
                 m.totalSessions = m.lessons.length;
                 m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
+                m.payments = Array.isArray(m.payments) ? m.payments.map((payment, index) => {
+                    const amount = Math.max(0, Number(payment && payment.amount) || 0);
+                    const sessions = Math.max(0, parseInt(payment && payment.sessions) || 0);
+                    return {
+                        id: String((payment && payment.id) || `payment_${m.id || 'member'}_${index}`),
+                        type: (payment && payment.type) || 'initial',
+                        date: String((payment && payment.date) || ''),
+                        amount,
+                        sessions,
+                        unitPrice: sessions > 0 ? amount / sessions : (Number(payment && payment.unitPrice) || 0),
+                        renewalId: payment && payment.renewalId ? String(payment.renewalId) : '',
+                        startNo: parseInt(payment && payment.startNo) || 1,
+                        count: parseInt(payment && payment.count) || sessions
+                    };
+                }) : [];
                 m.workouts = Array.isArray(m.workouts) ? m.workouts : [];
                 return m;
             });
@@ -3568,6 +3772,589 @@
             return String(value || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
         }
 
+        function getCurrentMonthKey(date = new Date()) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getMonthLabel(monthKey) {
+            const [year, month] = String(monthKey || getCurrentMonthKey()).split('-').map(Number);
+            return `${year}년 ${month}월`;
+        }
+
+        function getSettlementMonthRangeText(monthKey) {
+            const [year, month] = String(monthKey || getCurrentMonthKey()).split('-').map(Number);
+            const end = new Date(year, month, 0);
+            return `${year}-${String(month).padStart(2, '0')}-01 ~ ${formatDate(end)}`;
+        }
+
+        function parseSettlementDate(value, fallbackYear = new Date().getFullYear()) {
+            const raw = String(value || '').trim();
+            if (!raw) return null;
+            let match = raw.match(/^(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/);
+            if (match) {
+                const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                return Number.isNaN(date.getTime()) ? null : date;
+            }
+            match = raw.match(/^(\d{1,2})[/.](\d{1,2})$/);
+            if (match) {
+                const date = new Date(Number(fallbackYear), Number(match[1]) - 1, Number(match[2]));
+                return Number.isNaN(date.getTime()) ? null : date;
+            }
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function dateToMonthKey(date) {
+            if (!date || Number.isNaN(date.getTime())) return '';
+            return getCurrentMonthKey(date);
+        }
+
+        function formatSettlementDate(date) {
+            if (!date || Number.isNaN(date.getTime())) return '';
+            return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function getSettlementSupportFund() {
+            return Math.max(0, Number(window.appProfile && window.appProfile.settlementSupportFund) || 700000);
+        }
+
+        function getSettlementRate(totalSales) {
+            const sales = Number(totalSales) || 0;
+            if (sales < 3000000) return 0.30;
+            if (sales < 4000000) return 0.35;
+            if (sales < 5000000) return 0.40;
+            return 0.45;
+        }
+
+        function getSettlementIncentive(totalSales) {
+            const sales = Number(totalSales) || 0;
+            if (sales >= 8000000) return 150000;
+            if (sales >= 7000000) return 100000;
+            if (sales >= 6000000) return 50000;
+            return 0;
+        }
+
+        function isSettlementSignedLesson(lesson) {
+            return !!(lesson && lesson.signature && lesson.signature !== 'LATER');
+        }
+
+        function getMemberPaymentForLesson(member, lesson) {
+            const payments = Array.isArray(member && member.payments) ? member.payments : [];
+            if (!payments.length) return null;
+            const paymentId = String((lesson && lesson.paymentId) || '');
+            if (paymentId) {
+                const matched = payments.find(payment => String(payment.id || '') === paymentId);
+                if (matched) return matched;
+            }
+            const renewalId = String((lesson && lesson.renewalId) || '');
+            if (renewalId) {
+                const matched = payments.find(payment => String(payment.renewalId || '') === renewalId);
+                if (matched) return matched;
+            }
+            return payments[0] || null;
+        }
+
+        function buildSettlementMonthOptions() {
+            const keys = new Set();
+            const now = new Date();
+            for (let i = 0; i < 12; i++) {
+                keys.add(getCurrentMonthKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+            }
+            (window.members || []).forEach(member => {
+                (member.payments || []).forEach(payment => {
+                    const date = parseSettlementDate(payment.date);
+                    const key = dateToMonthKey(date);
+                    if (key) keys.add(key);
+                });
+                (member.lessons || []).forEach(lesson => {
+                    if (!isSettlementSignedLesson(lesson)) return;
+                    const date = parseSettlementDate(lesson.date, now.getFullYear());
+                    const key = dateToMonthKey(date);
+                    if (key) keys.add(key);
+                });
+            });
+            return [...keys].sort((a, b) => b.localeCompare(a));
+        }
+
+        function ensureSettlementMonthSelect() {
+            const select = document.getElementById('settlement-month-select');
+            if (!select) return getCurrentMonthKey();
+            const previous = select.value || window.currentSettlementMonth || getCurrentMonthKey();
+            const options = buildSettlementMonthOptions();
+            const signature = options.join('|');
+            if (select.dataset.signature !== signature) {
+                select.innerHTML = options.map(key => `<option value="${key}">${getMonthLabel(key)}</option>`).join('');
+                select.dataset.signature = signature;
+            }
+            select.value = options.includes(previous) ? previous : (options[0] || getCurrentMonthKey());
+            window.currentSettlementMonth = select.value;
+            return select.value;
+        }
+
+        function getSettlementPaymentRecords(monthKey) {
+            const records = [];
+            (window.members || []).forEach(member => {
+                (member.payments || []).forEach(payment => {
+                    const date = parseSettlementDate(payment.date);
+                    if (!date || dateToMonthKey(date) !== monthKey) return;
+                    const typeLabel = payment.type === 'renewal' ? '재등록' : '신규 등록';
+                    records.push({
+                        date,
+                        dateText: formatSettlementDate(date),
+                        memberName: member.name || '',
+                        content: `${typeLabel} ${payment.sessions || payment.count || 0}회`,
+                        amount: Number(payment.amount) || 0
+                    });
+                });
+            });
+            return records.sort((a, b) => {
+                const dateCompare = a.date - b.date;
+                return dateCompare || String(a.memberName).localeCompare(String(b.memberName), 'ko-KR');
+            });
+        }
+
+        function buildSettlementData(monthKey = ensureSettlementMonthSelect()) {
+            const fallbackYear = Number(String(monthKey).slice(0, 4)) || new Date().getFullYear();
+            const payments = getSettlementPaymentRecords(monthKey);
+            const salesTotal = payments.reduce((sum, record) => sum + record.amount, 0);
+            const rate = getSettlementRate(salesTotal);
+            const groups = new Map();
+            const proofRows = [];
+
+            (window.members || []).forEach(member => {
+                (member.lessons || []).forEach(lesson => {
+                    if (!isSettlementSignedLesson(lesson)) return;
+                    const signedDate = parseSettlementDate(lesson.date, fallbackYear);
+                    if (!signedDate || dateToMonthKey(signedDate) !== monthKey) return;
+                    const payment = getMemberPaymentForLesson(member, lesson);
+                    const unitPrice = Number(payment && payment.unitPrice) || 0;
+                    const paymentKey = payment ? String(payment.id || payment.renewalId || 'payment') : 'missing';
+                    const key = `${member.id || member.name}|${paymentKey}|${unitPrice}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, {
+                            memberName: member.name || '',
+                            unitPrice,
+                            count: 0,
+                            missingPrice: unitPrice <= 0
+                        });
+                    }
+                    groups.get(key).count += 1;
+                    proofRows.push({
+                        date: signedDate,
+                        dateText: formatSettlementDate(signedDate),
+                        memberName: member.name || '',
+                        lessonNo: lesson.no || '',
+                        trainer: lesson.trainer || member.trainer || getTrainerName(),
+                        signatureStatus: '서명완료',
+                        signature: lesson.signature,
+                        unitPrice,
+                        missingPrice: unitPrice <= 0
+                    });
+                });
+            });
+
+            const lessonRows = [...groups.values()]
+                .sort((a, b) => String(a.memberName).localeCompare(String(b.memberName), 'ko-KR') || a.unitPrice - b.unitPrice)
+                .map((row, index) => {
+                    const exVat = row.unitPrice > 0 ? row.unitPrice - (row.unitPrice / 11) : 0;
+                    const oneLessonPay = exVat * rate;
+                    const lessonPay = row.count * oneLessonPay;
+                    return { ...row, no: index + 1, exVat, rate, oneLessonPay, lessonPay };
+                });
+            proofRows.sort((a, b) => a.date - b.date || String(a.memberName).localeCompare(String(b.memberName), 'ko-KR') || Number(a.lessonNo) - Number(b.lessonNo));
+            proofRows.forEach((row, index) => row.no = index + 1);
+
+            const completedLessons = proofRows.length;
+            const lessonPayTotal = lessonRows.reduce((sum, row) => sum + row.lessonPay, 0);
+            const supportFund = getSettlementSupportFund();
+            const incentive = getSettlementIncentive(salesTotal);
+            const preTax = supportFund + lessonPayTotal + incentive;
+            const tax = preTax * 0.033;
+            const finalPay = preTax - tax;
+            return { monthKey, payments, salesTotal, rate, lessonRows, proofRows, completedLessons, lessonPayTotal, supportFund, incentive, preTax, tax, finalPay };
+        }
+
+        function renderTableEmpty(tbody, colspan, message) {
+            if (!tbody) return;
+            tbody.innerHTML = `<tr><td colspan="${colspan}" class="px-3 py-8 text-center text-xs font-bold text-stone-400">${message}</td></tr>`;
+        }
+
+        window.switchSettlementTab = function(tab = 'summary') {
+            window.settlementTab = tab === 'proof' ? 'proof' : 'summary';
+            const summaryPanel = document.getElementById('settlement-summary-panel');
+            const proofPanel = document.getElementById('settlement-proof-panel');
+            const summaryBtn = document.getElementById('settlement-tab-summary');
+            const proofBtn = document.getElementById('settlement-tab-proof');
+            if (summaryPanel) summaryPanel.classList.toggle('hidden', window.settlementTab !== 'summary');
+            if (proofPanel) proofPanel.classList.toggle('hidden', window.settlementTab !== 'proof');
+            if (summaryBtn && proofBtn) {
+                summaryBtn.className = `min-h-[40px] px-4 rounded-lg text-xs font-black active-scale ${window.settlementTab === 'summary' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+                proofBtn.className = `min-h-[40px] px-4 rounded-lg text-xs font-black active-scale ${window.settlementTab === 'proof' ? 'bg-stone-900 text-white' : 'text-stone-500'}`;
+            }
+        }
+
+        window.updateSettlementSupportFund = function() {
+            if (!window.appProfile) return;
+            const amount = parseCurrencyInput(document.getElementById('settlement-support-fund')?.value);
+            window.appProfile.settlementSupportFund = Math.max(0, amount);
+            window.trainerProfiles[window.activeLoginId] = window.appProfile;
+            saveProfileStore();
+            if (isCloudProfile()) saveRemoteCloudProfile().catch(() => {});
+            window.renderSettlementView();
+            showToast('영업지원금을 저장했습니다.');
+        }
+
+        window.renderSettlementView = function() {
+            const monthKey = ensureSettlementMonthSelect();
+            const supportInput = document.getElementById('settlement-support-fund');
+            if (supportInput && document.activeElement !== supportInput) supportInput.value = getSettlementSupportFund();
+            const data = buildSettlementData(monthKey);
+            document.getElementById('settlement-sales-total').innerText = formatWon(data.salesTotal);
+            document.getElementById('settlement-rate').innerText = `${Math.round(data.rate * 100)}%`;
+            document.getElementById('settlement-completed-lessons').innerText = `${data.completedLessons}회`;
+            document.getElementById('settlement-final-pay').innerText = formatWon(data.finalPay);
+            document.getElementById('settlement-lesson-pay-total').innerText = formatWon(data.lessonPayTotal);
+            document.getElementById('settlement-incentive').innerText = formatWon(data.incentive);
+            document.getElementById('settlement-pre-tax').innerText = formatWon(data.preTax);
+            document.getElementById('settlement-tax').innerText = formatWon(data.tax);
+
+            const lessonBody = document.getElementById('settlement-lesson-body');
+            if (data.lessonRows.length) {
+                lessonBody.innerHTML = data.lessonRows.map(row => `
+                    <tr class="${row.missingPrice ? 'bg-red-50/60' : 'bg-white'}">
+                        <td class="px-3 py-2 font-bold text-stone-500">${row.no}</td>
+                        <td class="px-3 py-2 font-black text-stone-900">${escapeHtml(row.memberName)}${row.missingPrice ? '<span class="ml-2 text-[9px] text-red-600 font-black">단가 미입력</span>' : ''}</td>
+                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.unitPrice)}</td>
+                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.exVat)}</td>
+                        <td class="px-3 py-2 text-right font-black text-stone-900">${row.count}회</td>
+                        <td class="px-3 py-2 text-right font-bold text-amber-600">${Math.round(row.rate * 100)}%</td>
+                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.oneLessonPay)}</td>
+                        <td class="px-3 py-2 text-right font-black text-stone-900">${formatWon(row.lessonPay)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                renderTableEmpty(lessonBody, 8, '선택한 월의 서명 완료 수업이 없습니다.');
+            }
+
+            const paymentBody = document.getElementById('settlement-payment-body');
+            if (data.payments.length) {
+                paymentBody.innerHTML = data.payments.map((row, index) => `
+                    <tr>
+                        <td class="px-3 py-2 font-bold text-stone-500">${index + 1}</td>
+                        <td class="px-3 py-2 font-bold text-stone-700">${escapeHtml(row.dateText)}</td>
+                        <td class="px-3 py-2 font-black text-stone-900">${escapeHtml(row.memberName)}</td>
+                        <td class="px-3 py-2 font-bold text-stone-600">${escapeHtml(row.content)}</td>
+                        <td class="px-3 py-2 text-right font-black text-stone-900">${formatWon(row.amount)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                renderTableEmpty(paymentBody, 5, '선택한 월의 결제 매출기록이 없습니다.');
+            }
+
+            const proofBody = document.getElementById('settlement-proof-body');
+            const proofCount = document.getElementById('settlement-proof-count');
+            if (proofCount) proofCount.innerText = `${data.proofRows.length}건`;
+            if (data.proofRows.length) {
+                proofBody.innerHTML = data.proofRows.map(row => `
+                    <tr class="${row.missingPrice ? 'bg-red-50/60' : 'bg-white'}">
+                        <td class="px-3 py-2 font-bold text-stone-500">${row.no}</td>
+                        <td class="px-3 py-2 font-bold text-stone-700">${escapeHtml(row.dateText)}</td>
+                        <td class="px-3 py-2 font-black text-stone-900">${escapeHtml(row.memberName)}</td>
+                        <td class="px-3 py-2 font-bold text-stone-700">${String(row.lessonNo).padStart(2, '0')}회차</td>
+                        <td class="px-3 py-2 font-bold text-stone-600">${escapeHtml(row.trainer)}</td>
+                        <td class="px-3 py-2"><span class="inline-flex px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black">${row.signatureStatus}</span></td>
+                        <td class="px-3 py-2 text-right font-bold ${row.missingPrice ? 'text-red-600' : 'text-stone-700'}">${row.missingPrice ? '단가 미입력' : formatWon(row.unitPrice)}</td>
+                    </tr>
+                `).join('');
+            } else {
+                renderTableEmpty(proofBody, 7, '선택한 월의 수업 증빙 기록이 없습니다.');
+            }
+            window.switchSettlementTab(window.settlementTab || 'summary');
+        }
+
+        function downloadBlobAsFile(blob, fileName, message) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            if (message) showToast(message);
+        }
+
+        async function ensureXlsxLibraryLoaded() {
+            if (window.XLSX) return true;
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            return !!window.XLSX;
+        }
+
+        function worksheetFromRows(rows) {
+            return window.XLSX.utils.aoa_to_sheet(rows);
+        }
+
+        window.shareSettlementExcelReport = async function() {
+            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            try {
+                await ensureXlsxLibraryLoaded();
+                if (!window.XLSX) return showToast('엑셀 생성 모듈을 불러오지 못했습니다.');
+                const data = buildSettlementData(ensureSettlementMonthSelect());
+                const monthLabel = getMonthLabel(data.monthKey);
+                const trainer = getTrainerName();
+                const wb = window.XLSX.utils.book_new();
+                const summaryRows = [
+                    ['GOFITGYM 월별 정산 보고'],
+                    ['정산월', monthLabel],
+                    ['보고자', trainer],
+                    ['정산기간', getSettlementMonthRangeText(data.monthKey)],
+                    [],
+                    ['당월 매출', Math.round(data.salesTotal)],
+                    ['PT 배분율', `${Math.round(data.rate * 100)}%`],
+                    ['서명 수업', data.completedLessons],
+                    ['영업지원금', Math.round(data.supportFund)],
+                    ['총 수업비', Math.round(data.lessonPayTotal)],
+                    ['인센티브', Math.round(data.incentive)],
+                    ['세전 지급액', Math.round(data.preTax)],
+                    ['세금 3.3%', Math.round(data.tax)],
+                    ['최종 지급액', Math.round(data.finalPay)]
+                ];
+                const lessonRows = [
+                    ['번호', '이름', 'PT 1회 단가', '부가세 제외', '수업진행갯수', 'PT 배분', '1회당수업비', '수업비합', '비고'],
+                    ...data.lessonRows.map(row => [row.no, row.memberName, Math.round(row.unitPrice), Math.round(row.exVat), row.count, `${Math.round(row.rate * 100)}%`, Math.round(row.oneLessonPay), Math.round(row.lessonPay), row.missingPrice ? '단가 미입력' : ''])
+                ];
+                const paymentRows = [
+                    ['번호', '날짜', '회원명', '내용', '금액'],
+                    ...data.payments.map((row, index) => [index + 1, row.dateText, row.memberName, row.content, Math.round(row.amount)])
+                ];
+                const proofRows = [
+                    ['번호', '수업일', '회원명', '회차', '담당', '서명상태', '정산 단가', '비고'],
+                    ...data.proofRows.map(row => [row.no, row.dateText, row.memberName, `${String(row.lessonNo).padStart(2, '0')}회차`, row.trainer, row.signatureStatus, Math.round(row.unitPrice), row.missingPrice ? '단가 미입력' : ''])
+                ];
+                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(summaryRows), '요약');
+                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(lessonRows), '수업정산');
+                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(paymentRows), '매출기록');
+                window.XLSX.utils.book_append_sheet(wb, worksheetFromRows(proofRows), '수업증빙');
+                const output = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const safeTrainer = trainer.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '');
+                const fileName = `GOFITGYM_${safeTrainer}_${data.monthKey}_정산보고.xlsx`;
+                const file = new File([blob], fileName, { type: blob.type });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'GOFITGYM 정산 보고',
+                        text: `${trainer} 트레이너 ${monthLabel} 정산 보고서입니다.`,
+                        files: [file]
+                    });
+                    showToast('정산 보고서 공유창을 열었습니다.');
+                    return;
+                }
+                downloadBlobAsFile(blob, fileName, '공유 미지원 환경이라 정산 보고서를 다운로드했습니다.');
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.error(err);
+                showToast('정산 보고서 생성 또는 공유에 실패했습니다.');
+            }
+        }
+
+        function getSettlementPdfStyles() {
+            return `
+                <style>
+                    .settlement-pdf-page, .settlement-pdf-page * { box-sizing: border-box; }
+                    .settlement-pdf-page { width: 794px; height: 1123px; padding: 30px; background: #fff; color: #1c1917; font-family: 'Noto Sans KR', sans-serif; border: 1px solid #d6d3d1; display: flex; flex-direction: column; overflow: hidden; }
+                    .settlement-pdf-header { display:flex; justify-content:space-between; align-items:flex-end; padding-bottom:10px; border-bottom:3px solid #1c1917; margin-bottom:14px; flex-shrink:0; }
+                    .settlement-pdf-title { margin:0; font-size:23px; line-height:1; font-weight:900; color:#1c1917; }
+                    .settlement-pdf-page-num { margin-left:8px; font-size:10px; font-weight:800; color:#78716c; }
+                    .settlement-pdf-meta { text-align:right; font-size:10px; line-height:1.45; font-weight:800; color:#57534e; }
+                    .settlement-pdf-meta p { margin:0; }
+                    .settlement-pdf-body { flex:1 1 auto; min-height:0; overflow:hidden; }
+                    .settlement-pdf-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:12px; }
+                    .settlement-pdf-card { border:1px solid #d6d3d1; border-radius:8px; padding:9px; background:#fafaf9; }
+                    .settlement-pdf-card span { display:block; font-size:9px; font-weight:900; color:#78716c; margin-bottom:5px; }
+                    .settlement-pdf-card strong { display:block; font-size:16px; font-weight:900; color:#1c1917; }
+                    .settlement-pdf-note { margin:8px 0 12px; padding:9px 11px; border-radius:8px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-size:9px; line-height:1.45; font-weight:800; }
+                    .settlement-pdf-table { width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid #d6d3d1; }
+                    .settlement-pdf-table th { border:1px solid #d6d3d1; background:#f5f5f4; color:#292524; padding:5px 4px; font-size:8.5px; line-height:1.1; font-weight:900; }
+                    .settlement-pdf-table td { border:1px solid #d6d3d1; padding:5px 4px; font-size:8.5px; line-height:1.15; font-weight:700; vertical-align:middle; }
+                    .settlement-pdf-table .right { text-align:right; }
+                    .settlement-pdf-table .center { text-align:center; }
+                    .settlement-pdf-section-title { margin:0 0 8px; font-size:14px; line-height:1; font-weight:900; color:#1c1917; }
+                    .settlement-proof-sign { height:34px; text-align:center; padding:2px !important; }
+                    .settlement-proof-sign-img { display:block; max-width:118px; max-height:30px; margin:0 auto; object-fit:contain; }
+                    .settlement-pdf-footer { margin-top:12px; padding-top:9px; border-top:2px solid #1c1917; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+                    .settlement-pdf-logo { padding:6px 9px; border-radius:6px; background:#1c1917; color:#f59e0b; font-size:12px; font-weight:900; line-height:1; }
+                    .settlement-pdf-footer-text { color:#78716c; font-size:8.5px; line-height:1.3; font-weight:800; }
+                </style>
+            `;
+        }
+
+        function chunkRows(rows, size) {
+            const list = Array.isArray(rows) ? rows : [];
+            if (!list.length) return [[]];
+            const chunks = [];
+            for (let i = 0; i < list.length; i += size) chunks.push(list.slice(i, i + size));
+            return chunks;
+        }
+
+        function buildSettlementPdfPage({ title, pageNum, totalPages, metaHtml, bodyHtml, printDate }) {
+            return `
+                ${getSettlementPdfStyles()}
+                <div class="settlement-pdf-page">
+                    <div class="settlement-pdf-header">
+                        <h2 class="settlement-pdf-title">${title}<span class="settlement-pdf-page-num">Page ${pageNum}/${totalPages}</span></h2>
+                        <div class="settlement-pdf-meta">${metaHtml}</div>
+                    </div>
+                    <div class="settlement-pdf-body">${bodyHtml}</div>
+                    <div class="settlement-pdf-footer">
+                        <div style="display:flex;align-items:center;gap:9px;">
+                            <div class="settlement-pdf-logo">GOFITGYM</div>
+                            <div class="settlement-pdf-footer-text">월별 정산 보고서 · 수업 날짜와 서명 기록 기준</div>
+                        </div>
+                        <div class="settlement-pdf-footer-text">출력일: ${printDate}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openSettlementPdfPreviewModal = function() {
+            window.currentPdfMode = 'settlement';
+            window.buildSettlementPdfPagesForPreview();
+            const pm = document.getElementById('pdf-preview-modal');
+            pm.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                pm.classList.remove('opacity-0');
+                window.scalePdfPreviewBoxes();
+                window.updatePdfPageIndicator();
+            });
+        }
+
+        window.buildSettlementPdfPagesForPreview = function() {
+            const data = buildSettlementData(ensureSettlementMonthSelect());
+            const monthLabel = getMonthLabel(data.monthKey);
+            const trainer = getTrainerName();
+            const printDate = formatSettlementDate(new Date());
+            const safeTrainer = trainer.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '');
+            window.currentPdfFileName = `GOFITGYM_${safeTrainer}_${data.monthKey}_정산보고.pdf`;
+            window.currentPdfShareText = `${trainer} 트레이너 ${monthLabel} 정산 보고서입니다.`;
+
+            const lessonChunks = chunkRows(data.lessonRows, 24);
+            const paymentChunks = chunkRows(data.payments, 30);
+            const proofChunks = chunkRows(data.proofRows, 18);
+            const totalPages = 1 + lessonChunks.length + paymentChunks.length + proofChunks.length;
+            const metaHtml = `
+                <p>정산월: ${escapeHtml(monthLabel)}</p>
+                <p>정산기간: ${escapeHtml(getSettlementMonthRangeText(data.monthKey))}</p>
+                <p>보고자: ${escapeHtml(trainer)}</p>
+            `;
+            const container = document.createElement('div');
+            container.id = 'pdf-export-wrapper';
+            const swipeContainer = document.getElementById('pdf-swipe-container');
+            swipeContainer.innerHTML = '';
+            let pageNo = 1;
+
+            const summaryBody = `
+                <div class="settlement-pdf-grid">
+                    <div class="settlement-pdf-card"><span>당월 매출</span><strong>${formatWon(data.salesTotal)}</strong></div>
+                    <div class="settlement-pdf-card"><span>PT 배분율</span><strong>${Math.round(data.rate * 100)}%</strong></div>
+                    <div class="settlement-pdf-card"><span>서명 수업</span><strong>${data.completedLessons}회</strong></div>
+                    <div class="settlement-pdf-card"><span>최종 지급액</span><strong>${formatWon(data.finalPay)}</strong></div>
+                    <div class="settlement-pdf-card"><span>영업지원금</span><strong>${formatWon(data.supportFund)}</strong></div>
+                    <div class="settlement-pdf-card"><span>총 수업비</span><strong>${formatWon(data.lessonPayTotal)}</strong></div>
+                    <div class="settlement-pdf-card"><span>인센티브</span><strong>${formatWon(data.incentive)}</strong></div>
+                    <div class="settlement-pdf-card"><span>세금 3.3%</span><strong>${formatWon(data.tax)}</strong></div>
+                </div>
+                <div class="settlement-pdf-note">
+                    계산식: 월매출 기준 배분율 적용 · 수업비합 = 서명 완료 수업수 × 부가세 제외 1회 단가 × PT 배분율. 정산 기간은 매월 1일부터 말일까지입니다.
+                </div>
+                <table class="settlement-pdf-table">
+                    <thead><tr><th>항목</th><th class="right">금액</th><th>비고</th></tr></thead>
+                    <tbody>
+                        <tr><td>영업지원금</td><td class="right">${formatWon(data.supportFund)}</td><td>설정값</td></tr>
+                        <tr><td>총 수업비</td><td class="right">${formatWon(data.lessonPayTotal)}</td><td>서명 완료 기준</td></tr>
+                        <tr><td>인센티브</td><td class="right">${formatWon(data.incentive)}</td><td>월매출 기준</td></tr>
+                        <tr><td>세전 지급액</td><td class="right">${formatWon(data.preTax)}</td><td>영업지원금 + 수업비 + 인센티브</td></tr>
+                        <tr><td>세금 3.3%</td><td class="right">${formatWon(data.tax)}</td><td>세전 지급액 × 3.3%</td></tr>
+                        <tr><td><strong>최종 지급액</strong></td><td class="right"><strong>${formatWon(data.finalPay)}</strong></td><td>세전 지급액 - 세금</td></tr>
+                    </tbody>
+                </table>
+            `;
+            appendSettlementPdfPage(buildSettlementPdfPage({ title: 'SETTLEMENT SUMMARY', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: summaryBody, printDate }), false);
+
+            lessonChunks.forEach((rows) => {
+                const body = `
+                    <h3 class="settlement-pdf-section-title">수업 정산표</h3>
+                    <table class="settlement-pdf-table">
+                        <thead><tr>
+                            <th style="width:34px;">번호</th><th>이름</th><th class="right">PT 1회 단가</th><th class="right">부가세 제외</th><th class="right">수업진행</th><th class="right">배분</th><th class="right">1회 수업비</th><th class="right">수업비합</th><th>비고</th>
+                        </tr></thead>
+                        <tbody>${rows.length ? rows.map(row => `
+                            <tr>
+                                <td class="center">${row.no}</td><td>${escapeHtml(row.memberName)}</td><td class="right">${formatWon(row.unitPrice)}</td><td class="right">${formatWon(row.exVat)}</td><td class="right">${row.count}회</td><td class="right">${Math.round(row.rate * 100)}%</td><td class="right">${formatWon(row.oneLessonPay)}</td><td class="right">${formatWon(row.lessonPay)}</td><td>${row.missingPrice ? '단가 미입력' : ''}</td>
+                            </tr>`).join('') : `<tr><td colspan="9" class="center" style="height:42px;">선택한 월의 서명 완료 수업이 없습니다.</td></tr>`}</tbody>
+                    </table>`;
+                appendSettlementPdfPage(buildSettlementPdfPage({ title: 'LESSON SETTLEMENT', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
+            });
+
+            paymentChunks.forEach((rows) => {
+                const body = `
+                    <h3 class="settlement-pdf-section-title">당월 매출기록</h3>
+                    <table class="settlement-pdf-table">
+                        <thead><tr><th style="width:42px;">번호</th><th style="width:86px;">날짜</th><th>회원명</th><th>내용</th><th class="right">금액</th></tr></thead>
+                        <tbody>${rows.length ? rows.map((row, index) => `
+                            <tr><td class="center">${index + 1}</td><td>${escapeHtml(row.dateText)}</td><td>${escapeHtml(row.memberName)}</td><td>${escapeHtml(row.content)}</td><td class="right">${formatWon(row.amount)}</td></tr>
+                        `).join('') : `<tr><td colspan="5" class="center" style="height:42px;">선택한 월의 결제 매출기록이 없습니다.</td></tr>`}</tbody>
+                    </table>`;
+                appendSettlementPdfPage(buildSettlementPdfPage({ title: 'MONTHLY SALES', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
+            });
+
+            proofChunks.forEach((rows) => {
+                const body = `
+                    <h3 class="settlement-pdf-section-title">수업 날짜 · 서명 증빙</h3>
+                    <table class="settlement-pdf-table">
+                        <thead><tr><th style="width:34px;">번호</th><th style="width:78px;">수업일</th><th>회원명</th><th style="width:58px;">회차</th><th>담당</th><th style="width:132px;">서명</th><th class="right">정산 단가</th></tr></thead>
+                        <tbody>${rows.length ? rows.map(row => {
+                            const signatureHtml = row.signature && row.signature !== 'LATER'
+                                ? `<img src="${row.signature}" class="settlement-proof-sign-img">`
+                                : '서명완료';
+                            return `<tr><td class="center">${row.no}</td><td>${escapeHtml(row.dateText)}</td><td>${escapeHtml(row.memberName)}</td><td class="center">${String(row.lessonNo).padStart(2, '0')}회차</td><td>${escapeHtml(row.trainer)}</td><td class="settlement-proof-sign">${signatureHtml}</td><td class="right">${row.missingPrice ? '단가 미입력' : formatWon(row.unitPrice)}</td></tr>`;
+                        }).join('') : `<tr><td colspan="7" class="center" style="height:42px;">선택한 월의 수업 증빙 기록이 없습니다.</td></tr>`}</tbody>
+                    </table>`;
+                appendSettlementPdfPage(buildSettlementPdfPage({ title: 'SIGNATURE PROOF', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
+            });
+
+            function appendSettlementPdfPage(html, needsBreak) {
+                const exportPage = document.createElement('div');
+                exportPage.innerHTML = html;
+                if (needsBreak) exportPage.className = 'html2pdf__page-break';
+                container.appendChild(exportPage);
+
+                const previewSlide = document.createElement('div');
+                previewSlide.className = 'snap-center shrink-0 w-full h-full flex justify-center items-center px-3 py-3 overflow-hidden';
+                const previewBox = document.createElement('div');
+                previewBox.className = 'pdf-preview-box relative shrink-0';
+                const scaleWrapper = document.createElement('div');
+                scaleWrapper.className = 'pdf-scale-wrapper absolute top-0 left-0 bg-white shadow-2xl origin-top-left overflow-hidden border border-stone-700';
+                scaleWrapper.style.width = `${PDF_PAGE_WIDTH}px`;
+                scaleWrapper.style.height = `${PDF_PAGE_HEIGHT}px`;
+                scaleWrapper.style.transformOrigin = 'top left';
+                scaleWrapper.innerHTML = html;
+                previewBox.appendChild(scaleWrapper);
+                previewSlide.appendChild(previewBox);
+                swipeContainer.appendChild(previewSlide);
+            }
+
+            window.currentPdfElementToExport = container;
+            document.getElementById('pdf-page-indicator').innerText = `1 / ${totalPages} 페이지`;
+            window.removeEventListener('resize', window.scalePdfPreviewBoxes);
+            window.addEventListener('resize', window.scalePdfPreviewBoxes);
+        }
+
         function getTrainerSwitcherHtml() {
             return `<button onclick="window.openProfileSettingsModal()" title="설정" aria-label="설정" class="header-control header-control-icon header-settings-button shrink-0 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold active-scale border border-stone-700"><i class="fa-solid fa-gear text-amber-500"></i></button>`;
         }
@@ -3760,6 +4547,7 @@
                 return;
             }
             if (!document.getElementById('view-schedule').classList.contains('hidden')) return window.switchMainView('schedule');
+            if (!document.getElementById('view-settlement').classList.contains('hidden')) return window.switchMainView('settlement');
             window.switchMainView('dashboard');
         }
 
@@ -4223,10 +5011,12 @@
         window.switchMainView = function(view) {
             document.getElementById('view-dashboard').classList.add('hidden');
             document.getElementById('view-schedule').classList.add('hidden');
+            document.getElementById('view-settlement').classList.add('hidden');
             document.getElementById('view-member-detail').classList.add('hidden');
             
             document.getElementById('nav-dashboard').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
             document.getElementById('nav-schedule').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
+            document.getElementById('nav-settlement').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
             document.getElementById('main-scroll-area').classList.remove('overflow-y-auto');
 
             if (view === 'dashboard') {
@@ -4243,6 +5033,13 @@
                 document.getElementById('nav-schedule').classList.replace('text-stone-400', 'text-amber-600');
                 renderHeaderActions('schedule');
                 window.initCalendar();
+            } else if (view === 'settlement') {
+                document.getElementById('main-scroll-area').classList.add('overflow-y-auto');
+                document.getElementById('view-settlement').classList.remove('hidden');
+                document.getElementById('header-subtitle').innerText = `${getTrainerName()} Settlement`;
+                document.getElementById('nav-settlement').classList.replace('text-stone-400', 'text-amber-600');
+                renderHeaderActions('settlement');
+                window.renderSettlementView();
             }
         }
 
@@ -4592,10 +5389,66 @@
             document.getElementById('stat-week-schedules').innerText = `${weekScheduleCount}건`;
         }
 
+        function parseCurrencyInput(value) {
+            const cleaned = String(value || '').replace(/[^\d.-]/g, '');
+            const parsed = Number(cleaned);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function formatWon(value) {
+            return `${Math.round(Number(value) || 0).toLocaleString('ko-KR')}원`;
+        }
+
+        function getUnitPriceFromPayment(amount, sessions) {
+            const safeSessions = Math.max(0, parseInt(sessions) || 0);
+            const safeAmount = Math.max(0, Number(amount) || 0);
+            return safeSessions > 0 ? safeAmount / safeSessions : 0;
+        }
+
+        function buildMemberPayment({ id, type, date, amount, sessions, renewalId = '', startNo = 1, count = 0 }) {
+            const safeSessions = Math.max(0, parseInt(sessions) || 0);
+            const safeAmount = Math.max(0, Number(amount) || 0);
+            return {
+                id,
+                type,
+                date,
+                amount: safeAmount,
+                sessions: safeSessions,
+                unitPrice: getUnitPriceFromPayment(safeAmount, safeSessions),
+                renewalId,
+                startNo,
+                count: count || safeSessions
+            };
+        }
+
+        function updateUnitPricePreview(amountInputId, sessionsInputId, previewId, emptyText) {
+            const amount = parseCurrencyInput(document.getElementById(amountInputId)?.value);
+            const sessions = parseInt(document.getElementById(sessionsInputId)?.value) || 0;
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
+            if (amount <= 0 || sessions <= 0) {
+                preview.innerText = emptyText;
+                return;
+            }
+            preview.innerText = `1회 단가 ${formatWon(getUnitPriceFromPayment(amount, sessions))} · 총 ${sessions}회`;
+        }
+
+        window.updateRegistrationUnitPricePreview = function() {
+            updateUnitPricePreview('reg-payment-amount', 'reg-sessions', 'reg-unit-price-preview', '1회 단가를 계산하려면 결제 금액을 입력하세요.');
+        }
+
+        window.updateRenewalUnitPricePreview = function() {
+            updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 결제 금액을 입력하세요.');
+        }
+
         function resetNewMemberForm() {
             document.getElementById('reg-name').value = '';
             document.getElementById('reg-sessions').value = '10';
-            document.getElementById('reg-date-input').value = new Date().toISOString().split('T')[0];
+            const today = formatDate(new Date());
+            document.getElementById('reg-date-input').value = today;
+            document.getElementById('reg-payment-date').value = today;
+            document.getElementById('reg-payment-amount').value = '';
+            window.updateRegistrationUnitPricePreview();
         }
 
         window.openNewMemberModal = function() {
@@ -4611,13 +5464,30 @@
         window.submitNewMember = function() {
             const name = document.getElementById('reg-name').value.trim();
             const sessions = parseInt(document.getElementById('reg-sessions').value) || 0;
+            const registrationDate = document.getElementById('reg-date-input').value || formatDate(new Date());
+            const paymentDate = document.getElementById('reg-payment-date').value || registrationDate;
+            const paymentAmount = parseCurrencyInput(document.getElementById('reg-payment-amount').value);
             if(!name) return showToast("이름을 입력하세요!");
             if(sessions < 1) return showToast("세션 수를 올바르게 입력하세요!");
+            if(paymentAmount <= 0) return showToast("결제 금액을 입력하세요!");
             
+            const paymentId = 'payment_' + Date.now();
+            const payment = buildMemberPayment({
+                id: paymentId,
+                type: 'initial',
+                date: paymentDate,
+                amount: paymentAmount,
+                sessions,
+                startNo: 1,
+                count: sessions
+            });
             const newM = {
                 id: 'm_' + Date.now(), name: name, trainer: getTrainerName(), totalSessions: sessions,
-                registrationDate: document.getElementById('reg-date-input').value,
-                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '' })), workouts: [], memo: ''
+                registrationDate,
+                payments: [payment],
+                lessons: Array.from({ length: sessions }, (_, i) => ({ no: i + 1, date: '', trainer: '', signature: '', paymentId })),
+                workouts: [],
+                memo: ''
             };
             window.members.push(newM);
             localSaveMember(newM);
@@ -4645,7 +5515,11 @@
         }
 
         window.openAddSessionModal = function() {
-            document.getElementById('add-session-date').value = formatDate(new Date());
+            const today = formatDate(new Date());
+            document.getElementById('add-session-date').value = today;
+            document.getElementById('add-payment-date').value = today;
+            document.getElementById('add-payment-amount').value = '';
+            window.updateRenewalUnitPricePreview();
             const m = document.getElementById('modal-add-session');
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
         }
@@ -4656,15 +5530,31 @@
         window.executeAddSession = function() {
             const count = parseInt(document.getElementById('add-sessions-count').value) || 0;
             const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
+            const paymentDate = document.getElementById('add-payment-date').value || renewalDate;
+            const paymentAmount = parseCurrencyInput(document.getElementById('add-payment-amount').value);
             if (count < 1) return showToast("추가할 세션 횟수를 확인해주세요!");
+            if (paymentAmount <= 0) return showToast("재등록 결제 금액을 입력해주세요!");
             
             const m = window.members.find(x => x.id === window.activeMemberId);
             const currentLen = m.lessons.length;
             const renewalId = 'renewal_' + Date.now();
+            const paymentId = renewalId;
+            const payment = buildMemberPayment({
+                id: paymentId,
+                type: 'renewal',
+                date: paymentDate,
+                amount: paymentAmount,
+                sessions: count,
+                renewalId,
+                startNo: currentLen + 1,
+                count
+            });
             m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
-            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count });
+            m.payments = Array.isArray(m.payments) ? m.payments : [];
+            m.payments.push(payment);
+            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count, paymentId, paymentDate, paymentAmount, unitPrice: payment.unitPrice });
             for(let i = 0; i < count; i++) {
-                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate });
+                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId });
             }
             m.totalSessions = m.lessons.length;
             localSaveMember(m);
@@ -7454,6 +8344,7 @@
 
         // ================= PDF PAGINATION & PREVIEW =================
         window.openPdfPreviewModal = function() {
+            window.currentPdfMode = 'member';
             window.buildPdfPagesForPreview();
             const pm = document.getElementById('pdf-preview-modal');
             pm.classList.remove('hidden');
@@ -7476,6 +8367,8 @@
             const printDate = new Date().toISOString().split('T')[0].replace(/-/g, '.');
             const memberName = escapeHtml(m.name);
             const memberTrainer = escapeHtml(m.trainer || getTrainerName());
+            window.currentPdfFileName = `GOFITGYM_${m.name}.pdf`;
+            window.currentPdfShareText = `${m.name} 회원 PT 기록 PDF입니다.`;
             const pdfPageStyles = `
                 <style>
                     .pdf-report-page, .pdf-report-page * { box-sizing: border-box; }
@@ -7707,25 +8600,73 @@
             document.getElementById('pdf-page-indicator').innerText = `${safePage} / ${totalPages} 페이지`;
         }
 
-        window.executePDFDownload = function() {
-            const m = window.members.find(x => x.id === window.activeMemberId);
-            showToast("PDF 문서 빌드 중입니다...");
-            
+        function getCurrentPdfFileName() {
+            const fallback = window.currentPdfMode === 'settlement'
+                ? `GOFITGYM_${getTrainerName()}_${ensureSettlementMonthSelect()}_정산보고.pdf`
+                : `GOFITGYM_${(window.members.find(x => x.id === window.activeMemberId) || {}).name || 'PT기록'}.pdf`;
+            return String(window.currentPdfFileName || fallback).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
+        }
+
+        function getCurrentPdfOptions(fileName) {
+            return {
+                margin: 0,
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait' }
+            };
+        }
+
+        async function generateCurrentPdfBlob() {
+            if (!window.currentPdfElementToExport) throw new Error('No PDF document.');
             const tempDiv = document.createElement('div');
-            tempDiv.style.position = 'absolute'; tempDiv.style.left = '-9999px'; tempDiv.style.top = '0';
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            tempDiv.style.top = '0';
             tempDiv.appendChild(window.currentPdfElementToExport);
             document.body.appendChild(tempDiv);
+            try {
+                return await html2pdf()
+                    .set(getCurrentPdfOptions(getCurrentPdfFileName()))
+                    .from(window.currentPdfElementToExport)
+                    .outputPdf('blob');
+            } finally {
+                if (tempDiv.parentNode) document.body.removeChild(tempDiv);
+            }
+        }
 
-            html2pdf().set({ 
-                margin: 0, 
-                filename: `GOFITGYM_${m.name}.pdf`, 
-                image: {type: 'jpeg', quality: 0.98}, 
-                html2canvas: {scale: 2, useCORS: true}, 
-                jsPDF: {unit: 'px', format: [794, 1123], orientation: 'portrait'} 
-            }).from(window.currentPdfElementToExport).save().then(() => { 
-                document.body.removeChild(tempDiv);
-                showToast("PDF 다운로드 완료!"); 
-            });
+        window.executePDFDownload = async function() {
+            try {
+                showToast("PDF 문서 빌드 중입니다...");
+                const blob = await generateCurrentPdfBlob();
+                downloadBlobAsFile(blob, getCurrentPdfFileName(), 'PDF 다운로드 완료!');
+            } catch (err) {
+                console.error(err);
+                showToast('PDF 다운로드에 실패했습니다.');
+            }
+        }
+
+        window.shareCurrentPdfFileNative = async function() {
+            try {
+                showToast("PDF 문서 빌드 중입니다...");
+                const blob = await generateCurrentPdfBlob();
+                const fileName = getCurrentPdfFileName();
+                const file = new File([blob], fileName, { type: 'application/pdf' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: window.currentPdfMode === 'settlement' ? 'GOFITGYM 정산 보고' : 'GOFITGYM PT 기록',
+                        text: window.currentPdfShareText || 'GOFITGYM PDF 문서입니다.',
+                        files: [file]
+                    });
+                    showToast('PDF 공유창을 열었습니다.');
+                    return;
+                }
+                downloadBlobAsFile(blob, fileName, '공유 미지원 환경이라 PDF를 다운로드했습니다.');
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.error(err);
+                showToast('PDF 공유에 실패했습니다.');
+            }
         }
 
         // UTILS
