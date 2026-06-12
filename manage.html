@@ -538,6 +538,95 @@
             white-space: nowrap;
             vertical-align: middle;
         }
+        #view-settlement .settlement-statement {
+            overflow: hidden;
+            border: 1px solid #e7e5e4;
+            border-radius: 1rem;
+            background: #ffffff;
+        }
+        #view-settlement .settlement-statement-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            min-height: 56px;
+            padding: 0.72rem 0.9rem;
+            border-bottom: 1px solid #f5f5f4;
+        }
+        #view-settlement .settlement-statement-row:last-child {
+            border-bottom: 0;
+        }
+        #view-settlement .settlement-statement-label {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-width: 0;
+        }
+        #view-settlement .settlement-statement-token {
+            width: 34px;
+            min-width: 34px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #f5f5f4;
+            color: #78716c;
+            font-size: 10px;
+            font-weight: 900;
+            line-height: 1;
+        }
+        #view-settlement .settlement-statement-title {
+            display: block;
+            color: #292524;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.15;
+        }
+        #view-settlement .settlement-statement-note {
+            display: block;
+            margin-top: 0.15rem;
+            color: #a8a29e;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.15;
+        }
+        #view-settlement .settlement-statement-value {
+            flex: 0 0 auto;
+            color: #1c1917;
+            font-size: 14px;
+            font-weight: 900;
+            text-align: right;
+            white-space: nowrap;
+        }
+        #view-settlement .settlement-statement-row.is-subtotal {
+            background: #fffbeb;
+        }
+        #view-settlement .settlement-statement-row.is-subtotal .settlement-statement-token {
+            background: #f59e0b;
+            color: #1c1917;
+        }
+        #view-settlement .settlement-statement-row.is-minus .settlement-statement-value,
+        #view-settlement .settlement-statement-row.is-minus .settlement-statement-token {
+            color: #dc2626;
+        }
+        #view-settlement .settlement-statement-row.is-final {
+            min-height: 72px;
+            background: #ecfdf5;
+            border-top: 2px solid #10b981;
+        }
+        #view-settlement .settlement-statement-row.is-final .settlement-statement-token {
+            background: #10b981;
+            color: #ffffff;
+        }
+        #view-settlement .settlement-statement-row.is-final .settlement-statement-title {
+            color: #047857;
+            font-size: 13px;
+        }
+        #view-settlement .settlement-statement-row.is-final .settlement-statement-value {
+            color: #047857;
+            font-size: 20px;
+        }
         @media (max-width: 640px) {
             #view-settlement {
                 padding-bottom: calc(2.5rem + var(--app-safe-bottom));
@@ -550,28 +639,34 @@
                 font-size: 0.68rem;
                 line-height: 1.35;
             }
-            #view-settlement .settlement-metric-grid,
-            #view-settlement .settlement-submetric-grid {
-                gap: 0.375rem;
+            #view-settlement .settlement-statement-row {
+                min-height: 46px;
+                padding: 0.48rem 0.68rem;
+                gap: 0.55rem;
             }
-            #view-settlement .settlement-metric-grid > div,
-            #view-settlement .settlement-submetric-grid > div {
-                padding: 0.625rem;
+            #view-settlement .settlement-statement-label {
+                gap: 0.5rem;
             }
-            #view-settlement .settlement-submetric-grid > div {
-                text-align: left;
-                display: flex;
-                min-height: 4rem;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: center;
+            #view-settlement .settlement-statement-token {
+                width: 28px;
+                min-width: 28px;
+                height: 24px;
+                font-size: 9px;
             }
-            #view-settlement .settlement-metric-grid strong,
-            #view-settlement .settlement-submetric-grid strong {
-                font-size: 0.88rem;
+            #view-settlement .settlement-statement-title {
+                font-size: 10.5px;
             }
-            #view-settlement .settlement-submetric-grid strong {
-                margin-top: 0.15rem;
+            #view-settlement .settlement-statement-note {
+                font-size: 8.5px;
+            }
+            #view-settlement .settlement-statement-value {
+                font-size: 12.5px;
+            }
+            #view-settlement .settlement-statement-row.is-final {
+                min-height: 62px;
+            }
+            #view-settlement .settlement-statement-row.is-final .settlement-statement-value {
+                font-size: 17px;
             }
             #view-settlement .settlement-tabbar {
                 align-items: stretch;
@@ -809,41 +904,96 @@
                     </div>
                 </div>
 
-                <div class="settlement-metric-grid grid grid-cols-2 lg:grid-cols-4 gap-2">
-                    <div class="rounded-xl bg-amber-50 border border-amber-100 p-3">
-                        <span class="block text-[10px] font-black text-amber-800">당월 매출</span>
-                        <strong id="settlement-sales-total" class="block text-base font-black text-amber-600 mt-1">0원</strong>
+                <div class="settlement-statement" aria-label="정산 계산표">
+                    <div class="settlement-statement-row">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">기준</span>
+                            <span>
+                                <span class="settlement-statement-title">당월 매출</span>
+                                <span class="settlement-statement-note">결제일 기준 · 배분율 산정</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-sales-total" class="settlement-statement-value text-amber-600">0원</strong>
                     </div>
-                    <div class="rounded-xl bg-stone-50 border border-stone-100 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">PT 배분</span>
-                        <strong id="settlement-rate" class="block text-base font-black text-stone-900 mt-1">30%</strong>
+                    <div class="settlement-statement-row">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">율</span>
+                            <span>
+                                <span class="settlement-statement-title">PT 배분율</span>
+                                <span class="settlement-statement-note">매출 구간별 적용</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-rate" class="settlement-statement-value">30%</strong>
                     </div>
-                    <div class="rounded-xl bg-stone-50 border border-stone-100 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">서명 수업</span>
-                        <strong id="settlement-completed-lessons" class="block text-base font-black text-stone-900 mt-1">0회</strong>
+                    <div class="settlement-statement-row">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">회</span>
+                            <span>
+                                <span class="settlement-statement-title">서명 완료 수업</span>
+                                <span class="settlement-statement-note">해당 월 수업 증빙 기준</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-completed-lessons" class="settlement-statement-value">0회</strong>
                     </div>
-                    <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
-                        <span class="block text-[10px] font-black text-emerald-700">최종 지급액</span>
-                        <strong id="settlement-final-pay" class="block text-base font-black text-emerald-700 mt-1">0원</strong>
+                    <div class="settlement-statement-row is-subtotal">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">=</span>
+                            <span>
+                                <span class="settlement-statement-title">수업비 합계</span>
+                                <span class="settlement-statement-note">부가세 제외 단가 × 완료 수업 × 배분율</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-lesson-pay-total" class="settlement-statement-value">0원</strong>
                     </div>
-                </div>
-
-                <div class="settlement-submetric-grid grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                    <div class="rounded-xl bg-white border border-stone-200 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">총 수업비</span>
-                        <strong id="settlement-lesson-pay-total" class="text-sm font-black text-stone-900">0원</strong>
+                    <div class="settlement-statement-row">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">+</span>
+                            <span>
+                                <span class="settlement-statement-title">영업지원금</span>
+                                <span class="settlement-statement-note">상단 입력값 반영</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-support-display" class="settlement-statement-value">0원</strong>
                     </div>
-                    <div class="rounded-xl bg-white border border-stone-200 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">인센티브</span>
-                        <strong id="settlement-incentive" class="text-sm font-black text-stone-900">0원</strong>
+                    <div class="settlement-statement-row">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">+</span>
+                            <span>
+                                <span class="settlement-statement-title">인센티브</span>
+                                <span class="settlement-statement-note">월 매출 기준</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-incentive" class="settlement-statement-value">0원</strong>
                     </div>
-                    <div class="rounded-xl bg-white border border-stone-200 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">세전 지급액</span>
-                        <strong id="settlement-pre-tax" class="text-sm font-black text-stone-900">0원</strong>
+                    <div class="settlement-statement-row is-subtotal">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">=</span>
+                            <span>
+                                <span class="settlement-statement-title">세전 지급액</span>
+                                <span class="settlement-statement-note">수업비 + 지원금 + 인센티브</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-pre-tax" class="settlement-statement-value">0원</strong>
                     </div>
-                    <div class="rounded-xl bg-white border border-stone-200 p-3">
-                        <span class="block text-[10px] font-black text-stone-500">세금 3.3%</span>
-                        <strong id="settlement-tax" class="text-sm font-black text-red-600">0원</strong>
+                    <div class="settlement-statement-row is-minus">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">-</span>
+                            <span>
+                                <span class="settlement-statement-title">세금 3.3%</span>
+                                <span class="settlement-statement-note">세전 지급액 기준 차감</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-tax" class="settlement-statement-value">0원</strong>
+                    </div>
+                    <div class="settlement-statement-row is-final">
+                        <div class="settlement-statement-label">
+                            <span class="settlement-statement-token">최종</span>
+                            <span>
+                                <span class="settlement-statement-title">최종 지급액</span>
+                                <span class="settlement-statement-note">세전 지급액 - 세금</span>
+                            </span>
+                        </div>
+                        <strong id="settlement-final-pay" class="settlement-statement-value">0원</strong>
                     </div>
                 </div>
             </div>
@@ -1931,8 +2081,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v138';
-        const APP_DISPLAY_VERSION = '1.38';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v139';
+        const APP_DISPLAY_VERSION = '1.39';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4193,6 +4343,7 @@
             document.getElementById('settlement-completed-lessons').innerText = `${data.completedLessons}회`;
             document.getElementById('settlement-final-pay').innerText = formatWon(data.finalPay);
             document.getElementById('settlement-lesson-pay-total').innerText = formatWon(data.lessonPayTotal);
+            document.getElementById('settlement-support-display').innerText = formatWon(data.supportFund);
             document.getElementById('settlement-incentive').innerText = formatWon(data.incentive);
             document.getElementById('settlement-pre-tax').innerText = formatWon(data.preTax);
             document.getElementById('settlement-tax').innerText = formatWon(data.tax);
