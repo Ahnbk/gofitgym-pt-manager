@@ -2121,8 +2121,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v141';
-        const APP_DISPLAY_VERSION = '1.41';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v142';
+        const APP_DISPLAY_VERSION = '1.42';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -4484,10 +4484,36 @@
                     .settlement-pdf-meta { text-align:right; font-size:10px; line-height:1.45; font-weight:800; color:#57534e; }
                     .settlement-pdf-meta p { margin:0; }
                     .settlement-pdf-body { flex:1 1 auto; min-height:0; overflow:hidden; }
+                    .settlement-pdf-summary-layout { height:100%; display:flex; flex-direction:column; gap:12px; }
                     .settlement-pdf-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:12px; }
                     .settlement-pdf-card { border:1px solid #d6d3d1; border-radius:8px; padding:9px; background:#fafaf9; }
                     .settlement-pdf-card span { display:block; font-size:9px; font-weight:900; color:#78716c; margin-bottom:5px; }
                     .settlement-pdf-card strong { display:block; font-size:16px; font-weight:900; color:#1c1917; }
+                    .settlement-pdf-statement { border:1px solid #d6d3d1; border-radius:10px; overflow:hidden; background:#fff; }
+                    .settlement-pdf-statement-row { display:grid; grid-template-columns:58px 1fr 168px; align-items:center; min-height:48px; border-bottom:1px solid #e7e5e4; }
+                    .settlement-pdf-statement-row:last-child { border-bottom:0; }
+                    .settlement-pdf-statement-token { display:flex; align-items:center; justify-content:center; height:100%; background:#f5f5f4; color:#78716c; font-size:10px; line-height:1; font-weight:900; }
+                    .settlement-pdf-statement-label { padding:8px 12px; min-width:0; }
+                    .settlement-pdf-statement-title { display:block; color:#292524; font-size:12px; line-height:1.15; font-weight:900; }
+                    .settlement-pdf-statement-note-text { display:block; margin-top:3px; color:#a8a29e; font-size:8.5px; line-height:1.2; font-weight:800; }
+                    .settlement-pdf-statement-value { padding:8px 12px; color:#1c1917; font-size:14px; line-height:1; font-weight:900; text-align:right; white-space:nowrap; }
+                    .settlement-pdf-statement-row.is-subtotal { background:#fffbeb; }
+                    .settlement-pdf-statement-row.is-subtotal .settlement-pdf-statement-token { background:#f59e0b; color:#1c1917; }
+                    .settlement-pdf-statement-row.is-minus .settlement-pdf-statement-token,
+                    .settlement-pdf-statement-row.is-minus .settlement-pdf-statement-value { color:#dc2626; }
+                    .settlement-pdf-statement-row.is-final { min-height:64px; background:#ecfdf5; border-top:3px solid #10b981; }
+                    .settlement-pdf-statement-row.is-final .settlement-pdf-statement-token { background:#10b981; color:#fff; }
+                    .settlement-pdf-statement-row.is-final .settlement-pdf-statement-title { color:#047857; font-size:13px; }
+                    .settlement-pdf-statement-row.is-final .settlement-pdf-statement-value { color:#047857; font-size:23px; }
+                    .settlement-pdf-sales-panel { margin-top:auto; border:1px solid #d6d3d1; border-radius:10px; overflow:hidden; background:#fff; }
+                    .settlement-pdf-sales-title { display:flex; justify-content:space-between; align-items:center; padding:9px 12px; background:#1c1917; color:#fff; }
+                    .settlement-pdf-sales-title strong { font-size:12px; line-height:1; font-weight:900; }
+                    .settlement-pdf-sales-title span { color:#fbbf24; font-size:8.5px; font-weight:900; }
+                    .settlement-pdf-sales-grid { display:grid; grid-template-columns:1fr 1fr 1.15fr; }
+                    .settlement-pdf-sales-cell { padding:12px 13px; border-right:1px solid #e7e5e4; min-height:70px; }
+                    .settlement-pdf-sales-cell:last-child { border-right:0; background:#fffbeb; }
+                    .settlement-pdf-sales-cell span { display:block; margin-bottom:6px; color:#78716c; font-size:9px; line-height:1; font-weight:900; }
+                    .settlement-pdf-sales-cell strong { display:block; color:#1c1917; font-size:18px; line-height:1; font-weight:900; }
                     .settlement-pdf-note { margin:8px 0 12px; padding:9px 11px; border-radius:8px; background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-size:9px; line-height:1.45; font-weight:800; }
                     .settlement-pdf-table { width:100%; border-collapse:collapse; table-layout:fixed; border:1px solid #d6d3d1; }
                     .settlement-pdf-table th { border:1px solid #d6d3d1; background:#f5f5f4; color:#292524; padding:5px 4px; font-size:8.5px; line-height:1.1; font-weight:900; text-align:center; vertical-align:middle; }
@@ -4574,36 +4600,55 @@
             swipeContainer.innerHTML = '';
             let pageNo = 1;
 
+            const buildStatementRow = ({ token, title, note, value, className = '' }) => `
+                <div class="settlement-pdf-statement-row ${className}">
+                    <div class="settlement-pdf-statement-token">${token}</div>
+                    <div class="settlement-pdf-statement-label">
+                        <span class="settlement-pdf-statement-title">${title}</span>
+                        <span class="settlement-pdf-statement-note-text">${note}</span>
+                    </div>
+                    <div class="settlement-pdf-statement-value">${value}</div>
+                </div>
+            `;
             const summaryBody = `
-                <div class="settlement-pdf-grid">
-                    <div class="settlement-pdf-card"><span>당월 매출 합계</span><strong>${formatWon(data.salesTotal)}</strong></div>
-                    <div class="settlement-pdf-card"><span>회원권 매출</span><strong>${formatWon(data.membershipSalesTotal)}</strong></div>
-                    <div class="settlement-pdf-card"><span>PT 매출</span><strong>${formatWon(data.ptSalesTotal)}</strong></div>
-                    <div class="settlement-pdf-card"><span>PT 배분율</span><strong>${Math.round(data.rate * 100)}%</strong></div>
-                    <div class="settlement-pdf-card"><span>서명 수업</span><strong>${data.completedLessons}회</strong></div>
-                    <div class="settlement-pdf-card"><span>최종 지급액</span><strong>${formatWon(data.finalPay)}</strong></div>
-                    <div class="settlement-pdf-card"><span>영업지원금</span><strong>${formatWon(data.supportFund)}</strong></div>
-                    <div class="settlement-pdf-card"><span>총 수업비</span><strong>${formatWon(data.lessonPayTotal)}</strong></div>
-                    <div class="settlement-pdf-card"><span>인센티브</span><strong>${formatWon(data.incentive)}</strong></div>
-                    <div class="settlement-pdf-card"><span>세금 3.3%</span><strong>${formatWon(data.tax)}</strong></div>
+                <div class="settlement-pdf-summary-layout">
+                    <div class="settlement-pdf-statement">
+                        ${buildStatementRow({ token: '기준', title: '당월 매출 합계', note: `회원권 ${formatWon(data.membershipSalesTotal)} · PT ${formatWon(data.ptSalesTotal)}`, value: formatWon(data.salesTotal) })}
+                        ${buildStatementRow({ token: '율', title: 'PT 배분율', note: '매출 구간별 적용', value: `${Math.round(data.rate * 100)}%` })}
+                        ${buildStatementRow({ token: '회', title: '서명 완료 수업', note: '해당 월 수업 증빙 기준', value: `${data.completedLessons}회` })}
+                        ${buildStatementRow({ token: '=', title: '수업비 합계', note: '부가세 제외 단가 × 완료 수업 × 배분율', value: formatWon(data.lessonPayTotal), className: 'is-subtotal' })}
+                        ${buildStatementRow({ token: '+', title: '영업지원금', note: '설정값 반영', value: formatWon(data.supportFund) })}
+                        ${buildStatementRow({ token: '+', title: '인센티브', note: '월 매출 기준', value: formatWon(data.incentive) })}
+                        ${buildStatementRow({ token: '=', title: '세전 지급액', note: '수업비 + 지원금 + 인센티브', value: formatWon(data.preTax), className: 'is-subtotal' })}
+                        ${buildStatementRow({ token: '-', title: '세금 3.3%', note: '세전 지급액 기준 차감', value: formatWon(data.tax), className: 'is-minus' })}
+                        ${buildStatementRow({ token: '최종', title: '최종 지급액', note: '세전 지급액 - 세금', value: formatWon(data.finalPay), className: 'is-final' })}
+                    </div>
+
+                    <div class="settlement-pdf-note">
+                        PT 1회 단가는 PT 매출만 기준으로 계산합니다. 회원권 매출은 월매출 합계와 배분율/인센티브 구간 산정에만 반영합니다.
+                    </div>
+
+                    <div class="settlement-pdf-sales-panel">
+                        <div class="settlement-pdf-sales-title">
+                            <strong>당월 매출 구성</strong>
+                            <span>결제일 기준 · ${escapeHtml(getSettlementMonthRangeText(data.monthKey))}</span>
+                        </div>
+                        <div class="settlement-pdf-sales-grid">
+                            <div class="settlement-pdf-sales-cell">
+                                <span>회원권 매출</span>
+                                <strong>${formatWon(data.membershipSalesTotal)}</strong>
+                            </div>
+                            <div class="settlement-pdf-sales-cell">
+                                <span>PT 매출</span>
+                                <strong>${formatWon(data.ptSalesTotal)}</strong>
+                            </div>
+                            <div class="settlement-pdf-sales-cell">
+                                <span>매출 합계</span>
+                                <strong>${formatWon(data.salesTotal)}</strong>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="settlement-pdf-note">
-                    계산식: 월매출 합계(PT 매출 + 회원권 매출) 기준 배분율 적용 · 수업비합 = 서명 완료 수업수 × 부가세 제외 1회 단가 × PT 배분율. PT 1회 단가는 PT 매출만 기준으로 계산합니다.
-                </div>
-                <table class="settlement-pdf-table">
-                    <thead><tr><th>항목</th><th class="right">금액</th><th>비고</th></tr></thead>
-                    <tbody>
-                        <tr><td class="left">당월 매출 합계</td><td class="right">${formatWon(data.salesTotal)}</td><td class="left">회원권 매출 + PT 매출</td></tr>
-                        <tr><td class="left">회원권 매출</td><td class="right">${formatWon(data.membershipSalesTotal)}</td><td class="left">월매출 합계에만 반영</td></tr>
-                        <tr><td class="left">PT 매출</td><td class="right">${formatWon(data.ptSalesTotal)}</td><td class="left">단가 계산 기준</td></tr>
-                        <tr><td class="left">영업지원금</td><td class="right">${formatWon(data.supportFund)}</td><td class="left">설정값</td></tr>
-                        <tr><td class="left">총 수업비</td><td class="right">${formatWon(data.lessonPayTotal)}</td><td class="left">서명 완료 기준</td></tr>
-                        <tr><td class="left">인센티브</td><td class="right">${formatWon(data.incentive)}</td><td class="left">월매출 기준</td></tr>
-                        <tr><td class="left">세전 지급액</td><td class="right">${formatWon(data.preTax)}</td><td class="left">영업지원금 + 수업비 + 인센티브</td></tr>
-                        <tr><td class="left">세금 3.3%</td><td class="right">${formatWon(data.tax)}</td><td class="left">세전 지급액 × 3.3%</td></tr>
-                        <tr><td class="left"><strong>최종 지급액</strong></td><td class="right"><strong>${formatWon(data.finalPay)}</strong></td><td class="left">세전 지급액 - 세금</td></tr>
-                    </tbody>
-                </table>
             `;
             appendSettlementPdfPage(buildSettlementPdfPage({ title: 'SETTLEMENT SUMMARY', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: summaryBody, printDate }), false);
 
