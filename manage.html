@@ -931,8 +931,10 @@
                         <div class="settlement-statement-label">
                             <span class="settlement-statement-token">기준</span>
                             <span>
-                                <span class="settlement-statement-title">당월 매출</span>
-                                <span class="settlement-statement-note">결제일 기준 · 배분율 산정</span>
+                                <span class="settlement-statement-title">당월 매출 합계</span>
+                                <span class="settlement-statement-note">
+                                    <span id="settlement-membership-sales-total">회원권 0원</span> · <span id="settlement-pt-sales-total">PT 0원</span>
+                                </span>
                             </span>
                         </div>
                         <strong id="settlement-sales-total" class="settlement-statement-value text-amber-600">0원</strong>
@@ -1065,14 +1067,16 @@
                     <span class="text-[10px] font-bold text-stone-400">결제일 기준</span>
                 </div>
                 <div class="settlement-table-scroll overflow-x-auto">
-                    <table class="settlement-table w-full min-w-[580px] text-xs">
+                    <table class="settlement-table w-full min-w-[720px] text-xs">
                         <thead class="bg-stone-50 text-stone-500">
                             <tr>
                                 <th class="px-3 py-2 text-left font-black">번호</th>
                                 <th class="px-3 py-2 text-left font-black">날짜</th>
                                 <th class="px-3 py-2 text-left font-black">회원명</th>
                                 <th class="px-3 py-2 text-left font-black">내용</th>
-                                <th class="px-3 py-2 text-right font-black">금액</th>
+                                <th class="px-3 py-2 text-right font-black">회원권 매출</th>
+                                <th class="px-3 py-2 text-right font-black">PT 매출</th>
+                                <th class="px-3 py-2 text-right font-black">합계</th>
                             </tr>
                         </thead>
                         <tbody id="settlement-payment-body" class="divide-y divide-stone-100"></tbody>
@@ -1613,12 +1617,18 @@
                         <input type="month" id="reg-legacy-settlement-month" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액 *</label>
-                    <input type="number" id="reg-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">PT 매출 *</label>
+                        <input type="number" id="reg-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRegistrationUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">회원권 매출</label>
+                        <input type="number" id="reg-membership-amount" placeholder="예: 100000" min="0" step="1000" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
                 </div>
                 <div id="reg-unit-price-preview" class="rounded-xl bg-amber-50 border border-amber-100 px-3.5 py-2 text-[11px] font-black text-amber-700">
-                    1회 단가를 계산하려면 결제 금액을 입력하세요.
+                    1회 단가를 계산하려면 PT 매출을 입력하세요.
                 </div>
                 <div id="reg-legacy-preview" class="rounded-xl bg-stone-50 border border-stone-200 px-3.5 py-2 text-[11px] font-black text-stone-600">
                     결제 횟수와 잔여 횟수가 같으면 이전 완료분은 없습니다.
@@ -1653,12 +1663,16 @@
                         <input type="date" id="add-payment-date" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
                     </div>
                     <div>
-                        <label class="block text-xs text-stone-500 font-bold mb-1.5">결제 금액</label>
+                        <label class="block text-xs text-stone-500 font-bold mb-1.5">PT 매출</label>
                         <input type="number" id="add-payment-amount" placeholder="예: 600000" min="0" step="1000" oninput="window.updateRenewalUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
                     </div>
                 </div>
+                <div>
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">회원권 매출</label>
+                    <input type="number" id="add-membership-amount" placeholder="예: 100000" min="0" step="1000" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                </div>
                 <div id="add-unit-price-preview" class="rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-[11px] font-black text-emerald-700">
-                    재등록 단가를 계산하려면 결제 금액을 입력하세요.
+                    재등록 단가를 계산하려면 PT 매출을 입력하세요.
                 </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
@@ -2107,8 +2121,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v140';
-        const APP_DISPLAY_VERSION = '1.40';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v141';
+        const APP_DISPLAY_VERSION = '1.41';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3762,12 +3776,14 @@
                 m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
                 m.payments = Array.isArray(m.payments) ? m.payments.map((payment, index) => {
                     const amount = Math.max(0, Number(payment && payment.amount) || 0);
+                    const membershipAmount = Math.max(0, Number(payment && payment.membershipAmount) || 0);
                     const sessions = Math.max(0, parseInt(payment && payment.sessions) || 0);
                     return {
                         id: String((payment && payment.id) || `payment_${m.id || 'member'}_${index}`),
                         type: (payment && payment.type) || 'initial',
                         date: String((payment && payment.date) || ''),
                         amount,
+                        membershipAmount,
                         sessions,
                         unitPrice: sessions > 0 ? amount / sessions : (Number(payment && payment.unitPrice) || 0),
                         renewalId: payment && payment.renewalId ? String(payment.renewalId) : '',
@@ -4262,12 +4278,17 @@
                     const date = parseSettlementDate(payment.date);
                     if (!date || dateToMonthKey(date) !== monthKey) return;
                     const typeLabel = payment.type === 'renewal' ? '재등록' : '신규 등록';
+                    const ptAmount = Math.max(0, Number(payment.amount) || 0);
+                    const membershipAmount = Math.max(0, Number(payment.membershipAmount) || 0);
+                    const totalAmount = ptAmount + membershipAmount;
                     records.push({
                         date,
                         dateText: formatSettlementDate(date),
                         memberName: member.name || '',
                         content: `${typeLabel} ${payment.sessions || payment.count || 0}회`,
-                        amount: Number(payment.amount) || 0
+                        ptAmount,
+                        membershipAmount,
+                        amount: totalAmount
                     });
                 });
             });
@@ -4280,7 +4301,9 @@
         function buildSettlementData(monthKey = ensureSettlementMonthSelect()) {
             const fallbackYear = Number(String(monthKey).slice(0, 4)) || new Date().getFullYear();
             const payments = getSettlementPaymentRecords(monthKey);
-            const salesTotal = payments.reduce((sum, record) => sum + record.amount, 0);
+            const ptSalesTotal = payments.reduce((sum, record) => sum + record.ptAmount, 0);
+            const membershipSalesTotal = payments.reduce((sum, record) => sum + record.membershipAmount, 0);
+            const salesTotal = ptSalesTotal + membershipSalesTotal;
             const rate = getSettlementRate(salesTotal);
             const groups = new Map();
             const proofRows = [];
@@ -4336,7 +4359,7 @@
             const preTax = supportFund + lessonPayTotal + incentive;
             const tax = preTax * 0.033;
             const finalPay = preTax - tax;
-            return { monthKey, payments, salesTotal, rate, lessonRows, proofRows, completedLessons, lessonPayTotal, supportFund, incentive, preTax, tax, finalPay };
+            return { monthKey, payments, ptSalesTotal, membershipSalesTotal, salesTotal, rate, lessonRows, proofRows, completedLessons, lessonPayTotal, supportFund, incentive, preTax, tax, finalPay };
         }
 
         function renderTableEmpty(tbody, colspan, message) {
@@ -4375,6 +4398,8 @@
             if (supportInput && document.activeElement !== supportInput) supportInput.value = getSettlementSupportFund();
             const data = buildSettlementData(monthKey);
             document.getElementById('settlement-sales-total').innerText = formatWon(data.salesTotal);
+            document.getElementById('settlement-pt-sales-total').innerText = `PT ${formatWon(data.ptSalesTotal)}`;
+            document.getElementById('settlement-membership-sales-total').innerText = `회원권 ${formatWon(data.membershipSalesTotal)}`;
             document.getElementById('settlement-rate').innerText = `${Math.round(data.rate * 100)}%`;
             document.getElementById('settlement-completed-lessons').innerText = `${data.completedLessons}회`;
             document.getElementById('settlement-final-pay').innerText = formatWon(data.finalPay);
@@ -4408,11 +4433,13 @@
                         <td class="px-3 py-2 font-bold text-stone-700">${escapeHtml(row.dateText)}</td>
                         <td class="px-3 py-2 font-black text-stone-900">${escapeHtml(row.memberName)}</td>
                         <td class="px-3 py-2 font-bold text-stone-600">${escapeHtml(row.content)}</td>
+                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.membershipAmount)}</td>
+                        <td class="px-3 py-2 text-right font-bold text-stone-700">${formatWon(row.ptAmount)}</td>
                         <td class="px-3 py-2 text-right font-black text-stone-900">${formatWon(row.amount)}</td>
                     </tr>
                 `).join('');
             } else {
-                renderTableEmpty(paymentBody, 5, '선택한 월의 결제 매출기록이 없습니다.');
+                renderTableEmpty(paymentBody, 7, '선택한 월의 결제 매출기록이 없습니다.');
             }
 
             const proofBody = document.getElementById('settlement-proof-body');
@@ -4549,7 +4576,9 @@
 
             const summaryBody = `
                 <div class="settlement-pdf-grid">
-                    <div class="settlement-pdf-card"><span>당월 매출</span><strong>${formatWon(data.salesTotal)}</strong></div>
+                    <div class="settlement-pdf-card"><span>당월 매출 합계</span><strong>${formatWon(data.salesTotal)}</strong></div>
+                    <div class="settlement-pdf-card"><span>회원권 매출</span><strong>${formatWon(data.membershipSalesTotal)}</strong></div>
+                    <div class="settlement-pdf-card"><span>PT 매출</span><strong>${formatWon(data.ptSalesTotal)}</strong></div>
                     <div class="settlement-pdf-card"><span>PT 배분율</span><strong>${Math.round(data.rate * 100)}%</strong></div>
                     <div class="settlement-pdf-card"><span>서명 수업</span><strong>${data.completedLessons}회</strong></div>
                     <div class="settlement-pdf-card"><span>최종 지급액</span><strong>${formatWon(data.finalPay)}</strong></div>
@@ -4559,11 +4588,14 @@
                     <div class="settlement-pdf-card"><span>세금 3.3%</span><strong>${formatWon(data.tax)}</strong></div>
                 </div>
                 <div class="settlement-pdf-note">
-                    계산식: 월매출 기준 배분율 적용 · 수업비합 = 서명 완료 수업수 × 부가세 제외 1회 단가 × PT 배분율. 정산 기간은 매월 1일부터 말일까지입니다.
+                    계산식: 월매출 합계(PT 매출 + 회원권 매출) 기준 배분율 적용 · 수업비합 = 서명 완료 수업수 × 부가세 제외 1회 단가 × PT 배분율. PT 1회 단가는 PT 매출만 기준으로 계산합니다.
                 </div>
                 <table class="settlement-pdf-table">
                     <thead><tr><th>항목</th><th class="right">금액</th><th>비고</th></tr></thead>
                     <tbody>
+                        <tr><td class="left">당월 매출 합계</td><td class="right">${formatWon(data.salesTotal)}</td><td class="left">회원권 매출 + PT 매출</td></tr>
+                        <tr><td class="left">회원권 매출</td><td class="right">${formatWon(data.membershipSalesTotal)}</td><td class="left">월매출 합계에만 반영</td></tr>
+                        <tr><td class="left">PT 매출</td><td class="right">${formatWon(data.ptSalesTotal)}</td><td class="left">단가 계산 기준</td></tr>
                         <tr><td class="left">영업지원금</td><td class="right">${formatWon(data.supportFund)}</td><td class="left">설정값</td></tr>
                         <tr><td class="left">총 수업비</td><td class="right">${formatWon(data.lessonPayTotal)}</td><td class="left">서명 완료 기준</td></tr>
                         <tr><td class="left">인센티브</td><td class="right">${formatWon(data.incentive)}</td><td class="left">월매출 기준</td></tr>
@@ -4594,10 +4626,10 @@
                 const body = `
                     <h3 class="settlement-pdf-section-title">당월 매출기록</h3>
                     <table class="settlement-pdf-table">
-                        <thead><tr><th style="width:42px;">번호</th><th style="width:86px;">날짜</th><th>회원명</th><th>내용</th><th class="right">금액</th></tr></thead>
+                        <thead><tr><th style="width:36px;">번호</th><th style="width:76px;">날짜</th><th>회원명</th><th>내용</th><th class="right">회원권</th><th class="right">PT 매출</th><th class="right">합계</th></tr></thead>
                         <tbody>${rows.length ? rows.map((row, index) => `
-                            <tr><td class="center">${index + 1}</td><td class="center">${escapeHtml(row.dateText)}</td><td class="left">${escapeHtml(row.memberName)}</td><td class="left">${escapeHtml(row.content)}</td><td class="right">${formatWon(row.amount)}</td></tr>
-                        `).join('') : `<tr><td colspan="5" class="center" style="height:42px;">선택한 월의 결제 매출기록이 없습니다.</td></tr>`}</tbody>
+                            <tr><td class="center">${index + 1}</td><td class="center">${escapeHtml(row.dateText)}</td><td class="left">${escapeHtml(row.memberName)}</td><td class="left">${escapeHtml(row.content)}</td><td class="right">${formatWon(row.membershipAmount)}</td><td class="right">${formatWon(row.ptAmount)}</td><td class="right">${formatWon(row.amount)}</td></tr>
+                        `).join('') : `<tr><td colspan="7" class="center" style="height:42px;">선택한 월의 결제 매출기록이 없습니다.</td></tr>`}</tbody>
                     </table>`;
                 appendSettlementPdfPage(buildSettlementPdfPage({ title: 'MONTHLY SALES', pageNum: pageNo++, totalPages, metaHtml, bodyHtml: body, printDate }), true);
             });
@@ -5798,14 +5830,16 @@
             return safeSessions > 0 ? safeAmount / safeSessions : 0;
         }
 
-        function buildMemberPayment({ id, type, date, amount, sessions, renewalId = '', startNo = 1, count = 0 }) {
+        function buildMemberPayment({ id, type, date, amount, membershipAmount = 0, sessions, renewalId = '', startNo = 1, count = 0 }) {
             const safeSessions = Math.max(0, parseInt(sessions) || 0);
             const safeAmount = Math.max(0, Number(amount) || 0);
+            const safeMembershipAmount = Math.max(0, Number(membershipAmount) || 0);
             return {
                 id,
                 type,
                 date,
                 amount: safeAmount,
+                membershipAmount: safeMembershipAmount,
                 sessions: safeSessions,
                 unitPrice: getUnitPriceFromPayment(safeAmount, safeSessions),
                 renewalId,
@@ -5823,11 +5857,11 @@
                 preview.innerText = emptyText;
                 return;
             }
-            preview.innerText = `1회 단가 ${formatWon(getUnitPriceFromPayment(amount, sessions))} · 총 ${sessions}회`;
+            preview.innerText = `PT 1회 단가 ${formatWon(getUnitPriceFromPayment(amount, sessions))} · 총 ${sessions}회`;
         }
 
         window.updateRegistrationUnitPricePreview = function() {
-            updateUnitPricePreview('reg-payment-amount', 'reg-sessions', 'reg-unit-price-preview', '1회 단가를 계산하려면 결제 금액을 입력하세요.');
+            updateUnitPricePreview('reg-payment-amount', 'reg-sessions', 'reg-unit-price-preview', '1회 단가를 계산하려면 PT 매출을 입력하세요.');
         }
 
         function getRegistrationSessionCounts() {
@@ -5879,7 +5913,7 @@
         }
 
         window.updateRenewalUnitPricePreview = function() {
-            updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 결제 금액을 입력하세요.');
+            updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 PT 매출을 입력하세요.');
         }
 
         function setMemberFormMode(mode = 'create') {
@@ -5916,7 +5950,7 @@
             return payments.find(payment => payment && payment.type === 'initial') || payments[0] || null;
         }
 
-        function updatePrimaryMemberPayment(member, { date, amount, sessions }) {
+        function updatePrimaryMemberPayment(member, { date, amount, membershipAmount = 0, sessions }) {
             member.payments = Array.isArray(member.payments) ? member.payments : [];
             let payment = getPrimaryMemberPayment(member);
             if (!payment) {
@@ -5925,6 +5959,7 @@
                     type: 'initial',
                     date,
                     amount,
+                    membershipAmount,
                     sessions,
                     startNo: 1,
                     count: sessions
@@ -5936,6 +5971,7 @@
                     type: payment.type || 'initial',
                     date,
                     amount,
+                    membershipAmount,
                     sessions,
                     renewalId: payment.renewalId || '',
                     startNo: payment.startNo || 1,
@@ -6047,6 +6083,7 @@
             document.getElementById('reg-payment-date').value = today;
             document.getElementById('reg-legacy-settlement-month').value = getCurrentMonthKey(new Date());
             document.getElementById('reg-payment-amount').value = '';
+            document.getElementById('reg-membership-amount').value = '';
             window.registrationRemainingManual = false;
             window.updateRegistrationUnitPricePreview();
             window.updateRegistrationLegacyPreview();
@@ -6076,6 +6113,7 @@
             document.getElementById('reg-date-input').value = normalizeDateInputValue(member.registrationDate);
             document.getElementById('reg-payment-date').value = normalizeDateInputValue(payment && payment.date, normalizeDateInputValue(member.registrationDate));
             document.getElementById('reg-payment-amount').value = payment && Number(payment.amount) > 0 ? String(Math.round(Number(payment.amount))) : '';
+            document.getElementById('reg-membership-amount').value = payment && Number(payment.membershipAmount) > 0 ? String(Math.round(Number(payment.membershipAmount))) : '';
             const legacySettlementLessons = (member.lessons || []).filter(lesson => isLegacyCompletedLesson(lesson) && lesson.legacySettlement);
             const firstSettlementMonth = legacySettlementLessons[0] && legacySettlementLessons[0].legacySettlementMonth;
             document.getElementById('reg-legacy-settlement-count').value = String(legacySettlementLessons.length);
@@ -6109,15 +6147,16 @@
             const registrationDate = document.getElementById('reg-date-input').value || formatDate(new Date());
             const paymentDate = document.getElementById('reg-payment-date').value || registrationDate;
             const paymentAmount = parseCurrencyInput(document.getElementById('reg-payment-amount').value);
+            const membershipAmount = parseCurrencyInput(document.getElementById('reg-membership-amount').value);
             if (!name) return showToast('이름을 입력하세요!');
             if (sessions < 1) return showToast('총 횟수를 올바르게 입력하세요!');
             if (remainingSessions < 0 || remainingSessions > sessions) return showToast('잔여 횟수는 총 횟수 안에서 입력하세요!');
             if (sessions < signedCount) return showToast('총 횟수는 실제 서명 완료 수업보다 작게 설정할 수 없습니다.');
             if (desiredLegacyCount < 0) return showToast('잔여 횟수가 실제 서명 완료 수업보다 많습니다.');
             if (legacySettlementCount < 0 || legacySettlementCount > desiredLegacyCount) return showToast('이번 달 정산 반영 횟수를 이전 완료분 안에서 입력하세요!');
-            if (paymentAmount <= 0) return showToast('결제 금액을 입력하세요!');
+            if (paymentAmount <= 0) return showToast('PT 매출을 입력하세요!');
 
-            const primaryPayment = updatePrimaryMemberPayment(member, { date: paymentDate, amount: paymentAmount, sessions });
+            const primaryPayment = updatePrimaryMemberPayment(member, { date: paymentDate, amount: paymentAmount, membershipAmount, sessions });
             clearLegacyCompletedLessons(member);
             const resizeResult = resizeMemberLessons(member, sessions, primaryPayment.id);
             if (!resizeResult.ok) return showToast(resizeResult.message);
@@ -6149,11 +6188,12 @@
             const registrationDate = document.getElementById('reg-date-input').value || formatDate(new Date());
             const paymentDate = document.getElementById('reg-payment-date').value || registrationDate;
             const paymentAmount = parseCurrencyInput(document.getElementById('reg-payment-amount').value);
+            const membershipAmount = parseCurrencyInput(document.getElementById('reg-membership-amount').value);
             if(!name) return showToast("이름을 입력하세요!");
             if(sessions < 1) return showToast("세션 수를 올바르게 입력하세요!");
             if(remainingSessions < 0 || remainingSessions > sessions) return showToast("잔여 횟수는 결제 횟수 안에서 입력하세요!");
             if(legacySettlementCount < 0 || legacySettlementCount > legacyCompleted) return showToast("이번 달 정산 반영 횟수를 이전 완료분 안에서 입력하세요!");
-            if(paymentAmount <= 0) return showToast("결제 금액을 입력하세요!");
+            if(paymentAmount <= 0) return showToast("PT 매출을 입력하세요!");
             
             const paymentId = 'payment_' + Date.now();
             const payment = buildMemberPayment({
@@ -6161,6 +6201,7 @@
                 type: 'initial',
                 date: paymentDate,
                 amount: paymentAmount,
+                membershipAmount,
                 sessions,
                 startNo: 1,
                 count: sessions
@@ -6222,6 +6263,7 @@
             document.getElementById('add-session-date').value = today;
             document.getElementById('add-payment-date').value = today;
             document.getElementById('add-payment-amount').value = '';
+            document.getElementById('add-membership-amount').value = '';
             window.updateRenewalUnitPricePreview();
             const m = document.getElementById('modal-add-session');
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
@@ -6235,8 +6277,9 @@
             const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
             const paymentDate = document.getElementById('add-payment-date').value || renewalDate;
             const paymentAmount = parseCurrencyInput(document.getElementById('add-payment-amount').value);
+            const membershipAmount = parseCurrencyInput(document.getElementById('add-membership-amount').value);
             if (count < 1) return showToast("추가할 세션 횟수를 확인해주세요!");
-            if (paymentAmount <= 0) return showToast("재등록 결제 금액을 입력해주세요!");
+            if (paymentAmount <= 0) return showToast("재등록 PT 매출을 입력해주세요!");
             
             const m = window.members.find(x => x.id === window.activeMemberId);
             const currentLen = m.lessons.length;
@@ -6247,6 +6290,7 @@
                 type: 'renewal',
                 date: paymentDate,
                 amount: paymentAmount,
+                membershipAmount,
                 sessions: count,
                 renewalId,
                 startNo: currentLen + 1,
@@ -6255,7 +6299,7 @@
             m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
             m.payments = Array.isArray(m.payments) ? m.payments : [];
             m.payments.push(payment);
-            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count, paymentId, paymentDate, paymentAmount, unitPrice: payment.unitPrice });
+            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count, paymentId, paymentDate, paymentAmount, membershipAmount, unitPrice: payment.unitPrice });
             for(let i = 0; i < count; i++) {
                 m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId });
             }
