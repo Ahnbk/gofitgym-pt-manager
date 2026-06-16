@@ -128,6 +128,18 @@
         .cal-day-off-text {
             color: #dc2626 !important;
         }
+        .cal-today-header {
+            background: #fff4e6;
+        }
+        .cal-today-cell {
+            background: #fff7ed;
+        }
+        .cal-today-cell:hover {
+            background: #ffedd5;
+        }
+        .cal-today-cell.cal-now-cell {
+            background: #ffedd5;
+        }
         .cal-holiday-name {
             max-width: 100%;
             padding: 0 3px;
@@ -2121,8 +2133,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v142';
-        const APP_DISPLAY_VERSION = '1.42';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v143';
+        const APP_DISPLAY_VERSION = '1.43';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -8841,14 +8853,12 @@
                 const isToday = formatDate(d) === todayStr;
                 const holiday = getKoreanHolidayInfo(d);
                 const dayTextClass = holiday.isDayOff ? 'cal-day-off-text' : (isToday ? 'text-amber-600' : 'text-stone-900');
-                const dateClass = isToday
-                    ? 'bg-amber-400 text-stone-950 border border-stone-900'
-                    : (holiday.isDayOff ? 'text-red-600' : 'text-stone-950');
+                const dateClass = holiday.isDayOff ? 'text-red-600' : 'text-stone-950';
                 const holidayName = holiday.name
                     ? `<span class="cal-holiday-name" title="${escapeHtml(holiday.name)}">${escapeHtml(holiday.name)}</span>`
                     : '';
                 header.innerHTML += `
-                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header ${holiday.isDayOff ? 'cal-day-off' : 'bg-white'}" title="${holiday.name ? escapeHtml(holiday.name) : ''}">
+                    <div class="py-2 flex flex-col items-center justify-center cal-grid-header ${isToday ? 'cal-today-header' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white')}" title="${holiday.name ? escapeHtml(holiday.name) : ''}">
                         <span class="text-[9px] font-black ${dayTextClass} mb-0.5">${DAYS[i]}</span>
                         <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${dateClass}">${d.getDate()}</div>
                         ${holidayName}
@@ -8866,11 +8876,13 @@
                     const tDate = formatDate(d);
                     const holiday = getKoreanHolidayInfo(d);
                     const cell = document.createElement('div');
+                    const isTodayCell = tDate === todayStr;
                     const isCurrentTimeCell = showCurrentTimeCell && tDate === todayStr && tStr === currentHourStr;
                     const moveActive = isScheduleMoveActive();
                     const moveOccupied = moveActive && !!getOccupiedScheduleAt(tDate, tStr);
                     const moveClass = moveActive ? (moveOccupied ? 'cal-move-blocked' : 'cal-move-target') : '';
-                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${isCurrentTimeCell ? 'cal-now-cell' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white')} ${moveClass}`;
+                    const dayClass = isTodayCell ? 'cal-today-cell' : (holiday.isDayOff ? 'cal-day-off' : 'bg-white');
+                    cell.className = `cal-grid-cell relative cursor-pointer hover:bg-amber-50 transition-colors h-full ${dayClass} ${isCurrentTimeCell ? 'cal-now-cell' : ''} ${moveClass}`;
                     if (isCurrentTimeCell) cell.title = holiday.name ? `현재 시간 · ${holiday.name}` : '현재 시간';
                     else if (holiday.name) cell.title = holiday.name;
                     cell.onclick = () => handleCalendarCellClick(tDate, tStr);
