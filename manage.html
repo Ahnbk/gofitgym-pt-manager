@@ -2098,6 +2098,10 @@
         var workoutLogsExpanded = false;
         var activeWorkoutId = null;
         var workoutSortOrder = localStorage.getItem('gofitgym_workout_sort_order') || 'desc';
+        var workoutMonthCollapsed = (() => {
+            try { return JSON.parse(localStorage.getItem('gofitgym_workout_month_collapsed') || '{}') || {}; }
+            catch (e) { return {}; }
+        })();
         var firebaseApp = null;
         var firebaseAuth = null;
         var firebaseDb = null;
@@ -2134,8 +2138,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v144';
-        const APP_DISPLAY_VERSION = '1.44';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v145';
+        const APP_DISPLAY_VERSION = '1.45';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -7164,6 +7168,61 @@
             return display === '날짜 미입력' ? '날짜 미입력' : display.replace(/\s*요일$/, '');
         }
 
+        function getWorkoutMonthInfo(w) {
+            const raw = String((w && w.date) || '').trim();
+            let year = null;
+            let month = null;
+            const full = raw.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+            const short = raw.match(/^(\d{1,2})[./-](\d{1,2})$/);
+            if (full) {
+                year = Number(full[1]);
+                month = Number(full[2]);
+            } else if (short) {
+                year = new Date().getFullYear();
+                month = Number(short[1]);
+            }
+            if (!year || !month || month < 1 || month > 12) {
+                return { key: 'undated', label: '날짜 미입력' };
+            }
+            const monthText = String(month).padStart(2, '0');
+            return { key: `${year}-${monthText}`, label: `${year}년 ${monthText}월` };
+        }
+
+        function getWorkoutMonthStateKey(memberId, monthKey) {
+            return `${memberId || 'member'}:${monthKey}`;
+        }
+
+        function saveWorkoutMonthCollapsedState() {
+            try { localStorage.setItem('gofitgym_workout_month_collapsed', JSON.stringify(window.workoutMonthCollapsed || {})); }
+            catch (e) {}
+        }
+
+        function createWorkoutCard(w) {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.onclick = () => window.openWorkoutEditor(w.id);
+            card.className = 'min-h-[156px] bg-white border border-stone-200 rounded-2xl p-3 text-left shadow-sm active-scale hover:border-amber-300 hover:bg-amber-50/40 transition-colors flex flex-col justify-between';
+            card.innerHTML = `
+                <div class="space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <p class="text-[11px] font-black text-amber-600">${escapeHtml(formatWorkoutCardDate(w.date))}</p>
+                            <p class="text-sm font-black text-stone-900 leading-tight mt-1">${escapeHtml(getWorkoutCardTitle(w.content))}</p>
+                        </div>
+                        <span class="shrink-0 w-7 h-7 rounded-lg bg-stone-100 text-stone-500 flex items-center justify-center">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </span>
+                    </div>
+                    <p class="text-[12px] leading-relaxed text-stone-600" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(getWorkoutCardPreview(w.content))}</p>
+                </div>
+                <div class="pt-3 mt-3 border-t border-stone-100 text-[10px] font-black text-stone-400 flex items-center justify-between">
+                    <span>터치하여 보기/수정</span>
+                    <i class="fa-solid fa-chevron-right text-amber-500"></i>
+                </div>
+            `;
+            return card;
+        }
+
         window.renderMemberWorkouts = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             if(!m) return;
@@ -7180,34 +7239,61 @@
                 return;
             }
 
-            const grid = document.createElement('div');
-            grid.className = 'grid [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] gap-3';
+            const groups = [];
+            const groupMap = new Map();
             getSortedWorkouts(workouts).forEach(w => {
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.onclick = () => window.openWorkoutEditor(w.id);
-                card.className = 'min-h-[156px] bg-white border border-stone-200 rounded-2xl p-3 text-left shadow-sm active-scale hover:border-amber-300 hover:bg-amber-50/40 transition-colors flex flex-col justify-between';
-                card.innerHTML = `
-                    <div class="space-y-2">
-                        <div class="flex items-start justify-between gap-2">
-                            <div>
-                                <p class="text-[11px] font-black text-amber-600">${escapeHtml(formatWorkoutCardDate(w.date))}</p>
-                                <p class="text-sm font-black text-stone-900 leading-tight mt-1">${escapeHtml(getWorkoutCardTitle(w.content))}</p>
-                            </div>
-                            <span class="shrink-0 w-7 h-7 rounded-lg bg-stone-100 text-stone-500 flex items-center justify-center">
-                                <i class="fa-solid fa-pen text-[10px]"></i>
-                            </span>
-                        </div>
-                        <p class="text-[12px] leading-relaxed text-stone-600" style="display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(getWorkoutCardPreview(w.content))}</p>
-                    </div>
-                    <div class="pt-3 mt-3 border-t border-stone-100 text-[10px] font-black text-stone-400 flex items-center justify-between">
-                        <span>터치하여 보기/수정</span>
-                        <i class="fa-solid fa-chevron-right text-amber-500"></i>
-                    </div>
-                `;
-                grid.appendChild(card);
+                const info = getWorkoutMonthInfo(w);
+                if (!groupMap.has(info.key)) {
+                    const group = { key: info.key, label: info.label, items: [] };
+                    groupMap.set(info.key, group);
+                    groups.push(group);
+                }
+                groupMap.get(info.key).items.push(w);
             });
-            container.appendChild(grid);
+
+            groups.forEach((group, groupIndex) => {
+                const stateKey = getWorkoutMonthStateKey(m.id, group.key);
+                const collapsed = Object.prototype.hasOwnProperty.call(window.workoutMonthCollapsed, stateKey)
+                    ? !!window.workoutMonthCollapsed[stateKey]
+                    : groupIndex > 0;
+                const section = document.createElement('section');
+                section.className = 'space-y-2';
+
+                const headerBtn = document.createElement('button');
+                headerBtn.type = 'button';
+                headerBtn.className = 'w-full min-h-[46px] px-3 py-2 rounded-2xl border border-stone-200 bg-white shadow-sm active-scale flex items-center justify-between gap-3 text-left';
+                headerBtn.onclick = () => window.toggleWorkoutMonth(m.id, group.key, collapsed);
+                headerBtn.innerHTML = `
+                    <span class="min-w-0 flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                            <i class="fa-regular fa-calendar-days text-xs"></i>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block text-sm font-black text-stone-900 truncate">${escapeHtml(group.label)}</span>
+                            <span class="block text-[10px] font-black text-stone-400">${group.items.length}개 기록</span>
+                        </span>
+                    </span>
+                    <i class="fa-solid ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} text-amber-500 text-xs"></i>
+                `;
+                section.appendChild(headerBtn);
+
+                if (!collapsed) {
+                    const grid = document.createElement('div');
+                    grid.className = 'grid [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] gap-3';
+                    group.items.forEach(w => grid.appendChild(createWorkoutCard(w)));
+                    section.appendChild(grid);
+                }
+                container.appendChild(section);
+            });
+        }
+
+        window.toggleWorkoutMonth = function(memberId, monthKey, currentCollapsed = false) {
+            const stateKey = getWorkoutMonthStateKey(memberId, monthKey);
+            const hasState = Object.prototype.hasOwnProperty.call(window.workoutMonthCollapsed, stateKey);
+            const effectiveCollapsed = hasState ? !!window.workoutMonthCollapsed[stateKey] : !!currentCollapsed;
+            window.workoutMonthCollapsed[stateKey] = !effectiveCollapsed;
+            saveWorkoutMonthCollapsedState();
+            window.renderMemberWorkouts();
         }
 
         function queueWorkoutSave() {
@@ -7238,6 +7324,9 @@
             m.workouts.unshift(newWorkout);
             window.workoutSortOrder = 'desc';
             localStorage.setItem('gofitgym_workout_sort_order', window.workoutSortOrder);
+            const monthInfo = getWorkoutMonthInfo(newWorkout);
+            window.workoutMonthCollapsed[getWorkoutMonthStateKey(m.id, monthInfo.key)] = false;
+            saveWorkoutMonthCollapsedState();
             localSaveMember(m);
             window.renderMemberWorkouts();
             window.openWorkoutEditor(newWorkout.id);
