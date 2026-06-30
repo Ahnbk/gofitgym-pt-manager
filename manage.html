@@ -1317,6 +1317,7 @@
                             <i class="fa-solid fa-mobile-screen-button mr-1.5"></i>앱 설치
                         </button>
                         <input type="file" id="backup-restore-input" accept=".json,application/json" class="hidden" onchange="window.restoreBackupFile(this)">
+                        <input type="file" id="member-archive-restore-input" accept=".json,application/json" class="hidden" onchange="window.restoreMemberArchiveFile(this)">
                     </div>
                     <div id="backup-status-panel" class="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-3 py-2.5">
                         <div id="backup-status-icon" class="w-8 h-8 rounded-xl flex items-center justify-center bg-stone-200 text-stone-500">
@@ -1506,7 +1507,7 @@
                 <button onclick="window.closeMemberActionMenu()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-5 space-y-2">
-                <button onclick="window.openActionMemberDetail()" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
+                <button onclick="window.openActionMemberDetail()" id="member-action-detail-btn" class="w-full py-3 bg-stone-900 text-white rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-user mr-1.5 text-amber-500"></i>회원 화면 열기
                 </button>
                 <button onclick="window.cancelActionMemberTodaySchedule()" id="member-action-cancel-schedule-btn" class="hidden w-full py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-xs font-black active-scale">
@@ -1514,6 +1515,12 @@
                 </button>
                 <button onclick="window.openMemberHoldChoiceModal()" id="member-action-hold-edit-btn" class="hidden w-full py-3 bg-sky-50 text-sky-700 border border-sky-100 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-right-left mr-1.5"></i>보류 / 인계 상태 변경
+                </button>
+                <button onclick="window.archiveActionCompletedMember()" id="member-action-archive-btn" class="hidden w-full py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-box-archive mr-1.5"></i>보관 백업 만들기
+                </button>
+                <button onclick="window.openMemberArchiveRestorePicker()" id="member-action-restore-archive-btn" class="hidden w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-file-import mr-1.5"></i>보관 백업 복원
                 </button>
                 <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동
@@ -2102,6 +2109,7 @@
             try { return JSON.parse(localStorage.getItem('gofitgym_workout_month_collapsed') || '{}') || {}; }
             catch (e) { return {}; }
         })();
+        var memberArchiveRestoreTargetId = null;
         var firebaseApp = null;
         var firebaseAuth = null;
         var firebaseDb = null;
@@ -2138,8 +2146,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v145';
-        const APP_DISPLAY_VERSION = '1.45';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v146';
+        const APP_DISPLAY_VERSION = '1.46';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3776,6 +3784,17 @@
                         if (typeof m.transferTeacher !== 'string') m.transferTeacher = '';
                     }
                 }
+                if (isArchivedMember(m)) {
+                    m.archived = true;
+                    m.status = 'archived';
+                    m.archivedSummary = m.archivedSummary && typeof m.archivedSummary === 'object' ? m.archivedSummary : {};
+                    m.lessons = [];
+                    m.workouts = [];
+                    m.renewals = [];
+                    m.payments = Array.isArray(m.payments) ? m.payments : [];
+                    m.totalSessions = Math.max(0, parseInt(m.archivedSummary.totalSessions || m.totalSessions, 10) || 0);
+                    return m;
+                }
                 m.lessons = Array.isArray(m.lessons) ? m.lessons : [];
                 const targetTotal = Math.max(parseInt(m.totalSessions) || 0, m.lessons.length);
                 while (m.lessons.length < targetTotal) {
@@ -3815,6 +3834,9 @@
         }
 
         function getCompletedCount(m) {
+            if (isArchivedMember(m) && m.archivedSummary) {
+                return Math.max(0, parseInt(m.archivedSummary.completedLessons, 10) || 0);
+            }
             return (m.lessons || []).filter(isCompletedLesson).length;
         }
 
@@ -3841,7 +3863,12 @@
             return isSignedLesson(lesson) || isLegacyCompletedLesson(lesson);
         }
 
+        function isArchivedMember(m) {
+            return !!(m && (m.archived === true || m.status === 'archived'));
+        }
+
         function isMemberCompleted(m) {
+            if (isArchivedMember(m)) return true;
             return m.totalSessions > 0 && getCompletedCount(m) >= m.totalSessions;
         }
 
@@ -5206,9 +5233,9 @@
         function getDataSummary(members = window.members, schedules = window.schedules) {
             const safeMembers = Array.isArray(members) ? members : [];
             const safeSchedules = Array.isArray(schedules) ? schedules : [];
-            const lessonCount = safeMembers.reduce((sum, member) => sum + ((member.lessons || []).length), 0);
+            const lessonCount = safeMembers.reduce((sum, member) => sum + (isArchivedMember(member) && member.archivedSummary ? (parseInt(member.archivedSummary.lessons, 10) || parseInt(member.archivedSummary.totalSessions, 10) || 0) : ((member.lessons || []).length)), 0);
             const signedCount = safeMembers.reduce((sum, member) => sum + getCompletedCount(member), 0);
-            const workoutCount = safeMembers.reduce((sum, member) => sum + ((member.workouts || []).length), 0);
+            const workoutCount = safeMembers.reduce((sum, member) => sum + (isArchivedMember(member) && member.archivedSummary ? (parseInt(member.archivedSummary.workouts, 10) || 0) : ((member.workouts || []).length)), 0);
             return {
                 members: safeMembers.length,
                 schedules: safeSchedules.length,
@@ -5263,6 +5290,131 @@
             const fileName = getBackupFileName();
             const blob = new Blob([json], { type: 'application/json' });
             return { blob, fileName, json };
+        }
+
+        function sanitizeFilePart(value, fallback = '기록') {
+            const cleaned = String(value || fallback).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '').trim();
+            return cleaned || fallback;
+        }
+
+        function getJsonByteSize(value) {
+            const json = typeof value === 'string' ? value : JSON.stringify(value || {});
+            try { return new TextEncoder().encode(json).length; }
+            catch (err) { return json.length; }
+        }
+
+        function clonePlainData(value) {
+            return JSON.parse(JSON.stringify(value || null));
+        }
+
+        function getMemberMatchedSchedules(member) {
+            return (window.schedules || []).filter(schedule => scheduleMatchesMember(schedule, member));
+        }
+
+        function getLastCompletedLessonDate(member) {
+            const lessons = Array.isArray(member && member.lessons) ? member.lessons : [];
+            const signed = lessons.filter(isCompletedLesson).map(lesson => String(lesson.date || '')).filter(Boolean);
+            return signed[signed.length - 1] || '';
+        }
+
+        function getConsultationFilledCount(member) {
+            const consultation = member && member.consultation && typeof member.consultation === 'object' ? member.consultation : {};
+            return Object.values(consultation).filter(value => String(value || '').trim()).length;
+        }
+
+        function buildMemberArchiveSummary(member, archiveMeta = {}) {
+            const completedLessons = getCompletedCount(member);
+            const totalSessions = Math.max(0, parseInt(member && member.totalSessions, 10) || ((member && member.lessons || []).length));
+            const workouts = Array.isArray(member && member.workouts) ? member.workouts.length : 0;
+            const lessons = Array.isArray(member && member.lessons) ? member.lessons.length : 0;
+            const signedLessons = Array.isArray(member && member.lessons) ? member.lessons.filter(isSignedLesson).length : 0;
+            return {
+                archivedAt: archiveMeta.archivedAt || new Date().toISOString(),
+                jsonFileName: archiveMeta.jsonFileName || '',
+                pdfFileName: archiveMeta.pdfFileName || '',
+                memberName: member && member.name ? member.name : '',
+                trainer: (member && member.trainer) || getTrainerName(),
+                registrationDate: member && member.registrationDate ? member.registrationDate : '',
+                lastLessonDate: getLastCompletedLessonDate(member),
+                totalSessions,
+                completedLessons,
+                lessons,
+                signedLessons,
+                workouts,
+                payments: Array.isArray(member && member.payments) ? member.payments.length : 0,
+                renewals: Array.isArray(member && member.renewals) ? member.renewals.length : 0,
+                schedules: archiveMeta.schedules || 0,
+                consultationFields: getConsultationFilledCount(member),
+                originalDataBytes: archiveMeta.originalDataBytes || getJsonByteSize(member),
+                jsonBytes: archiveMeta.jsonBytes || 0,
+                pdfBytes: archiveMeta.pdfBytes || 0
+            };
+        }
+
+        function getMemberArchiveFileBaseName(member) {
+            const now = new Date();
+            const trainer = sanitizeFilePart(getTrainerName(), '트레이너');
+            const memberName = sanitizeFilePart(member && member.name, '회원');
+            const date = formatDate(now).replace(/-/g, '');
+            const time = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            return `고핏짐_완료회원보관_${trainer}_${memberName}_${date}_${time}`;
+        }
+
+        function buildMemberArchivePayload(member, fileMeta = {}) {
+            const archivedAt = fileMeta.archivedAt || new Date().toISOString();
+            const memberClone = clonePlainData(member);
+            const schedules = getMemberMatchedSchedules(member).map(clonePlainData);
+            const summary = buildMemberArchiveSummary(member, {
+                archivedAt,
+                jsonFileName: fileMeta.jsonFileName || '',
+                pdfFileName: fileMeta.pdfFileName || '',
+                schedules: schedules.length,
+                originalDataBytes: getJsonByteSize(member)
+            });
+            return {
+                app: 'GOFITGYM_PT_MANAGER',
+                version: 1,
+                scope: 'member-archive',
+                exportedAt: archivedAt,
+                trainer: window.appProfile ? { loginId: window.appProfile.loginId, trainerName: window.appProfile.trainerName } : { trainerName: getTrainerName() },
+                summary,
+                member: memberClone,
+                schedules
+            };
+        }
+
+        function validateMemberArchivePayload(parsed) {
+            if (!parsed || typeof parsed !== 'object') throw new Error('Invalid archive object.');
+            if (parsed.app !== 'GOFITGYM_PT_MANAGER' || parsed.scope !== 'member-archive') throw new Error('Not a member archive.');
+            if (!parsed.member || typeof parsed.member !== 'object' || !parsed.member.id || !parsed.member.name) throw new Error('Invalid archive member.');
+            if (parsed.schedules && !Array.isArray(parsed.schedules)) throw new Error('Invalid archive schedules.');
+            return {
+                member: parsed.member,
+                schedules: Array.isArray(parsed.schedules) ? parsed.schedules : [],
+                trainerName: parsed.trainer && parsed.trainer.trainerName ? parsed.trainer.trainerName : '알 수 없음',
+                exportedAt: parsed.exportedAt || '',
+                summary: parsed.summary || buildMemberArchiveSummary(parsed.member)
+            };
+        }
+
+        function createArchivedMemberSummaryRecord(member, archive) {
+            const summary = archive && archive.summary ? archive.summary : buildMemberArchiveSummary(member);
+            return {
+                id: member.id,
+                name: member.name,
+                trainer: member.trainer || getTrainerName(),
+                registrationDate: member.registrationDate || '',
+                totalSessions: summary.totalSessions || member.totalSessions || 0,
+                status: 'archived',
+                archived: true,
+                archivedAt: summary.archivedAt || new Date().toISOString(),
+                archivedSummary: summary,
+                lessons: [],
+                workouts: [],
+                renewals: [],
+                payments: [],
+                memo: ''
+            };
         }
 
         function getRestoreSafetyKey() {
@@ -5485,6 +5637,163 @@
             }
         }
 
+        async function generateMemberArchivePdfBlob(member) {
+            const previousActiveMemberId = window.activeMemberId;
+            const previousPdfMode = window.currentPdfMode;
+            const previousPdfFileName = window.currentPdfFileName;
+            const previousPdfShareText = window.currentPdfShareText;
+            const previousPdfElement = window.currentPdfElementToExport;
+            try {
+                window.activeMemberId = member.id;
+                window.currentPdfMode = 'member';
+                window.buildPdfPagesForPreview();
+                return await generateCurrentPdfBlob();
+            } finally {
+                window.activeMemberId = previousActiveMemberId;
+                window.currentPdfMode = previousPdfMode;
+                window.currentPdfFileName = previousPdfFileName;
+                window.currentPdfShareText = previousPdfShareText;
+                window.currentPdfElementToExport = previousPdfElement;
+            }
+        }
+
+        async function createMemberArchiveBundle(member) {
+            const archivedAt = new Date().toISOString();
+            const baseName = getMemberArchiveFileBaseName(member);
+            const jsonFileName = `${baseName}.json`;
+            const pdfFileName = `${baseName}.pdf`;
+            const payload = buildMemberArchivePayload(member, { archivedAt, jsonFileName, pdfFileName });
+            let json = JSON.stringify(payload, null, 2);
+            payload.summary.jsonBytes = getJsonByteSize(json);
+            json = JSON.stringify(payload, null, 2);
+            const jsonBlob = new Blob([json], { type: 'application/json' });
+            showToast('PDF 증빙을 만드는 중입니다...', 3500);
+            const pdfBlob = await generateMemberArchivePdfBlob(member);
+            payload.summary.pdfBytes = pdfBlob.size || 0;
+            payload.summary.jsonBytes = getJsonByteSize(JSON.stringify(payload, null, 2));
+            const finalJson = JSON.stringify(payload, null, 2);
+            const finalJsonBlob = new Blob([finalJson], { type: 'application/json' });
+            return { payload, json: finalJson, jsonBlob: finalJsonBlob, jsonFileName, pdfBlob, pdfFileName };
+        }
+
+        async function shareOrDownloadMemberArchiveBundle(bundle, member) {
+            const shareText = `${member.name} 회원 완료 보관 백업입니다. JSON은 앱 복원용, PDF는 확인용입니다.`;
+            try {
+                if (navigator.share && navigator.canShare && typeof File !== 'undefined') {
+                    const jsonShareBlob = new Blob([bundle.json], { type: 'text/plain' });
+                    const files = [
+                        new File([jsonShareBlob], bundle.jsonFileName, { type: 'text/plain' }),
+                        new File([bundle.pdfBlob], bundle.pdfFileName, { type: 'application/pdf' })
+                    ];
+                    if (navigator.canShare({ files })) {
+                        await navigator.share({
+                            title: 'GOFITGYM 완료회원 보관 백업',
+                            text: shareText,
+                            files
+                        });
+                        showToast('보관 백업 공유창을 열었습니다.');
+                        return 'shared';
+                    }
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') throw err;
+                console.error('Archive share failed.', err);
+            }
+
+            downloadBlobAsFile(bundle.jsonBlob, bundle.jsonFileName);
+            setTimeout(() => downloadBlobAsFile(bundle.pdfBlob, bundle.pdfFileName, '공유 미지원 환경이라 JSON/PDF를 다운로드했습니다.'), 450);
+            return 'downloaded';
+        }
+
+        function replaceMemberWithArchivedSummary(member, archivePayload) {
+            const index = window.members.findIndex(item => String(item.id) === String(member.id));
+            if (index < 0) return false;
+            const summaryMember = createArchivedMemberSummaryRecord(member, archivePayload);
+            window.members.splice(index, 1, summaryMember);
+            localSaveMember(summaryMember);
+            return true;
+        }
+
+        window.archiveActionCompletedMember = async function() {
+            const member = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!member) return showToast('보관할 회원을 찾지 못했습니다.');
+            if (isArchivedMember(member)) return showToast('이미 보관 처리된 회원입니다.');
+            if (!isMemberCompleted(member)) return showToast('완료회원만 보관 백업할 수 있습니다.');
+
+            const ok = confirm(`${member.name} 회원의 보관 백업을 만들까요?\n\nJSON은 앱 복원용이고 PDF는 확인/공유용입니다.\n백업 후 원하면 앱 안의 상세 서명/일지를 요약 보관 상태로 줄일 수 있습니다.`);
+            if (!ok) return;
+
+            try {
+                const bundle = await createMemberArchiveBundle(member);
+                await shareOrDownloadMemberArchiveBundle(bundle, member);
+                markBackupSaved();
+                const archiveOk = confirm(`백업 파일을 저장 또는 공유했다면 보관 처리할 수 있습니다.\n\n보관 처리하면 앱 안에는 ${member.name} 회원의 요약만 남고, 서명/운동일지 상세는 JSON 백업 파일로 복원해서 다시 봅니다.\n\n지금 요약 보관 상태로 전환할까요?`);
+                if (!archiveOk) {
+                    showToast('백업만 만들고 앱 데이터는 그대로 유지했습니다.');
+                    return;
+                }
+                replaceMemberWithArchivedSummary(member, bundle.payload);
+                window.switchMemberStatusTab('completed');
+                window.closeMemberActionMenu();
+                showToast(`${member.name} 회원을 보관 요약 상태로 전환했습니다.`);
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                console.error(err);
+                showToast('완료회원 보관 백업에 실패했습니다.');
+            }
+        }
+
+        window.openMemberArchiveRestorePicker = function() {
+            window.memberArchiveRestoreTargetId = window.memberActionMemberId || null;
+            const input = document.getElementById('member-archive-restore-input');
+            if (input) input.click();
+        }
+
+        window.restoreMemberArchiveFile = async function(input) {
+            const file = input && input.files && input.files[0];
+            if (input) input.value = '';
+            if (!file) return;
+            try {
+                const archive = validateMemberArchivePayload(JSON.parse(await file.text()));
+                const member = archive.member;
+                const targetId = window.memberArchiveRestoreTargetId;
+                const existingIndex = window.members.findIndex(item => String(item.id) === String(targetId || member.id));
+                const existing = existingIndex >= 0 ? window.members[existingIndex] : null;
+                const detail = `${archive.summary.completedLessons || getCompletedCount(member)} / ${archive.summary.totalSessions || member.totalSessions || 0}회 완료 · 운동일지 ${archive.summary.workouts || ((member.workouts || []).length)}개`;
+                const ok = confirm(`${archive.trainerName} 트레이너의 완료회원 보관 백업입니다.\n회원: ${member.name}\n${detail}\n\n이 회원 데이터를 앱으로 복원할까요?`);
+                if (!ok) return;
+
+                const restoredMember = clonePlainData(member);
+                if (restoredMember.status === 'archived') restoredMember.status = '';
+                delete restoredMember.archived;
+                delete restoredMember.archivedSummary;
+                delete restoredMember.archivedAt;
+
+                if (existingIndex >= 0) window.members.splice(existingIndex, 1, restoredMember);
+                else window.members.push(restoredMember);
+
+                const scheduleMap = new Map((window.schedules || []).map(schedule => [String(schedule.id), schedule]));
+                (archive.schedules || []).forEach(schedule => {
+                    if (!schedule || typeof schedule !== 'object') return;
+                    const key = String(schedule.id || `archive_${Date.now()}_${Math.random()}`);
+                    if (!schedule.id) schedule.id = key;
+                    scheduleMap.set(key, schedule);
+                });
+                window.schedules = Array.from(scheduleMap.values());
+
+                normalizeDatabase();
+                saveDatabase();
+                if (isActiveCloudProfile()) await window.pushFullCloudSync(false, { forceUpload: true });
+                window.memberArchiveRestoreTargetId = null;
+                window.closeMemberActionMenu();
+                window.switchMemberStatusTab(isMemberCompleted(restoredMember) ? 'completed' : 'active');
+                showToast(`${restoredMember.name} 회원 보관 백업을 복원했습니다.`);
+            } catch (err) {
+                console.error(err);
+                showToast('완료회원 보관 백업 파일 형식이 올바르지 않습니다.');
+            }
+        }
+
         // ================= NAVIGATION =================
         window.goHome = function() {
             if (!window.activeLoginId) return;
@@ -5583,15 +5892,20 @@
             const holdLabel = getMemberHoldLabel(m);
             const holdDetail = getMemberHoldDetail(m);
             const completed = isMemberCompleted(m);
+            const archived = isArchivedMember(m);
             const comp = getCompletedCount(m);
             const todaySchedules = getTodaySchedulesForMember(m);
             document.getElementById('member-action-title').innerText = m.name;
-            document.getElementById('member-action-subtitle').innerText = hold
+            document.getElementById('member-action-subtitle').innerText = archived
+                ? `보관됨 · ${comp}/${m.totalSessions || 0}회 완료`
+                : hold
                 ? `${holdLabel} 중${holdDetail ? ` · ${holdDetail}` : ''} · ${comp}/${m.totalSessions || 0}회 완료`
                 : `${completed ? '완료' : '진행중'} · ${comp}/${m.totalSessions || 0}회 완료`;
+            const detailBtn = document.getElementById('member-action-detail-btn');
+            if (detailBtn) detailBtn.classList.toggle('hidden', archived);
             const cancelBtn = document.getElementById('member-action-cancel-schedule-btn');
             if (cancelBtn) {
-                cancelBtn.classList.toggle('hidden', todaySchedules.length === 0);
+                cancelBtn.classList.toggle('hidden', archived || todaySchedules.length === 0);
                 const times = todaySchedules.map(s => s.time).filter(Boolean).join(', ');
                 cancelBtn.innerHTML = todaySchedules.length > 1
                     ? `<i class="fa-solid fa-calendar-xmark mr-1.5"></i>오늘 수업 ${todaySchedules.length}건 취소`
@@ -5599,15 +5913,21 @@
             }
             const holdEditBtn = document.getElementById('member-action-hold-edit-btn');
             if (holdEditBtn) {
-                holdEditBtn.classList.toggle('hidden', !hold);
+                holdEditBtn.classList.toggle('hidden', archived || !hold);
                 holdEditBtn.innerHTML = isMemberTransferred(m)
                     ? '<i class="fa-solid fa-right-left mr-1.5"></i>보류 / 인계 정보 수정'
                     : '<i class="fa-solid fa-right-left mr-1.5"></i>인계로 변경';
             }
+            const archiveBtn = document.getElementById('member-action-archive-btn');
+            if (archiveBtn) archiveBtn.classList.toggle('hidden', archived || hold || !completed);
+            const restoreArchiveBtn = document.getElementById('member-action-restore-archive-btn');
+            if (restoreArchiveBtn) restoreArchiveBtn.classList.toggle('hidden', !archived);
             const holdBtn = document.getElementById('member-action-hold-btn');
+            holdBtn.classList.toggle('hidden', archived);
             holdBtn.className = hold
                 ? 'w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black active-scale'
                 : 'w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale';
+            if (archived) holdBtn.classList.add('hidden');
             holdBtn.innerHTML = hold
                 ? '<i class="fa-solid fa-play mr-1.5"></i>진행중으로 복귀'
                 : '<i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동';
@@ -5816,6 +6136,7 @@
                 const percent = Math.round((comp / m.totalSessions) * 100) || 0;
                 const completed = isMemberCompleted(m);
                 const hold = isMemberOnHold(m);
+                const archived = isArchivedMember(m);
                 const remaining = getRemainingLessonCount(m, comp);
                 
                 const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
@@ -5836,13 +6157,16 @@
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
                     ? `<span class="text-[9px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`);
+                    : (archived ? `<span class="text-[9px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
+                const archivedDetailText = archived && m.archivedSummary
+                    ? `<p class="text-[10px] text-stone-500 font-bold mt-1">보관일 ${formatDisplayDate(String(m.archivedSummary.archivedAt || '').slice(0, 10)) || '-'} · 운동일지 ${m.archivedSummary.workouts || 0}개</p>`
+                    : '';
 
                 const card = document.createElement('div');
-                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
+                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${archived ? 'border-stone-300 bg-stone-50' : (hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80'))} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -5851,6 +6175,7 @@
                                 ${statusBadge}
                             </div>
                             ${holdDetailText}
+                            ${archivedDetailText}
                         </div>
                         <span class="self-end ${remainingBadgeClass}">잔여 ${remaining}회</span>
                     </div>
@@ -6516,6 +6841,12 @@
             window.activeWorkoutId = null;
             const m = window.members.find(x => x.id === id);
             if(!m) return;
+            if (isArchivedMember(m)) {
+                window.activeMemberId = null;
+                window.openMemberActionMenu(id);
+                showToast('보관된 회원은 JSON 백업 파일로 복원해서 상세 내용을 볼 수 있습니다.');
+                return;
+            }
 
             populateMemberDetail(m);
 
