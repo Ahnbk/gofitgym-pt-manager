@@ -2149,8 +2149,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v147';
-        const APP_DISPLAY_VERSION = '1.47';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v148';
+        const APP_DISPLAY_VERSION = '1.48';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2175,6 +2175,7 @@
         const LOCAL_MEDIA_DB_NAME = 'gofitgym_pt_local_media_v1';
         const LOCAL_MEDIA_DB_VERSION = 1;
         const LOCAL_MEDIA_MIRROR_DELAY_MS = 700;
+        const LOCAL_MEDIA_REF_PREFIX = 'gofitgym-idb-ref:';
         const FIREBASE_SDK_VERSION = '11.6.1';
         const CLOUD_LOGIN_PREFIX = 'cloud:';
         const CLOUD_SYNC_DELAY_MS = 800;
@@ -2781,7 +2782,7 @@
                 const licenseLoginId = getLicenseLoginId(user.email);
                 if (!window.activeLoginId) {
                     addLoggedTrainer(licenseLoginId, true);
-                    enterTrainerWorkspace();
+                    await enterTrainerWorkspace();
                 } else {
                     refreshActiveProfile();
                 }
@@ -3604,7 +3605,7 @@
                     const licenseLoginId = getLicenseLoginId(signedUser.email);
                     addLoggedTrainer(licenseLoginId, true);
                     loadDatabase();
-                    enterTrainerWorkspace();
+                    await enterTrainerWorkspace();
                     window.closeCloudAuthModal();
                     showToast('로그인되었습니다. 데이터는 이 기기에만 저장됩니다.');
                     return;
@@ -3644,7 +3645,7 @@
                 }
 
                 startCloudSync();
-                enterTrainerWorkspace();
+                await enterTrainerWorkspace();
                 window.closeCloudAuthModal();
                 showToast(isSignup ? '클라우드 계정을 만들었습니다.' : '로그인되었습니다. 클라우드 동기화가 켜졌습니다.');
             } catch (err) {
@@ -3668,7 +3669,7 @@
                 if (cloudLoginId) removeLoggedTrainer(cloudLoginId);
                 window.cloudUser = null;
                 renderCloudStatus();
-                if (window.activeLoginId) enterTrainerWorkspace();
+                if (window.activeLoginId) await enterTrainerWorkspace();
                 else showLoginOverlay('login');
                 showToast('클라우드에서 로그아웃했습니다.');
             } catch (err) {
@@ -3732,7 +3733,10 @@
         function saveDatabase(options = {}) {
             if (!window.activeLoginId) return;
             try {
-                localStorage.setItem(getMembersStorageKey(), JSON.stringify(window.members));
+                const membersPayload = options.preferLocalMediaRefs
+                    ? buildLocalStorageMembersPayload(window.members, { preferLocalMediaRefs: true })
+                    : window.members;
+                localStorage.setItem(getMembersStorageKey(), JSON.stringify(membersPayload));
                 localStorage.setItem(getSchedulesStorageKey(), JSON.stringify(window.schedules));
                 if (!options.silent) {
                     markDataChanged();
@@ -5041,7 +5045,7 @@
                 const loginId = window.activeLoginId;
                 const allowed = await verifyStoredProfileAccess(window.appProfile);
                 if (allowed) {
-                    enterTrainerWorkspace();
+                    await enterTrainerWorkspace();
                     return;
                 }
                 removeLoggedTrainer(loginId);
@@ -5050,10 +5054,12 @@
             showLoginOverlay('login');
         }
 
-        function enterTrainerWorkspace() {
+        async function enterTrainerWorkspace() {
             hideLoginOverlay();
             loadDatabase();
+            await hydrateAllMediaFromIndexedDb();
             updateTrainerUi();
+            queueLocalMediaMirror();
             setTimeout(() => ensurePersistentStorage(false), 700);
             scheduleGoogleCalendarStartupAutoConnect();
         }
@@ -5244,6 +5250,7 @@
         let localMediaMirrorTimer = null;
         let localMediaMirrorRunning = false;
         let localMediaLastStats = null;
+        const localMediaVerifiedKeys = new Set();
 
         function supportsLocalMediaDb() {
             return typeof indexedDB !== 'undefined';
@@ -5251,6 +5258,57 @@
 
         function getLocalMediaScope(loginId = window.activeLoginId) {
             return String(loginId || 'default');
+        }
+
+        function getSignatureMirrorKey(scope, memberId, lessonNo) {
+            return `${scope}|${memberId}|${lessonNo}`;
+        }
+
+        function getWorkoutMirrorKey(scope, memberId, workoutId) {
+            return `${scope}|${memberId}|${workoutId}`;
+        }
+
+        function buildLocalMediaRef(kind, scope, memberId, itemId) {
+            return `${LOCAL_MEDIA_REF_PREFIX}${kind}:${encodeURIComponent(scope)}:${encodeURIComponent(memberId)}:${encodeURIComponent(itemId)}`;
+        }
+
+        function parseLocalMediaRef(value) {
+            const text = String(value || '');
+            if (!text.startsWith(LOCAL_MEDIA_REF_PREFIX)) return null;
+            const parts = text.slice(LOCAL_MEDIA_REF_PREFIX.length).split(':');
+            if (parts.length !== 4) return null;
+            try {
+                return {
+                    kind: parts[0],
+                    scope: decodeURIComponent(parts[1]),
+                    memberId: decodeURIComponent(parts[2]),
+                    itemId: decodeURIComponent(parts[3])
+                };
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function isLocalMediaRef(value, kind = '') {
+            const ref = parseLocalMediaRef(value);
+            return !!(ref && (!kind || ref.kind === kind));
+        }
+
+        function isSignatureDataUrl(value) {
+            return typeof value === 'string' && value.startsWith('data:image');
+        }
+
+        function shouldStoreLocalMediaRefs() {
+            return supportsLocalMediaDb() && !!window.activeLoginId && !isActiveCloudProfile() && !window.cloudApplyingRemote;
+        }
+
+        function getStringChecksum(value) {
+            const text = String(value || '');
+            let hash = 0;
+            for (let i = 0; i < text.length; i++) {
+                hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+            }
+            return String(hash >>> 0);
         }
 
         function openLocalMediaDb() {
@@ -5298,10 +5356,11 @@
 
         function buildSignatureMirrorRecord(scope, member, lesson) {
             if (!member || !lesson || !isSignedLesson(lesson)) return null;
+            if (!isSignatureDataUrl(lesson.signature)) return null;
             const lessonNo = parseInt(lesson.no, 10) || 0;
             if (!lessonNo) return null;
             return {
-                key: `${scope}|${member.id}|${lessonNo}`,
+                key: getSignatureMirrorKey(scope, member.id, lessonNo),
                 scope,
                 memberId: String(member.id),
                 memberName: String(member.name || ''),
@@ -5315,8 +5374,9 @@
 
         function buildWorkoutMirrorRecord(scope, member, workout) {
             if (!member || !workout || !workout.id) return null;
+            if (isLocalMediaRef(workout.content, 'workout')) return null;
             return {
-                key: `${scope}|${member.id}|${workout.id}`,
+                key: getWorkoutMirrorKey(scope, member.id, workout.id),
                 scope,
                 memberId: String(member.id),
                 memberName: String(member.name || ''),
@@ -5337,10 +5397,12 @@
             const workoutStore = tx.objectStore('workouts');
             let signatures = 0;
             let workouts = 0;
+            const writtenKeys = [];
             (member.lessons || []).forEach(lesson => {
                 const record = buildSignatureMirrorRecord(scope, member, lesson);
                 if (record) {
                     signatureStore.put(record);
+                    writtenKeys.push(record.key);
                     signatures++;
                 }
             });
@@ -5348,6 +5410,7 @@
                 const record = buildWorkoutMirrorRecord(scope, member, workout);
                 if (record) {
                     workoutStore.put(record);
+                    writtenKeys.push(record.key);
                     workouts++;
                 }
             });
@@ -5360,6 +5423,7 @@
                 workouts
             });
             await idbTransactionDone(tx);
+            writtenKeys.forEach(key => localMediaVerifiedKeys.add(key));
             return { signatures, workouts };
         }
 
@@ -5386,6 +5450,7 @@
                     stats.workouts += result.workouts || 0;
                 }
                 localMediaLastStats = stats;
+                if (!options.skipRefSnapshot) saveLocalMediaRefSnapshot();
                 if (options.showToast) {
                     if (stats.unavailable) showToast('이 브라우저는 대용량 저장소 점검을 지원하지 않습니다.');
                     else showToast(`저장소 점검 완료: 서명 ${stats.signatures}개 · 운동일지 ${stats.workouts}개`);
@@ -5404,7 +5469,12 @@
         function queueLocalMediaMirror(member = null) {
             if (!supportsLocalMediaDb()) return;
             if (member) {
-                mirrorMemberMediaToIndexedDb(member).catch(err => console.warn('Member media mirror failed.', err));
+                mirrorMemberMediaToIndexedDb(member)
+                    .then(result => {
+                        if (!result || result.unavailable) return;
+                        saveLocalMediaRefSnapshot();
+                    })
+                    .catch(err => console.warn('Member media mirror failed.', err));
                 return;
             }
             clearTimeout(localMediaMirrorTimer);
@@ -5456,26 +5526,168 @@
             const scope = getLocalMediaScope();
             let signatures = 0;
             let workouts = 0;
+            const importedKeys = [];
             (media.signatures || []).forEach(record => {
                 if (!record || !record.memberId || !record.lessonNo || !record.signature) return;
-                const next = { ...record, scope, key: `${scope}|${record.memberId}|${record.lessonNo}` };
+                if (!isSignatureDataUrl(record.signature)) return;
+                const next = { ...record, scope, key: getSignatureMirrorKey(scope, record.memberId, record.lessonNo) };
                 tx.objectStore('signatures').put(next);
+                importedKeys.push(next.key);
                 signatures++;
             });
             (media.workouts || []).forEach(record => {
                 if (!record || !record.memberId || !record.workoutId) return;
-                const next = { ...record, scope, key: `${scope}|${record.memberId}|${record.workoutId}` };
+                if (isLocalMediaRef(record.content, 'workout')) return;
+                const next = { ...record, scope, key: getWorkoutMirrorKey(scope, record.memberId, record.workoutId) };
                 tx.objectStore('workouts').put(next);
+                importedKeys.push(next.key);
                 workouts++;
             });
             tx.objectStore('meta').put({ key: `import:${scope}:${Date.now()}`, scope, importedAt: new Date().toISOString(), signatures, workouts });
             await idbTransactionDone(tx);
+            importedKeys.forEach(key => localMediaVerifiedKeys.add(key));
             return { signatures, workouts };
+        }
+
+        async function hydrateMemberMediaFromIndexedDb(member, options = {}) {
+            if (!member || isArchivedMember(member)) return { signatures: 0, workouts: 0, missing: 0, unavailable: false };
+            const db = await openLocalMediaDb();
+            if (!db) return { signatures: 0, workouts: 0, missing: 0, unavailable: true };
+            const scope = options.scope || getLocalMediaScope();
+            const tx = db.transaction(['signatures', 'workouts'], 'readonly');
+            const signatureStore = tx.objectStore('signatures');
+            const workoutStore = tx.objectStore('workouts');
+            const done = idbTransactionDone(tx);
+            const stats = { signatures: 0, workouts: 0, missing: 0, unavailable: false };
+            const tasks = [];
+
+            (member.lessons || []).forEach(lesson => {
+                const ref = parseLocalMediaRef(lesson && lesson.signature);
+                if (!ref || ref.kind !== 'signature') return;
+                const lessonNo = parseInt(ref.itemId || lesson.no, 10) || parseInt(lesson.no, 10) || 0;
+                const primaryKey = getSignatureMirrorKey(ref.scope || scope, ref.memberId || member.id, lessonNo);
+                const fallbackKey = getSignatureMirrorKey(scope, member.id, lessonNo);
+                const primaryRequest = idbRequestToPromise(signatureStore.get(primaryKey));
+                const fallbackRequest = primaryKey === fallbackKey ? Promise.resolve(null) : idbRequestToPromise(signatureStore.get(fallbackKey));
+                tasks.push(Promise.all([primaryRequest, fallbackRequest]).then(([primary, fallback]) => {
+                    const record = primary || fallback;
+                    if (record && isSignatureDataUrl(record.signature)) {
+                        lesson.signature = record.signature;
+                        localMediaVerifiedKeys.add(record.key || fallbackKey);
+                        stats.signatures++;
+                    } else {
+                        stats.missing++;
+                    }
+                }));
+            });
+
+            (member.workouts || []).forEach(workout => {
+                const ref = parseLocalMediaRef(workout && workout.content);
+                if (!ref || ref.kind !== 'workout') return;
+                const workoutId = String(ref.itemId || workout.id || '');
+                if (!workoutId) return;
+                const primaryKey = getWorkoutMirrorKey(ref.scope || scope, ref.memberId || member.id, workoutId);
+                const fallbackKey = getWorkoutMirrorKey(scope, member.id, workoutId);
+                const primaryRequest = idbRequestToPromise(workoutStore.get(primaryKey));
+                const fallbackRequest = primaryKey === fallbackKey ? Promise.resolve(null) : idbRequestToPromise(workoutStore.get(fallbackKey));
+                tasks.push(Promise.all([primaryRequest, fallbackRequest]).then(([primary, fallback]) => {
+                    const record = primary || fallback;
+                    if (record && typeof record.content === 'string' && !isLocalMediaRef(record.content, 'workout')) {
+                        workout.content = record.content;
+                        localMediaVerifiedKeys.add(record.key || fallbackKey);
+                        stats.workouts++;
+                    } else {
+                        stats.missing++;
+                    }
+                }));
+            });
+
+            await Promise.all(tasks);
+            await done;
+            return stats;
+        }
+
+        async function hydrateAllMediaFromIndexedDb(options = {}) {
+            const totals = { members: 0, signatures: 0, workouts: 0, missing: 0, unavailable: false, failed: false };
+            if (!supportsLocalMediaDb()) return { ...totals, unavailable: true };
+            try {
+                for (const member of (window.members || [])) {
+                    if (!member || isArchivedMember(member)) continue;
+                    const result = await hydrateMemberMediaFromIndexedDb(member, options);
+                    if (result.unavailable) {
+                        totals.unavailable = true;
+                        break;
+                    }
+                    totals.members++;
+                    totals.signatures += result.signatures || 0;
+                    totals.workouts += result.workouts || 0;
+                    totals.missing += result.missing || 0;
+                }
+                if (totals.missing) console.warn('Some local media references could not be hydrated.', totals);
+                return totals;
+            } catch (err) {
+                console.warn('Local media hydrate failed.', err);
+                return { ...totals, failed: true };
+            }
+        }
+
+        function buildLocalStorageMembersPayload(members = window.members, options = {}) {
+            const payload = clonePlainData(Array.isArray(members) ? members : []);
+            if (!options.preferLocalMediaRefs || !shouldStoreLocalMediaRefs()) return payload;
+            const scope = getLocalMediaScope();
+            payload.forEach(member => {
+                if (!member || isArchivedMember(member)) return;
+                (member.lessons || []).forEach(lesson => {
+                    const lessonNo = parseInt(lesson && lesson.no, 10) || 0;
+                    if (!lessonNo || !isSignatureDataUrl(lesson.signature)) {
+                        if (!isLocalMediaRef(lesson && lesson.signature, 'signature')) delete lesson.signatureStorage;
+                        return;
+                    }
+                    const key = getSignatureMirrorKey(scope, member.id, lessonNo);
+                    if (!localMediaVerifiedKeys.has(key)) return;
+                    const signature = lesson.signature;
+                    lesson.signature = buildLocalMediaRef('signature', scope, member.id, lessonNo);
+                    lesson.signatureStorage = {
+                        version: 1,
+                        kind: 'indexeddb',
+                        key,
+                        bytes: signature.length,
+                        checksum: getStringChecksum(signature),
+                        updatedAt: Date.now()
+                    };
+                });
+                (member.workouts || []).forEach(workout => {
+                    if (!workout || !workout.id || typeof workout.content !== 'string' || !workout.content.trim() || isLocalMediaRef(workout.content, 'workout')) {
+                        if (!isLocalMediaRef(workout && workout.content, 'workout')) delete workout.contentStorage;
+                        return;
+                    }
+                    const key = getWorkoutMirrorKey(scope, member.id, workout.id);
+                    if (!localMediaVerifiedKeys.has(key)) return;
+                    const content = workout.content;
+                    workout.content = buildLocalMediaRef('workout', scope, member.id, workout.id);
+                    workout.contentStorage = {
+                        version: 1,
+                        kind: 'indexeddb',
+                        key,
+                        bytes: content.length,
+                        checksum: getStringChecksum(content),
+                        updatedAt: Date.now()
+                    };
+                });
+            });
+            return payload;
+        }
+
+        function saveLocalMediaRefSnapshot() {
+            if (!shouldStoreLocalMediaRefs()) return false;
+            return saveDatabase({ silent: true, preferLocalMediaRefs: true });
         }
 
         window.checkLocalMediaStorage = async function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            await hydrateAllMediaFromIndexedDb();
             await mirrorAllMediaToIndexedDb({ showToast: true });
+            saveLocalMediaRefSnapshot();
         }
 
         // ================= BACKUP & RESTORE =================
@@ -5507,12 +5719,15 @@
             };
         }
 
-        async function buildBackupPayloadWithLocalMedia() {
+        async function buildBackupPayloadWithLocalMedia(options = {}) {
             const payload = buildBackupPayload();
             try {
                 await mirrorAllMediaToIndexedDb();
                 const localMedia = await exportLocalMediaMirrorRecords();
                 payload.localMedia = localMedia;
+                if (options.preferLocalMediaRefs && shouldStoreLocalMediaRefs()) {
+                    payload.members = buildLocalStorageMembersPayload(window.members, { preferLocalMediaRefs: true });
+                }
                 payload.summary = {
                     ...(payload.summary || {}),
                     localMediaSignatures: Array.isArray(localMedia.signatures) ? localMedia.signatures.length : 0,
@@ -5693,9 +5908,9 @@
             return !!localStorage.getItem(getRestoreSafetyKey());
         }
 
-        function saveRestoreSafetySnapshot() {
+        async function saveRestoreSafetySnapshot() {
             try {
-                const snapshot = buildBackupPayload();
+                const snapshot = await buildBackupPayloadWithLocalMedia({ preferLocalMediaRefs: true });
                 snapshot.reason = 'before-restore';
                 snapshot.exportedAt = new Date().toISOString();
                 localStorage.setItem(getRestoreSafetyKey(), JSON.stringify(snapshot));
@@ -5851,7 +6066,7 @@
                 const ok = confirm(`${backup.trainerName} 트레이너 백업입니다.\n${detail}\n\n현재 ${getTrainerName()} 트레이너 데이터를 이 백업으로 복원할까요?`);
                 if (!ok) return;
 
-                const safetySaved = saveRestoreSafetySnapshot();
+                const safetySaved = await saveRestoreSafetySnapshot();
                 if (!safetySaved) {
                     const continueRestore = confirm('현재 상태 되돌리기 저장에 실패했습니다. 그래도 복원할까요?');
                     if (!continueRestore) return;
@@ -5863,6 +6078,9 @@
                 saveDatabase();
                 if (backup.localMedia) await importLocalMediaMirrorRecords(backup.localMedia);
                 else queueLocalMediaMirror();
+                await hydrateAllMediaFromIndexedDb();
+                saveDatabase();
+                queueLocalMediaMirror();
                 await window.pushFullCloudSync(false, { forceUpload: true });
                 markBackupSaved();
 
@@ -5894,6 +6112,9 @@
                 saveDatabase();
                 if (backup.localMedia) await importLocalMediaMirrorRecords(backup.localMedia);
                 else queueLocalMediaMirror();
+                await hydrateAllMediaFromIndexedDb();
+                saveDatabase();
+                queueLocalMediaMirror();
                 await window.pushFullCloudSync(false, { forceUpload: true });
                 localStorage.removeItem(getRestoreSafetyKey());
                 window.closeBackupChoiceModal();
