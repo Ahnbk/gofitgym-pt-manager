@@ -1313,6 +1313,9 @@
                         <button onclick="window.openBackupRestorePicker()" class="min-h-[44px] py-2.5 bg-white text-stone-700 rounded-xl text-[10px] font-black active-scale flex items-center justify-center border border-stone-200">
                             <i class="fa-solid fa-folder-open mr-1.5 text-stone-500"></i>백업 복원
                         </button>
+                        <button onclick="window.checkLocalMediaStorage()" class="col-span-2 min-h-[44px] py-2.5 bg-amber-50 text-amber-700 rounded-xl text-[10px] font-black active-scale flex items-center justify-center border border-amber-200">
+                            <i class="fa-solid fa-database mr-1.5"></i>서명/일지 저장소 점검
+                        </button>
                         <button onclick="window.installPwaApp()" id="install-app-btn" class="hidden col-span-2 min-h-[44px] py-2.5 bg-amber-500 text-stone-950 rounded-xl text-[10px] font-black active-scale flex items-center justify-center shadow-sm">
                             <i class="fa-solid fa-mobile-screen-button mr-1.5"></i>앱 설치
                         </button>
@@ -2146,8 +2149,8 @@
         var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v146';
-        const APP_DISPLAY_VERSION = '1.46';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v147';
+        const APP_DISPLAY_VERSION = '1.47';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2169,6 +2172,9 @@
         const CLOUD_PENDING_WRITES_KEY_PREFIX = 'gofitgym_v11_cloud_pending_';
         const BACKUP_FRESH_MS = 1000 * 60 * 60 * 24 * 7;
         const WORKOUT_SAVE_DELAY_MS = 450;
+        const LOCAL_MEDIA_DB_NAME = 'gofitgym_pt_local_media_v1';
+        const LOCAL_MEDIA_DB_VERSION = 1;
+        const LOCAL_MEDIA_MIRROR_DELAY_MS = 700;
         const FIREBASE_SDK_VERSION = '11.6.1';
         const CLOUD_LOGIN_PREFIX = 'cloud:';
         const CLOUD_SYNC_DELAY_MS = 800;
@@ -2842,6 +2848,7 @@
                     window.members = mergeCloudItemsWithPendingLocal('members', items, window.members);
                     normalizeDatabase();
                     localStorage.setItem(getMembersStorageKey(loginId), JSON.stringify(window.members));
+                    queueLocalMediaMirror();
                     refreshCurrentViewAfterCloud();
                 } else {
                     let localItems = [];
@@ -3627,6 +3634,7 @@
                             saveProfileStore();
                         }
                         await window.pushFullCloudSync(false, { forceUpload: true });
+                        queueLocalMediaMirror();
                     } else {
                         loadDatabase();
                     }
@@ -3718,6 +3726,7 @@
                 return;
             }
             saveDatabase({ silent: true });
+            queueLocalMediaMirror();
         }
 
         function saveDatabase(options = {}) {
@@ -5209,6 +5218,7 @@
             markLocalItemUpdated(m);
             if (isActiveCloudProfile()) markCloudWritePending('members', m);
             saveDatabase({ skipCloud: true });
+            queueLocalMediaMirror(m);
             saveCloudDocument('members', m);
         }
 
@@ -5227,6 +5237,245 @@
         function localDeleteSchedule(id) {
             saveDatabase({ skipCloud: true });
             deleteCloudDocument('schedules', id);
+        }
+
+        // ================= LOCAL MEDIA MIRROR (INDEXEDDB) =================
+        let localMediaDbPromise = null;
+        let localMediaMirrorTimer = null;
+        let localMediaMirrorRunning = false;
+        let localMediaLastStats = null;
+
+        function supportsLocalMediaDb() {
+            return typeof indexedDB !== 'undefined';
+        }
+
+        function getLocalMediaScope(loginId = window.activeLoginId) {
+            return String(loginId || 'default');
+        }
+
+        function openLocalMediaDb() {
+            if (!supportsLocalMediaDb()) return Promise.resolve(null);
+            if (localMediaDbPromise) return localMediaDbPromise;
+            localMediaDbPromise = new Promise((resolve) => {
+                const request = indexedDB.open(LOCAL_MEDIA_DB_NAME, LOCAL_MEDIA_DB_VERSION);
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains('signatures')) {
+                        const store = db.createObjectStore('signatures', { keyPath: 'key' });
+                        store.createIndex('scopeMember', ['scope', 'memberId'], { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('workouts')) {
+                        const store = db.createObjectStore('workouts', { keyPath: 'key' });
+                        store.createIndex('scopeMember', ['scope', 'memberId'], { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => {
+                    console.warn('IndexedDB local media mirror unavailable.', request.error);
+                    localMediaDbPromise = null;
+                    resolve(null);
+                };
+                request.onblocked = () => console.warn('IndexedDB local media mirror upgrade blocked.');
+            });
+            return localMediaDbPromise;
+        }
+
+        function idbRequestToPromise(request) {
+            return new Promise((resolve, reject) => {
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function idbTransactionDone(tx) {
+            return new Promise((resolve, reject) => {
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted.'));
+            });
+        }
+
+        function buildSignatureMirrorRecord(scope, member, lesson) {
+            if (!member || !lesson || !isSignedLesson(lesson)) return null;
+            const lessonNo = parseInt(lesson.no, 10) || 0;
+            if (!lessonNo) return null;
+            return {
+                key: `${scope}|${member.id}|${lessonNo}`,
+                scope,
+                memberId: String(member.id),
+                memberName: String(member.name || ''),
+                lessonNo,
+                date: String(lesson.date || ''),
+                trainer: String(lesson.trainer || member.trainer || getTrainerName()),
+                signature: lesson.signature,
+                updatedAt: getLocalUpdateStamp(member) || Date.now()
+            };
+        }
+
+        function buildWorkoutMirrorRecord(scope, member, workout) {
+            if (!member || !workout || !workout.id) return null;
+            return {
+                key: `${scope}|${member.id}|${workout.id}`,
+                scope,
+                memberId: String(member.id),
+                memberName: String(member.name || ''),
+                workoutId: String(workout.id),
+                date: String(workout.date || ''),
+                content: String(workout.content || ''),
+                updatedAt: getLocalUpdateStamp(member) || Date.now()
+            };
+        }
+
+        async function mirrorMemberMediaToIndexedDb(member) {
+            if (!member || isArchivedMember(member)) return { signatures: 0, workouts: 0 };
+            const db = await openLocalMediaDb();
+            if (!db) return { signatures: 0, workouts: 0, unavailable: true };
+            const scope = getLocalMediaScope();
+            const tx = db.transaction(['signatures', 'workouts', 'meta'], 'readwrite');
+            const signatureStore = tx.objectStore('signatures');
+            const workoutStore = tx.objectStore('workouts');
+            let signatures = 0;
+            let workouts = 0;
+            (member.lessons || []).forEach(lesson => {
+                const record = buildSignatureMirrorRecord(scope, member, lesson);
+                if (record) {
+                    signatureStore.put(record);
+                    signatures++;
+                }
+            });
+            (member.workouts || []).forEach(workout => {
+                const record = buildWorkoutMirrorRecord(scope, member, workout);
+                if (record) {
+                    workoutStore.put(record);
+                    workouts++;
+                }
+            });
+            tx.objectStore('meta').put({
+                key: `mirror:${scope}:${member.id}`,
+                scope,
+                memberId: String(member.id),
+                mirroredAt: new Date().toISOString(),
+                signatures,
+                workouts
+            });
+            await idbTransactionDone(tx);
+            return { signatures, workouts };
+        }
+
+        async function mirrorAllMediaToIndexedDb(options = {}) {
+            if (localMediaMirrorRunning) {
+                for (let i = 0; i < 60 && localMediaMirrorRunning; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                if (localMediaMirrorRunning) return localMediaLastStats || { skipped: true };
+            }
+            localMediaMirrorRunning = true;
+            const stats = { members: 0, signatures: 0, workouts: 0, unavailable: false, failed: false };
+            try {
+                const members = Array.isArray(window.members) ? window.members : [];
+                for (const member of members) {
+                    if (isArchivedMember(member)) continue;
+                    const result = await mirrorMemberMediaToIndexedDb(member);
+                    if (result.unavailable) {
+                        stats.unavailable = true;
+                        break;
+                    }
+                    stats.members++;
+                    stats.signatures += result.signatures || 0;
+                    stats.workouts += result.workouts || 0;
+                }
+                localMediaLastStats = stats;
+                if (options.showToast) {
+                    if (stats.unavailable) showToast('이 브라우저는 대용량 저장소 점검을 지원하지 않습니다.');
+                    else showToast(`저장소 점검 완료: 서명 ${stats.signatures}개 · 운동일지 ${stats.workouts}개`);
+                }
+                return stats;
+            } catch (err) {
+                console.warn('Local media mirror failed.', err);
+                stats.failed = true;
+                if (options.showToast) showToast('서명/일지 저장소 점검에 실패했습니다. 기존 저장 데이터는 유지됩니다.');
+                return stats;
+            } finally {
+                localMediaMirrorRunning = false;
+            }
+        }
+
+        function queueLocalMediaMirror(member = null) {
+            if (!supportsLocalMediaDb()) return;
+            if (member) {
+                mirrorMemberMediaToIndexedDb(member).catch(err => console.warn('Member media mirror failed.', err));
+                return;
+            }
+            clearTimeout(localMediaMirrorTimer);
+            localMediaMirrorTimer = setTimeout(() => {
+                mirrorAllMediaToIndexedDb().catch(err => console.warn('Local media mirror failed.', err));
+            }, LOCAL_MEDIA_MIRROR_DELAY_MS);
+        }
+
+        async function exportLocalMediaMirrorRecords() {
+            const db = await openLocalMediaDb();
+            if (!db) return { signatures: [], workouts: [], meta: { unavailable: true } };
+            const tx = db.transaction(['signatures', 'workouts'], 'readonly');
+            const [signatures, workouts] = await Promise.all([
+                idbRequestToPromise(tx.objectStore('signatures').getAll()),
+                idbRequestToPromise(tx.objectStore('workouts').getAll())
+            ]);
+            await idbTransactionDone(tx);
+            const scope = getLocalMediaScope();
+            const currentSignatureKeys = new Set();
+            const currentWorkoutKeys = new Set();
+            (window.members || []).forEach(member => {
+                if (!member || isArchivedMember(member)) return;
+                (member.lessons || []).forEach(lesson => {
+                    if (!isSignedLesson(lesson)) return;
+                    const lessonNo = parseInt(lesson.no, 10) || 0;
+                    if (lessonNo) currentSignatureKeys.add(`${scope}|${member.id}|${lessonNo}`);
+                });
+                (member.workouts || []).forEach(workout => {
+                    if (workout && workout.id) currentWorkoutKeys.add(`${scope}|${member.id}|${workout.id}`);
+                });
+            });
+            return {
+                signatures: signatures.filter(item => item && item.scope === scope && currentSignatureKeys.has(item.key)),
+                workouts: workouts.filter(item => item && item.scope === scope && currentWorkoutKeys.has(item.key)),
+                meta: {
+                    scope,
+                    exportedAt: new Date().toISOString(),
+                    mode: 'mirror-copy',
+                    source: 'indexeddb'
+                }
+            };
+        }
+
+        async function importLocalMediaMirrorRecords(media = {}) {
+            if (!media || (!Array.isArray(media.signatures) && !Array.isArray(media.workouts))) return { signatures: 0, workouts: 0 };
+            const db = await openLocalMediaDb();
+            if (!db) return { signatures: 0, workouts: 0, unavailable: true };
+            const tx = db.transaction(['signatures', 'workouts', 'meta'], 'readwrite');
+            const scope = getLocalMediaScope();
+            let signatures = 0;
+            let workouts = 0;
+            (media.signatures || []).forEach(record => {
+                if (!record || !record.memberId || !record.lessonNo || !record.signature) return;
+                const next = { ...record, scope, key: `${scope}|${record.memberId}|${record.lessonNo}` };
+                tx.objectStore('signatures').put(next);
+                signatures++;
+            });
+            (media.workouts || []).forEach(record => {
+                if (!record || !record.memberId || !record.workoutId) return;
+                const next = { ...record, scope, key: `${scope}|${record.memberId}|${record.workoutId}` };
+                tx.objectStore('workouts').put(next);
+                workouts++;
+            });
+            tx.objectStore('meta').put({ key: `import:${scope}:${Date.now()}`, scope, importedAt: new Date().toISOString(), signatures, workouts });
+            await idbTransactionDone(tx);
+            return { signatures, workouts };
+        }
+
+        window.checkLocalMediaStorage = async function() {
+            if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
+            await mirrorAllMediaToIndexedDb({ showToast: true });
         }
 
         // ================= BACKUP & RESTORE =================
@@ -5248,7 +5497,7 @@
         function buildBackupPayload() {
             return {
                 app: 'GOFITGYM_PT_MANAGER',
-                version: 14,
+                version: 15,
                 scope: 'active-trainer',
                 exportedAt: new Date().toISOString(),
                 trainer: window.appProfile ? { loginId: window.appProfile.loginId, trainerName: window.appProfile.trainerName } : null,
@@ -5256,6 +5505,24 @@
                 members: window.members || [],
                 schedules: window.schedules || []
             };
+        }
+
+        async function buildBackupPayloadWithLocalMedia() {
+            const payload = buildBackupPayload();
+            try {
+                await mirrorAllMediaToIndexedDb();
+                const localMedia = await exportLocalMediaMirrorRecords();
+                payload.localMedia = localMedia;
+                payload.summary = {
+                    ...(payload.summary || {}),
+                    localMediaSignatures: Array.isArray(localMedia.signatures) ? localMedia.signatures.length : 0,
+                    localMediaWorkouts: Array.isArray(localMedia.workouts) ? localMedia.workouts.length : 0
+                };
+            } catch (err) {
+                console.warn('Backup local media mirror export skipped.', err);
+                payload.localMedia = { signatures: [], workouts: [], meta: { failed: true } };
+            }
+            return payload;
         }
 
         function validateBackupPayload(parsed) {
@@ -5272,7 +5539,8 @@
                 schedules: parsed.schedules,
                 trainerName: parsed.trainer && parsed.trainer.trainerName ? parsed.trainer.trainerName : '알 수 없음',
                 exportedAt: parsed.exportedAt || '',
-                summary: parsed.summary || getDataSummary(parsed.members, parsed.schedules)
+                summary: parsed.summary || getDataSummary(parsed.members, parsed.schedules),
+                localMedia: parsed.localMedia && typeof parsed.localMedia === 'object' ? parsed.localMedia : null
             };
         }
 
@@ -5284,8 +5552,8 @@
             return `고핏짐_${trainer}_백업_${date}_${time}.json`;
         }
 
-        function createBackupFile() {
-            const payload = buildBackupPayload();
+        async function createBackupFile() {
+            const payload = await buildBackupPayloadWithLocalMedia();
             const json = JSON.stringify(payload, null, 2);
             const fileName = getBackupFileName();
             const blob = new Blob([json], { type: 'application/json' });
@@ -5490,7 +5758,7 @@
 
         window.saveBackupFile = async function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-            const { blob, fileName } = createBackupFile();
+            const { blob, fileName } = await createBackupFile();
             if (window.showSaveFilePicker) {
                 try {
                     const handle = await window.showSaveFilePicker({
@@ -5521,10 +5789,10 @@
             }
         }
 
-        window.downloadBackupFile = function() {
+        window.downloadBackupFile = async function() {
             try {
                 if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-                const { blob, fileName } = createBackupFile();
+                const { blob, fileName } = await createBackupFile();
                 downloadBackupBlob(blob, fileName);
             } catch (err) {
                 console.error(err);
@@ -5534,7 +5802,7 @@
 
         window.shareBackupFileNative = async function() {
             if (!window.activeLoginId) return showToast('먼저 로그인해주세요.');
-            const { blob, fileName, json } = createBackupFile();
+            const { blob, fileName, json } = await createBackupFile();
             try {
                 if (supportsBackupNativeFileShare()) {
                     const shareBlob = new Blob([json], { type: 'text/plain' });
@@ -5593,6 +5861,8 @@
                 window.schedules = backup.schedules;
                 normalizeDatabase();
                 saveDatabase();
+                if (backup.localMedia) await importLocalMediaMirrorRecords(backup.localMedia);
+                else queueLocalMediaMirror();
                 await window.pushFullCloudSync(false, { forceUpload: true });
                 markBackupSaved();
 
@@ -5622,6 +5892,8 @@
                 window.schedules = backup.schedules;
                 normalizeDatabase();
                 saveDatabase();
+                if (backup.localMedia) await importLocalMediaMirrorRecords(backup.localMedia);
+                else queueLocalMediaMirror();
                 await window.pushFullCloudSync(false, { forceUpload: true });
                 localStorage.removeItem(getRestoreSafetyKey());
                 window.closeBackupChoiceModal();
@@ -5783,6 +6055,7 @@
 
                 normalizeDatabase();
                 saveDatabase();
+                queueLocalMediaMirror(restoredMember);
                 if (isActiveCloudProfile()) await window.pushFullCloudSync(false, { forceUpload: true });
                 window.memberArchiveRestoreTargetId = null;
                 window.closeMemberActionMenu();
