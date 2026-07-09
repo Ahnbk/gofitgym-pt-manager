@@ -1656,6 +1656,13 @@
                 <div id="reg-legacy-preview" class="rounded-xl bg-stone-50 border border-stone-200 px-3.5 py-2 text-[11px] font-black text-stone-600">
                     결제 횟수와 잔여 횟수가 같으면 이전 완료분은 없습니다.
                 </div>
+                <div id="member-payment-history-block" class="hidden rounded-2xl border border-stone-200 bg-stone-50 overflow-hidden">
+                    <div class="px-3.5 py-2.5 border-b border-stone-200 flex items-center justify-between">
+                        <span class="text-xs font-black text-stone-700"><i class="fa-solid fa-receipt text-amber-500 mr-1.5"></i>결제 이력</span>
+                        <span id="member-payment-history-count" class="text-[10px] font-black text-stone-400">0건</span>
+                    </div>
+                    <div id="member-payment-history-list" class="divide-y divide-stone-200"></div>
+                </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeNewMemberModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs">취소</button>
@@ -1674,7 +1681,16 @@
             <div class="p-5 space-y-4">
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">추가할 세션 횟수 (직접입력 가능)</label>
-                    <input type="number" id="add-sessions-count" placeholder="예: 8" value="10" min="1" oninput="window.updateRenewalUnitPricePreview()" class="w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                    <div class="flex gap-2">
+                        <input type="number" id="add-sessions-count" placeholder="예: 8" value="10" min="1" oninput="window.updateRenewalUnitPricePreview()" class="flex-1 min-w-0 text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-emerald-500 font-medium">
+                        <button type="button" onclick="window.toggleAddServiceSessionInput()" id="add-service-session-toggle" class="w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale" aria-label="서비스 세션 추가 입력">
+                            <i class="fa-solid fa-plus text-amber-500"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="add-service-session-wrap" class="hidden">
+                    <label class="block text-xs text-stone-500 font-bold mb-1.5">서비스 세션</label>
+                    <input type="number" id="add-service-sessions-count" placeholder="예: 1" value="0" min="0" oninput="window.updateRenewalUnitPricePreview()" class="w-full text-sm bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
                 </div>
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">재등록 날짜</label>
@@ -2146,11 +2162,10 @@
         var googleCalendarTokenClientId = '';
         var googleCalendarScriptPromise = null;
         var googleCalendarBulkSyncState = { active: false, done: false };
-        var googleCalendarStartupConnectLoginId = '';
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v148';
-        const APP_DISPLAY_VERSION = '1.48';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v150';
+        const APP_DISPLAY_VERSION = '1.50';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -2801,7 +2816,6 @@
             }
             if (!window.cloudAuthFlowActive) startCloudSync();
             renderCloudStatus();
-            if (window.activeLoginId === getCloudLoginId(user.uid)) scheduleGoogleCalendarStartupAutoConnect(900);
         }
 
         function stopCloudSync() {
@@ -3819,14 +3833,19 @@
                     if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
                     if (typeof lesson.signature === 'undefined') lesson.signature = '';
                     if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
+                    lesson.serviceSession = lesson.serviceSession === true;
                     if (lesson.signature === 'LEGACY_DONE') lesson.legacyCompleted = true;
                 });
                 m.totalSessions = m.lessons.length;
-                m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
+                m.renewals = Array.isArray(m.renewals) ? m.renewals.map((renewal) => ({
+                    ...renewal,
+                    serviceSessions: Math.max(0, parseInt(renewal && renewal.serviceSessions, 10) || 0)
+                })) : [];
                 m.payments = Array.isArray(m.payments) ? m.payments.map((payment, index) => {
                     const amount = Math.max(0, Number(payment && payment.amount) || 0);
                     const membershipAmount = Math.max(0, Number(payment && payment.membershipAmount) || 0);
                     const sessions = Math.max(0, parseInt(payment && payment.sessions) || 0);
+                    const serviceSessions = Math.max(0, parseInt(payment && payment.serviceSessions, 10) || 0);
                     return {
                         id: String((payment && payment.id) || `payment_${m.id || 'member'}_${index}`),
                         type: (payment && payment.type) || 'initial',
@@ -3834,6 +3853,7 @@
                         amount,
                         membershipAmount,
                         sessions,
+                        serviceSessions,
                         unitPrice: sessions > 0 ? amount / sessions : (Number(payment && payment.unitPrice) || 0),
                         renewalId: payment && payment.renewalId ? String(payment.renewalId) : '',
                         startNo: parseInt(payment && payment.startNo) || 1,
@@ -3874,6 +3894,10 @@
 
         function isCompletedLesson(lesson) {
             return isSignedLesson(lesson) || isLegacyCompletedLesson(lesson);
+        }
+
+        function isServiceLesson(lesson) {
+            return !!(lesson && lesson.serviceSession === true);
         }
 
         function isArchivedMember(m) {
@@ -4338,11 +4362,13 @@
                     const ptAmount = Math.max(0, Number(payment.amount) || 0);
                     const membershipAmount = Math.max(0, Number(payment.membershipAmount) || 0);
                     const totalAmount = ptAmount + membershipAmount;
+                    const paidSessions = Math.max(0, parseInt(payment.sessions || payment.count, 10) || 0);
+                    const serviceSessions = Math.max(0, parseInt(payment.serviceSessions, 10) || 0);
                     records.push({
                         date,
                         dateText: formatSettlementDate(date),
                         memberName: member.name || '',
-                        content: `${typeLabel} ${payment.sessions || payment.count || 0}회`,
+                        content: `${typeLabel} ${paidSessions}회${serviceSessions > 0 ? ` + 서비스 ${serviceSessions}회` : ''}`,
                         ptAmount,
                         membershipAmount,
                         amount: totalAmount
@@ -4372,28 +4398,31 @@
                     const lessonMonthKey = lesson.legacySettlementMonth || dateToMonthKey(signedDate);
                     if (!signedDate || lessonMonthKey !== monthKey) return;
                     const payment = getMemberPaymentForLesson(member, lesson);
-                    const unitPrice = Number(payment && payment.unitPrice) || 0;
+                    const serviceLesson = isServiceLesson(lesson);
+                    const unitPrice = serviceLesson ? 0 : (Number(payment && payment.unitPrice) || 0);
                     const paymentKey = payment ? String(payment.id || payment.renewalId || 'payment') : 'missing';
                     const key = `${member.id || member.name}|${paymentKey}|${unitPrice}`;
-                    if (!groups.has(key)) {
-                        groups.set(key, {
-                            memberName: member.name || '',
-                            unitPrice,
-                            count: 0,
-                            missingPrice: unitPrice <= 0
-                        });
+                    if (!serviceLesson) {
+                        if (!groups.has(key)) {
+                            groups.set(key, {
+                                memberName: member.name || '',
+                                unitPrice,
+                                count: 0,
+                                missingPrice: unitPrice <= 0
+                            });
+                        }
+                        groups.get(key).count += 1;
                     }
-                    groups.get(key).count += 1;
                     proofRows.push({
                         date: signedDate,
                         dateText: formatSettlementDate(signedDate),
                         memberName: member.name || '',
                         lessonNo: lesson.no || '',
                         trainer: lesson.trainer || member.trainer || getTrainerName(),
-                        signatureStatus: isLegacyCompletedLesson(lesson) ? '이전기록' : '서명완료',
+                        signatureStatus: serviceLesson ? '서비스 서명완료' : (isLegacyCompletedLesson(lesson) ? '이전기록' : '서명완료'),
                         signature: isSignedLesson(lesson) ? lesson.signature : '',
                         unitPrice,
-                        missingPrice: unitPrice <= 0
+                        missingPrice: !serviceLesson && unitPrice <= 0
                     });
                 });
             });
@@ -5061,7 +5090,6 @@
             updateTrainerUi();
             queueLocalMediaMirror();
             setTimeout(() => ensurePersistentStorage(false), 700);
-            scheduleGoogleCalendarStartupAutoConnect();
         }
 
         function updateTrainerUi() {
@@ -6460,7 +6488,8 @@
             const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
                 showCheckingToast: !!getGoogleCalendarClientId(),
                 showConnectedToast: true,
-                showErrorToast: false
+                showErrorToast: false,
+                userAction: true
             });
             if (calendarReady) {
                 for (const schedule of todaySchedules) {
@@ -6631,13 +6660,15 @@
                 const completed = isMemberCompleted(m);
                 const hold = isMemberOnHold(m);
                 const archived = isArchivedMember(m);
-                const remaining = getRemainingLessonCount(m, comp);
+                const remainingBreakdown = getRemainingLessonBreakdown(m);
+                const remaining = remainingBreakdown.total;
+                const remainingLabel = formatRemainingLessonText(m, '잔여');
                 
                 const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
-                const lowRemaining = !completed && !hold && remaining <= 3;
+                const lowRemaining = !completed && !hold && remainingBreakdown.paid <= 3;
                 const progressBadgeClass = 'bg-stone-100 text-stone-500 font-bold';
                 const remainingBadgeClass = lowRemaining
-                    ? 'inline-flex items-center justify-center min-w-[34px] h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 rounded-full shadow-sm'
+                    ? 'inline-flex items-center justify-center min-w-[34px] min-h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 py-1 rounded-full shadow-sm'
                     : 'text-[10px] font-black text-stone-900';
                 const holdLabel = getMemberHoldLabel(m);
                 const holdDetail = getMemberHoldDetail(m);
@@ -6671,7 +6702,7 @@
                             ${holdDetailText}
                             ${archivedDetailText}
                         </div>
-                        <span class="self-end ${remainingBadgeClass}">잔여 ${remaining}회</span>
+                        <span class="self-end ${remainingBadgeClass}">${remainingLabel}</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
                         <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
@@ -6711,8 +6742,9 @@
             return safeSessions > 0 ? safeAmount / safeSessions : 0;
         }
 
-        function buildMemberPayment({ id, type, date, amount, membershipAmount = 0, sessions, renewalId = '', startNo = 1, count = 0 }) {
+        function buildMemberPayment({ id, type, date, amount, membershipAmount = 0, sessions, serviceSessions = 0, renewalId = '', startNo = 1, count = 0 }) {
             const safeSessions = Math.max(0, parseInt(sessions) || 0);
+            const safeServiceSessions = Math.max(0, parseInt(serviceSessions, 10) || 0);
             const safeAmount = Math.max(0, Number(amount) || 0);
             const safeMembershipAmount = Math.max(0, Number(membershipAmount) || 0);
             return {
@@ -6722,6 +6754,7 @@
                 amount: safeAmount,
                 membershipAmount: safeMembershipAmount,
                 sessions: safeSessions,
+                serviceSessions: safeServiceSessions,
                 unitPrice: getUnitPriceFromPayment(safeAmount, safeSessions),
                 renewalId,
                 startNo,
@@ -6793,8 +6826,51 @@
                 : '결제 횟수와 잔여 횟수가 같으면 이전 완료분은 없습니다.';
         }
 
+        function getAddServiceSessionCount() {
+            const wrap = document.getElementById('add-service-session-wrap');
+            const visible = !!(wrap && !wrap.classList.contains('hidden'));
+            if (!visible) return 0;
+            return Math.max(0, parseInt(document.getElementById('add-service-sessions-count')?.value, 10) || 0);
+        }
+
+        window.toggleAddServiceSessionInput = function() {
+            const wrap = document.getElementById('add-service-session-wrap');
+            const input = document.getElementById('add-service-sessions-count');
+            const toggle = document.getElementById('add-service-session-toggle');
+            if (!wrap) return;
+            const willShow = wrap.classList.contains('hidden');
+            wrap.classList.toggle('hidden', !willShow);
+            if (toggle) {
+                toggle.className = willShow
+                    ? 'w-11 shrink-0 rounded-xl bg-amber-500 text-stone-950 text-sm font-black active-scale'
+                    : 'w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale';
+                toggle.innerHTML = willShow
+                    ? '<i class="fa-solid fa-check"></i>'
+                    : '<i class="fa-solid fa-plus text-amber-500"></i>';
+            }
+            if (willShow) {
+                if (input && (!input.value || Number(input.value) < 1)) input.value = '1';
+                setTimeout(() => input && input.focus(), 50);
+            } else if (input) {
+                input.value = '0';
+            }
+            window.updateRenewalUnitPricePreview();
+        }
+
         window.updateRenewalUnitPricePreview = function() {
-            updateUnitPricePreview('add-payment-amount', 'add-sessions-count', 'add-unit-price-preview', '재등록 단가를 계산하려면 PT 매출을 입력하세요.');
+            const preview = document.getElementById('add-unit-price-preview');
+            const amount = parseCurrencyInput(document.getElementById('add-payment-amount')?.value);
+            const sessions = parseInt(document.getElementById('add-sessions-count')?.value, 10) || 0;
+            const serviceSessions = getAddServiceSessionCount();
+            if (!preview) return;
+            if (amount <= 0 || sessions <= 0) {
+                preview.innerText = serviceSessions > 0
+                    ? `서비스 ${serviceSessions}회가 함께 추가됩니다. 재등록 단가를 계산하려면 PT 매출을 입력하세요.`
+                    : '재등록 단가를 계산하려면 PT 매출을 입력하세요.';
+                return;
+            }
+            const serviceText = serviceSessions > 0 ? ` + 서비스 ${serviceSessions}회` : '';
+            preview.innerText = `PT 1회 단가 ${formatWon(getUnitPriceFromPayment(amount, sessions))} · 유료 ${sessions}회${serviceText}`;
         }
 
         function setMemberFormMode(mode = 'create') {
@@ -6810,6 +6886,54 @@
                     : '<i class="fa-solid fa-user-plus mr-1.5"></i>신규 회원 등록';
             }
             if (submitBtn) submitBtn.innerText = editing ? '수정 저장' : '등록 생성';
+        }
+
+        function renderMemberPaymentHistory(member) {
+            const block = document.getElementById('member-payment-history-block');
+            const list = document.getElementById('member-payment-history-list');
+            const countEl = document.getElementById('member-payment-history-count');
+            if (!block || !list) return;
+            if (!member) {
+                block.classList.add('hidden');
+                list.innerHTML = '';
+                if (countEl) countEl.innerText = '0건';
+                return;
+            }
+            const renewals = Array.isArray(member.renewals) ? member.renewals : [];
+            const renewalById = new Map(renewals.map(renewal => [String(renewal.id || ''), renewal]));
+            const payments = (Array.isArray(member.payments) ? member.payments : [])
+                .slice()
+                .sort((a, b) => {
+                    const startCompare = (parseInt(a && a.startNo, 10) || 0) - (parseInt(b && b.startNo, 10) || 0);
+                    if (startCompare) return startCompare;
+                    return String(a && a.date || '').localeCompare(String(b && b.date || ''));
+                });
+            block.classList.remove('hidden');
+            if (countEl) countEl.innerText = `${payments.length}건`;
+            if (!payments.length) {
+                list.innerHTML = `<div class="px-3.5 py-3 text-[11px] font-bold text-stone-400">저장된 결제 이력이 없습니다.</div>`;
+                return;
+            }
+            list.innerHTML = payments.map(payment => {
+                const renewal = payment.renewalId ? renewalById.get(String(payment.renewalId)) : null;
+                const typeLabel = payment.type === 'renewal' ? '재등록' : '신규 등록';
+                const paymentDate = formatDisplayDate(payment.date) || payment.date || '-';
+                const renewalDate = renewal && renewal.date ? formatDisplayDate(renewal.date) || renewal.date : '';
+                const paidSessions = Math.max(0, parseInt(payment.sessions || payment.count, 10) || 0);
+                const serviceSessions = Math.max(0, parseInt(payment.serviceSessions || (renewal && renewal.serviceSessions), 10) || 0);
+                const serviceText = serviceSessions > 0 ? ` · 서비스 ${serviceSessions}회` : '';
+                const amountText = `${formatWon(payment.amount)}${Number(payment.membershipAmount) > 0 ? ` · 회원권 ${formatWon(payment.membershipAmount)}` : ''}`;
+                return `
+                    <div class="px-3.5 py-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-black ${payment.type === 'renewal' ? 'text-emerald-700' : 'text-stone-800'}">${typeLabel}</span>
+                            <span class="text-[10px] font-black text-stone-400">${paidSessions}회${serviceText}</span>
+                        </div>
+                        <p class="mt-1 text-[11px] font-bold text-stone-600">결제일 ${paymentDate}${renewalDate ? ` · 재등록일 ${renewalDate}` : ''}</p>
+                        <p class="mt-0.5 text-[10px] font-bold text-stone-400">${amountText}</p>
+                    </div>
+                `;
+            }).join('');
         }
 
         function normalizeDateInputValue(value, fallback = formatDate(new Date())) {
@@ -6882,19 +7006,30 @@
 
         function resizeMemberLessons(member, targetTotal, defaultPaymentId = '') {
             member.lessons = Array.isArray(member.lessons) ? member.lessons : [];
-            const currentTotal = member.lessons.length;
-            if (targetTotal > currentTotal) {
-                for (let i = currentTotal; i < targetTotal; i++) {
-                    member.lessons.push({ no: i + 1, date: '', trainer: '', signature: '', paymentId: defaultPaymentId });
-                }
-            } else if (targetTotal < currentTotal) {
-                const removeCount = currentTotal - targetTotal;
+            const currentPaidTotal = member.lessons.filter(lesson => !isServiceLesson(lesson)).length;
+            if (targetTotal > currentPaidTotal) {
+                const addCount = targetTotal - currentPaidTotal;
+                const firstServiceIndex = member.lessons.findIndex(isServiceLesson);
+                const insertIndex = firstServiceIndex >= 0 ? firstServiceIndex : member.lessons.length;
+                const newLessons = Array.from({ length: addCount }, () => ({
+                    no: 0,
+                    date: '',
+                    trainer: '',
+                    signature: '',
+                    paymentId: defaultPaymentId,
+                    serviceSession: false
+                }));
+                member.lessons.splice(insertIndex, 0, ...newLessons);
+            } else if (targetTotal < currentPaidTotal) {
+                const removeCount = currentPaidTotal - targetTotal;
                 const removableIndexes = [];
                 for (let i = member.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
-                    if (!isSignedLesson(member.lessons[i])) removableIndexes.push(i);
+                    const lesson = member.lessons[i];
+                    if (isServiceLesson(lesson) || isCompletedLesson(lesson)) continue;
+                    removableIndexes.push(i);
                 }
                 if (removableIndexes.length < removeCount) {
-                    return { ok: false, message: '실제 서명 완료 회차가 많아서 총 횟수를 더 줄일 수 없습니다.' };
+                    return { ok: false, message: '실제 서명 완료 회차가 많아서 유료 횟수를 더 줄일 수 없습니다.' };
                 }
                 removableIndexes.forEach(index => member.lessons.splice(index, 1));
             }
@@ -6904,6 +7039,7 @@
                 if (typeof lesson.trainer === 'undefined') lesson.trainer = '';
                 if (typeof lesson.signature === 'undefined') lesson.signature = '';
                 if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
+                lesson.serviceSession = lesson.serviceSession === true;
             });
             return { ok: true };
         }
@@ -6912,6 +7048,7 @@
             const pending = [];
             const later = [];
             (member.lessons || []).forEach(lesson => {
+                if (isServiceLesson(lesson)) return;
                 if (isSignedLesson(lesson)) return;
                 if (lesson.signature === 'LATER') later.push(lesson);
                 else pending.push(lesson);
@@ -6966,6 +7103,7 @@
             document.getElementById('reg-payment-amount').value = '';
             document.getElementById('reg-membership-amount').value = '';
             window.registrationRemainingManual = false;
+            renderMemberPaymentHistory(null);
             window.updateRegistrationUnitPricePreview();
             window.updateRegistrationLegacyPreview();
         }
@@ -6986,11 +7124,11 @@
             if (!member) return showToast('수정할 회원을 찾지 못했습니다.');
             window.memberFormMemberId = member.id;
             setMemberFormMode('edit');
-            const total = (member.lessons || []).length || member.totalSessions || 0;
+            const total = getPaidLessonTotal(member);
             const payment = getPrimaryMemberPayment(member);
             document.getElementById('reg-name').value = member.name || '';
             document.getElementById('reg-sessions').value = String(total || 1);
-            document.getElementById('reg-remaining-sessions').value = String(getRemainingLessonCount(member));
+            document.getElementById('reg-remaining-sessions').value = String(getPaidRemainingLessonCount(member));
             document.getElementById('reg-date-input').value = normalizeDateInputValue(member.registrationDate);
             document.getElementById('reg-payment-date').value = normalizeDateInputValue(payment && payment.date, normalizeDateInputValue(member.registrationDate));
             document.getElementById('reg-payment-amount').value = payment && Number(payment.amount) > 0 ? String(Math.round(Number(payment.amount))) : '';
@@ -7000,6 +7138,7 @@
             document.getElementById('reg-legacy-settlement-count').value = String(legacySettlementLessons.length);
             document.getElementById('reg-legacy-settlement-month').value = firstSettlementMonth || getCurrentMonthKey(new Date());
             window.registrationRemainingManual = true;
+            renderMemberPaymentHistory(member);
             window.updateRegistrationUnitPricePreview();
             window.updateRegistrationLegacyPreview();
             const modal = document.getElementById('modal-member');
@@ -7021,7 +7160,7 @@
             const sessions = parseInt(document.getElementById('reg-sessions').value, 10) || 0;
             const remainingSessions = parseInt(document.getElementById('reg-remaining-sessions').value, 10) || 0;
             const desiredCompleted = sessions - remainingSessions;
-            const signedCount = (member.lessons || []).filter(isSignedLesson).length;
+            const signedCount = (member.lessons || []).filter(lesson => !isServiceLesson(lesson) && isSignedLesson(lesson)).length;
             const desiredLegacyCount = desiredCompleted - signedCount;
             const legacySettlementCount = parseInt(document.getElementById('reg-legacy-settlement-count').value, 10) || 0;
             const legacySettlementMonth = document.getElementById('reg-legacy-settlement-month').value || getCurrentMonthKey(new Date());
@@ -7141,10 +7280,20 @@
 
         window.openAddSessionModal = function() {
             const today = formatDate(new Date());
+            document.getElementById('add-sessions-count').value = '10';
             document.getElementById('add-session-date').value = today;
             document.getElementById('add-payment-date').value = today;
             document.getElementById('add-payment-amount').value = '';
             document.getElementById('add-membership-amount').value = '';
+            const serviceWrap = document.getElementById('add-service-session-wrap');
+            const serviceInput = document.getElementById('add-service-sessions-count');
+            const serviceToggle = document.getElementById('add-service-session-toggle');
+            if (serviceWrap) serviceWrap.classList.add('hidden');
+            if (serviceInput) serviceInput.value = '0';
+            if (serviceToggle) {
+                serviceToggle.className = 'w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale';
+                serviceToggle.innerHTML = '<i class="fa-solid fa-plus text-amber-500"></i>';
+            }
             window.updateRenewalUnitPricePreview();
             const m = document.getElementById('modal-add-session');
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
@@ -7155,11 +7304,13 @@
         }
         window.executeAddSession = function() {
             const count = parseInt(document.getElementById('add-sessions-count').value) || 0;
+            const serviceCount = getAddServiceSessionCount();
             const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
             const paymentDate = document.getElementById('add-payment-date').value || renewalDate;
             const paymentAmount = parseCurrencyInput(document.getElementById('add-payment-amount').value);
             const membershipAmount = parseCurrencyInput(document.getElementById('add-membership-amount').value);
             if (count < 1) return showToast("추가할 세션 횟수를 확인해주세요!");
+            if (serviceCount < 0) return showToast("서비스 세션 횟수를 확인해주세요!");
             if (paymentAmount <= 0) return showToast("재등록 PT 매출을 입력해주세요!");
             
             const m = window.members.find(x => x.id === window.activeMemberId);
@@ -7173,6 +7324,7 @@
                 amount: paymentAmount,
                 membershipAmount,
                 sessions: count,
+                serviceSessions: serviceCount,
                 renewalId,
                 startNo: currentLen + 1,
                 count
@@ -7180,16 +7332,19 @@
             m.renewals = Array.isArray(m.renewals) ? m.renewals : [];
             m.payments = Array.isArray(m.payments) ? m.payments : [];
             m.payments.push(payment);
-            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count, paymentId, paymentDate, paymentAmount, membershipAmount, unitPrice: payment.unitPrice });
+            m.renewals.push({ id: renewalId, date: renewalDate, startNo: currentLen + 1, count, serviceSessions: serviceCount, paymentId, paymentDate, paymentAmount, membershipAmount, unitPrice: payment.unitPrice });
             for(let i = 0; i < count; i++) {
-                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId });
+                m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId, serviceSession: false });
+            }
+            for(let i = 0; i < serviceCount; i++) {
+                m.lessons.push({ no: currentLen + count + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId, serviceSession: true });
             }
             m.totalSessions = m.lessons.length;
             localSaveMember(m);
             window.renderMemberLessons();
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
             window.closeAddSessionModal();
-            showToast(`재등록 세션 ${count}회가 추가되었습니다.`);
+            showToast(`재등록 세션 ${count}회${serviceCount > 0 ? `와 서비스 ${serviceCount}회` : ''}가 추가되었습니다.`);
         }
 
         window.openMemberMemoModal = function() {
@@ -7417,7 +7572,7 @@
             }
             if (editing && remainingInput) {
                 const m = window.members.find(x => x.id === window.activeMemberId);
-                if (m) remainingInput.value = getRemainingLessonCount(m);
+                if (m) remainingInput.value = getPaidRemainingLessonCount(m);
                 else if (!remainingInput.value || parseInt(remainingInput.value) < 0) remainingInput.value = 0;
             }
             const rows = document.getElementById('lessons-rows-container');
@@ -7432,26 +7587,59 @@
         window.cancelLessonEditMode = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
             const remainingInput = document.getElementById('lesson-remaining-target');
-            if (m && remainingInput) remainingInput.value = getRemainingLessonCount(m);
+            if (m && remainingInput) remainingInput.value = getPaidRemainingLessonCount(m);
             window.setLessonEditMode(false, true);
         }
 
         function updateDetailProgress(m, comp) {
             const total = m.totalSessions || 0;
-            const remaining = getRemainingLessonCount(m, comp);
             const percent = total ? Math.round((comp / total) * 100) : 0;
-            document.getElementById('detail-session-progress').innerText = `잔여 수업 ${remaining}회`;
+            document.getElementById('detail-session-progress').innerText = formatRemainingLessonText(m, '잔여 수업');
             document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
             document.getElementById('detail-progress-label').innerText = `${percent}%`;
             document.getElementById('detail-progress-bar').style.width = `${percent}%`;
             const remainingInput = document.getElementById('lesson-remaining-target');
-            if (window.lessonEditMode && remainingInput) remainingInput.value = remaining;
+            if (window.lessonEditMode && remainingInput) remainingInput.value = getPaidRemainingLessonCount(m);
         }
 
         function getRemainingLessonCount(m, completedCount = null) {
-            const total = (m && Array.isArray(m.lessons)) ? m.lessons.length : (m && m.totalSessions) || 0;
+            if (m && Array.isArray(m.lessons)) return getRemainingLessonBreakdown(m).total;
+            const total = (m && m.totalSessions) || 0;
             const completed = completedCount === null ? getCompletedCount(m || {}) : completedCount;
             return Math.max(total - completed, 0);
+        }
+
+        function getRemainingLessonBreakdown(m) {
+            const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
+            const breakdown = { paid: 0, service: 0, total: 0 };
+            lessons.forEach(lesson => {
+                if (isCompletedLesson(lesson)) return;
+                if (isServiceLesson(lesson)) breakdown.service += 1;
+                else breakdown.paid += 1;
+            });
+            breakdown.total = breakdown.paid + breakdown.service;
+            return breakdown;
+        }
+
+        function getPaidRemainingLessonCount(m) {
+            return getRemainingLessonBreakdown(m).paid;
+        }
+
+        function getPaidLessonTotal(m) {
+            const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
+            if (lessons.length) return lessons.filter(lesson => !isServiceLesson(lesson)).length;
+            return Math.max(0, parseInt(m && m.totalSessions, 10) || 0);
+        }
+
+        function getPaidCompletedLessonCount(m) {
+            const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
+            return lessons.filter(lesson => !isServiceLesson(lesson) && isCompletedLesson(lesson)).length;
+        }
+
+        function formatRemainingLessonText(m, prefix = '잔여 수업') {
+            const breakdown = getRemainingLessonBreakdown(m);
+            const serviceText = breakdown.service > 0 ? ` (+서비스 ${breakdown.service}회)` : '';
+            return `${prefix} ${breakdown.paid}회${serviceText}`;
         }
 
         function isRenewalStartLesson(m, lesson, index) {
@@ -7471,15 +7659,26 @@
                 .filter(r => renewalIds.has(r.id))
                 .map(r => {
                     const firstIndex = m.lessons.findIndex(l => l.renewalId === r.id);
-                    const count = m.lessons.filter(l => l.renewalId === r.id).length;
+                    const renewalLessons = m.lessons.filter(l => l.renewalId === r.id);
+                    const count = renewalLessons.filter(l => !isServiceLesson(l)).length;
+                    const serviceSessions = renewalLessons.filter(isServiceLesson).length;
                     const firstLesson = m.lessons[firstIndex];
                     return {
                         ...r,
                         startNo: firstIndex + 1,
                         count,
+                        serviceSessions,
                         date: (firstLesson && firstLesson.renewalDate) || r.date
                     };
                 });
+            (m.payments || []).forEach(payment => {
+                if (!payment || !payment.renewalId) return;
+                const renewal = (m.renewals || []).find(r => String(r.id || '') === String(payment.renewalId || ''));
+                if (!renewal) return;
+                payment.serviceSessions = Math.max(0, parseInt(renewal.serviceSessions, 10) || 0);
+                payment.sessions = Math.max(0, parseInt(payment.sessions, 10) || parseInt(renewal.count, 10) || 0);
+                payment.count = Math.max(0, parseInt(payment.count, 10) || parseInt(renewal.count, 10) || 0);
+            });
         }
 
         window.applyRemainingLessonsFromEdit = function() {
@@ -7490,14 +7689,15 @@
             if (!Number.isFinite(targetRemaining) || targetRemaining < 0) return showToast('잔여 수업 횟수를 0 이상으로 입력해주세요.');
 
             const completed = getCompletedCount(m);
-            const currentRemaining = getRemainingLessonCount(m, completed);
+            const currentRemaining = getPaidRemainingLessonCount(m);
             const diff = targetRemaining - currentRemaining;
             if (diff === 0) return showToast('이미 입력한 잔여 수업 수와 같습니다.');
 
             if (diff > 0) {
-                const currentLen = m.lessons.length;
+                const firstServiceIndex = m.lessons.findIndex(isServiceLesson);
+                const insertIndex = firstServiceIndex >= 0 ? firstServiceIndex : m.lessons.length;
                 for (let i = 0; i < diff; i++) {
-                    m.lessons.push({ no: currentLen + i + 1, date: '', trainer: '', signature: '' });
+                    m.lessons.splice(insertIndex + i, 0, { no: 0, date: '', trainer: '', signature: '', serviceSession: false });
                 }
             } else {
                 const removeCount = Math.abs(diff);
@@ -7506,7 +7706,7 @@
                 const removableIndexes = [];
                 for (let i = m.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
                     const lesson = m.lessons[i];
-                    if (isCompletedLesson(lesson)) continue;
+                    if (isServiceLesson(lesson) || isCompletedLesson(lesson)) continue;
                     removableIndexes.push(i);
                 }
                 if (removableIndexes.length < removeCount) return showToast('정리할 수 있는 미서명 회차가 부족합니다.');
@@ -7589,17 +7789,19 @@
                 const isSigned = isSignedLesson(l);
                 const isLegacyCompleted = isLegacyCompletedLesson(l);
                 const isLater = l.signature === 'LATER';
+                const isService = isServiceLesson(l);
                 const isRenewalStart = isRenewalStartLesson(m, l, i);
                 const renewalBadge = isRenewalStart ? `<button onclick="event.stopPropagation(); window.editLessonRenewalDate(${i})" class="inline-flex items-center text-[9px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 ml-1 align-middle"><i class="fa-solid fa-rotate-right mr-1"></i>재등록추가</button>` : '';
+                const serviceBadge = isService ? `<span class="inline-flex items-center text-[9px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 ml-1 align-middle">서비스</span>` : '';
                 const renewalDateText = isRenewalStart ? `재등록일: ${formatDisplayDate(l.renewalDate)} · ` : '';
                 
-                let statusText = '다음 레슨 서명';
+                let statusText = isService ? '다음 레슨 서명(서비스 세션)' : '다음 레슨 서명';
                 let subText = `${renewalDateText}${String(l.no).padStart(2,'0')}회차 · 터치하여 서명`;
                 let rightContent = `<button class="text-amber-500"><i class="fa-solid fa-chevron-right text-xs"></i></button>`;
                 let rowClass = 'bg-white hover:bg-amber-50';
 
                 if (isSigned) {
-                    statusText = `${String(l.no).padStart(2,'0')}회차 완료`;
+                    statusText = isService ? `${String(l.no).padStart(2,'0')}회차 서비스 완료` : `${String(l.no).padStart(2,'0')}회차 완료`;
                     subText = `${renewalDateText}${l.date || '날짜 미정'} · 서명완료`;
                     rightContent = `<img src="${l.signature}" class="h-6 object-contain bg-white border border-stone-200 rounded p-0.5 shadow-sm">`;
                     rowClass = 'bg-amber-500/5';
@@ -7627,11 +7829,11 @@
                 };
                 const lessonInfoHtml = isSigned
                     ? `<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                            <p class="text-base font-black text-stone-900 leading-tight">${escapeHtml(statusText)}${renewalBadge}</p>
+                            <p class="text-base font-black text-stone-900 leading-tight">${escapeHtml(statusText)}${renewalBadge}${serviceBadge}</p>
                             <p class="text-[11px] font-bold text-stone-500 leading-tight">${escapeHtml(subText)}</p>
                         </div>`
                     : `<div>
-                            <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}</p>
+                            <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}${serviceBadge}</p>
                             <p class="text-[9px] text-stone-400">${escapeHtml(subText)}</p>
                         </div>`;
                 
@@ -8622,7 +8824,7 @@
             } else if (hasGoogleCalendarToken()) {
                 status.innerText = '연결됨 · 예약 등록 시 자동 반영';
             } else {
-                status.innerText = '설정됨 · 캘린더 연결을 눌러 권한을 허용해주세요.';
+                status.innerText = '설정됨 · 예약 저장/이동/삭제 시 연결을 확인합니다.';
             }
         }
 
@@ -8649,7 +8851,7 @@
                 return;
             }
 
-            status.innerText = '다시 연결 필요 · 등록 전 연결 권장';
+            status.innerText = '예약 저장 시 구글 권한을 확인합니다.';
             connectBtn.classList.remove('hidden');
         }
 
@@ -8698,6 +8900,7 @@
             const clientId = normalizeGoogleCalendarClientId(options.clientId || getGoogleCalendarClientId());
             if (!clientId) throw new Error('Google OAuth 클라이언트 ID가 필요합니다.');
             if (hasGoogleCalendarToken() && window.googleCalendarTokenClientId === clientId) return window.googleCalendarAccessToken;
+            if (!options.allowPrompt) throw new Error('구글 캘린더 연결 필요');
 
             await loadGoogleIdentityScript();
             if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
@@ -8745,7 +8948,7 @@
             const clientId = saveGoogleCalendarClientIdFromSettings();
             if (!clientId) return showToast('Google OAuth 클라이언트 ID를 입력해주세요.');
             try {
-                await requestGoogleCalendarAccess({ clientId, prompt: 'consent' });
+                await requestGoogleCalendarAccess({ clientId, prompt: 'consent', allowPrompt: true });
                 renderScheduleGoogleCalendarBlock();
                 showToast('구글 캘린더가 연결되었습니다.');
             } catch (err) {
@@ -8779,9 +8982,10 @@
             const clientId = getGoogleCalendarClientId();
             if (!clientId) return false;
             if (hasGoogleCalendarToken() && window.googleCalendarTokenClientId === clientId) return true;
+            if (!options.userAction) return false;
             if (options.showCheckingToast) showToast('구글 캘린더 연결을 확인하고 있습니다.');
             try {
-                await requestGoogleCalendarAccess({ clientId, prompt: options.prompt == null ? '' : options.prompt });
+                await requestGoogleCalendarAccess({ clientId, prompt: options.prompt == null ? '' : options.prompt, allowPrompt: true });
                 renderGoogleCalendarStatus();
                 renderScheduleGoogleCalendarBlock();
                 if (options.showConnectedToast !== false) showToast('구글 캘린더가 연결되었습니다.');
@@ -8793,23 +8997,6 @@
                 if (options.showErrorToast) showToast(`구글 캘린더 연결 실패: ${formatGoogleCalendarError(err)}`);
                 return false;
             }
-        }
-
-        function scheduleGoogleCalendarStartupAutoConnect(delay = 1400) {
-            const loginId = window.activeLoginId;
-            if (!loginId) return;
-            setTimeout(async () => {
-                if (window.activeLoginId !== loginId) return;
-                if (window.googleCalendarStartupConnectLoginId === loginId) return;
-                if (!isGoogleCalendarAllowedForActiveProfile() || !getGoogleCalendarClientId() || hasGoogleCalendarToken()) return;
-                window.googleCalendarStartupConnectLoginId = loginId;
-                await ensureGoogleCalendarConnectedForScheduleChange({
-                    showCheckingToast: false,
-                    showConnectedToast: true,
-                    showErrorToast: false,
-                    prompt: ''
-                });
-            }, delay);
         }
 
         function formatGoogleCalendarError(err) {
@@ -8981,7 +9168,8 @@
         async function googleCalendarFetch(path, options = {}, authOptions = {}) {
             const token = await requestGoogleCalendarAccess({
                 prompt: authOptions.interactive ? '' : '',
-                clientId: getGoogleCalendarClientId()
+                clientId: getGoogleCalendarClientId(),
+                allowPrompt: !!(authOptions.allowPrompt || authOptions.interactive)
             });
             const response = await fetch(`https://www.googleapis.com/calendar/v3${path}`, {
                 ...options,
@@ -9346,7 +9534,7 @@
                         currentLabel: '연결 확인 중'
                     });
                 }
-                await requestGoogleCalendarAccess({ prompt: '' });
+                await requestGoogleCalendarAccess({ prompt: '', allowPrompt: true });
                 if (showProgress) {
                     updateCalendarSyncProgress({
                         total: list.length,
@@ -9684,7 +9872,8 @@
             const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
                 showCheckingToast: !!getGoogleCalendarClientId(),
                 showConnectedToast: true,
-                showErrorToast: false
+                showErrorToast: false,
+                userAction: true
             });
             if (calendarReady) {
                 calendarUpdated = !!(await syncScheduleToGoogleCalendar(schedule, { interactive: true, manual: false, cleanupDuplicates: false }));
@@ -9948,7 +10137,8 @@
             const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
                 showCheckingToast: !!getGoogleCalendarClientId(),
                 showConnectedToast: true,
-                showErrorToast: false
+                showErrorToast: false,
+                userAction: true
             });
             if (calendarReady) {
                 let synced = 0;
@@ -9996,7 +10186,8 @@
             const calendarReady = await ensureGoogleCalendarConnectedForScheduleChange({
                 showCheckingToast: !!getGoogleCalendarClientId(),
                 showConnectedToast: true,
-                showErrorToast: false
+                showErrorToast: false,
+                userAction: true
             });
             if (calendarReady) {
                 for (const schedule of deleteTargets) {
