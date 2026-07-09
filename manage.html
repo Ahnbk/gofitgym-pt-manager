@@ -1675,10 +1675,10 @@
     <div id="modal-add-session" role="dialog" aria-modal="true" aria-label="세션 재등록 추가" class="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity">
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
-                <h3 class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
+                <h3 id="add-session-modal-title" class="font-black text-emerald-400 text-base"><i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)</h3>
                 <button onclick="window.closeAddSessionModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-5 space-y-4">
+            <div class="p-5 space-y-4 max-h-[72dvh] overflow-y-auto">
                 <div>
                     <label class="block text-xs text-stone-500 font-bold mb-1.5">추가할 세션 횟수 (직접입력 가능)</label>
                     <div class="flex gap-2">
@@ -1713,10 +1713,18 @@
                 <div id="add-unit-price-preview" class="rounded-xl bg-emerald-50 border border-emerald-100 px-3.5 py-2 text-[11px] font-black text-emerald-700">
                     재등록 단가를 계산하려면 PT 매출을 입력하세요.
                 </div>
+                <div id="add-session-history-block" class="hidden rounded-2xl border border-stone-200 bg-stone-50 overflow-hidden">
+                    <div class="px-3.5 py-2.5 border-b border-stone-200 flex items-center justify-between">
+                        <span class="text-xs font-black text-stone-700"><i class="fa-solid fa-clock-rotate-left text-emerald-500 mr-1.5"></i>재등록 이력</span>
+                        <span id="add-session-history-count" class="text-[10px] font-black text-stone-400">0건</span>
+                    </div>
+                    <div id="add-session-history-list" class="divide-y divide-stone-200"></div>
+                </div>
             </div>
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.cancelRenewalEdit()" id="add-session-edit-cancel-btn" class="hidden flex-1 py-3 bg-white border border-stone-200 text-stone-600 font-black rounded-xl text-xs active-scale">수정취소</button>
                 <button onclick="window.closeAddSessionModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
-                <button onclick="window.executeAddSession()" class="flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale">추가하기</button>
+                <button onclick="window.executeAddSession()" id="add-session-submit-btn" class="flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale">추가하기</button>
             </div>
         </div>
     </div>
@@ -2164,8 +2172,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v150';
-        const APP_DISPLAY_VERSION = '1.50';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v151';
+        const APP_DISPLAY_VERSION = '1.51';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -6836,23 +6844,12 @@
         window.toggleAddServiceSessionInput = function() {
             const wrap = document.getElementById('add-service-session-wrap');
             const input = document.getElementById('add-service-sessions-count');
-            const toggle = document.getElementById('add-service-session-toggle');
             if (!wrap) return;
             const willShow = wrap.classList.contains('hidden');
-            wrap.classList.toggle('hidden', !willShow);
-            if (toggle) {
-                toggle.className = willShow
-                    ? 'w-11 shrink-0 rounded-xl bg-amber-500 text-stone-950 text-sm font-black active-scale'
-                    : 'w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale';
-                toggle.innerHTML = willShow
-                    ? '<i class="fa-solid fa-check"></i>'
-                    : '<i class="fa-solid fa-plus text-amber-500"></i>';
-            }
+            const nextValue = willShow ? (input && parseInt(input.value, 10) > 0 ? input.value : 1) : 0;
+            setAddServiceSessionInputVisible(willShow, nextValue);
             if (willShow) {
-                if (input && (!input.value || Number(input.value) < 1)) input.value = '1';
                 setTimeout(() => input && input.focus(), 50);
-            } else if (input) {
-                input.value = '0';
             }
             window.updateRenewalUnitPricePreview();
         }
@@ -7278,23 +7275,234 @@
             showToast('회원 데이터가 삭제되었습니다.');
         }
 
-        window.openAddSessionModal = function() {
+        function setAddServiceSessionInputVisible(visible, value = 0) {
+            const serviceWrap = document.getElementById('add-service-session-wrap');
+            const serviceInput = document.getElementById('add-service-sessions-count');
+            const serviceToggle = document.getElementById('add-service-session-toggle');
+            if (serviceWrap) serviceWrap.classList.toggle('hidden', !visible);
+            if (serviceInput) serviceInput.value = String(Math.max(0, parseInt(value, 10) || 0));
+            if (serviceToggle) {
+                serviceToggle.className = visible
+                    ? 'w-11 shrink-0 rounded-xl bg-amber-500 text-stone-950 text-sm font-black active-scale'
+                    : 'w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale';
+                serviceToggle.innerHTML = visible
+                    ? '<i class="fa-solid fa-check"></i>'
+                    : '<i class="fa-solid fa-plus text-amber-500"></i>';
+            }
+        }
+
+        function getRenewalPayment(member, renewalId) {
+            const payments = Array.isArray(member && member.payments) ? member.payments : [];
+            return payments.find(payment => String(payment.renewalId || payment.id || '') === String(renewalId || '')) || null;
+        }
+
+        function getRenewalLessons(member, renewalId) {
+            return (Array.isArray(member && member.lessons) ? member.lessons : [])
+                .filter(lesson => String(lesson.renewalId || '') === String(renewalId || ''));
+        }
+
+        function getRenewalLessonStats(member, renewalId) {
+            const lessons = getRenewalLessons(member, renewalId);
+            const paid = lessons.filter(lesson => !isServiceLesson(lesson));
+            const service = lessons.filter(isServiceLesson);
+            return {
+                lessons,
+                paidCount: paid.length,
+                serviceCount: service.length,
+                paidCompleted: paid.filter(isCompletedLesson).length,
+                serviceCompleted: service.filter(isCompletedLesson).length,
+                completed: lessons.filter(isCompletedLesson).length
+            };
+        }
+
+        function setAddSessionFormMode(mode = 'create', renewalId = '') {
+            const editing = mode === 'edit';
+            window.addSessionFormMode = editing ? 'edit' : 'create';
+            window.editingRenewalId = editing ? String(renewalId || '') : '';
+            const title = document.getElementById('add-session-modal-title');
+            const submit = document.getElementById('add-session-submit-btn');
+            const cancelEdit = document.getElementById('add-session-edit-cancel-btn');
+            if (title) {
+                title.innerHTML = editing
+                    ? '<i class="fa-solid fa-pen-to-square mr-1.5"></i>재등록 이력 수정'
+                    : '<i class="fa-solid fa-rotate-right mr-1.5"></i>세션 재등록 (추가)';
+                title.className = editing
+                    ? 'font-black text-amber-400 text-base'
+                    : 'font-black text-emerald-400 text-base';
+            }
+            if (submit) {
+                submit.innerText = editing ? '수정 저장' : '추가하기';
+                submit.className = editing
+                    ? 'flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale'
+                    : 'flex-1 py-3 bg-emerald-500 text-white font-black rounded-xl text-xs shadow-md active-scale';
+            }
+            if (cancelEdit) {
+                cancelEdit.classList.toggle('hidden', !editing);
+            }
+        }
+
+        function resetAddSessionForm() {
             const today = formatDate(new Date());
+            setAddSessionFormMode('create');
             document.getElementById('add-sessions-count').value = '10';
             document.getElementById('add-session-date').value = today;
             document.getElementById('add-payment-date').value = today;
             document.getElementById('add-payment-amount').value = '';
             document.getElementById('add-membership-amount').value = '';
-            const serviceWrap = document.getElementById('add-service-session-wrap');
-            const serviceInput = document.getElementById('add-service-sessions-count');
-            const serviceToggle = document.getElementById('add-service-session-toggle');
-            if (serviceWrap) serviceWrap.classList.add('hidden');
-            if (serviceInput) serviceInput.value = '0';
-            if (serviceToggle) {
-                serviceToggle.className = 'w-11 shrink-0 rounded-xl bg-stone-900 text-white text-sm font-black active-scale';
-                serviceToggle.innerHTML = '<i class="fa-solid fa-plus text-amber-500"></i>';
-            }
+            setAddServiceSessionInputVisible(false, 0);
             window.updateRenewalUnitPricePreview();
+        }
+
+        function renderAddSessionRenewalHistory(member) {
+            const block = document.getElementById('add-session-history-block');
+            const list = document.getElementById('add-session-history-list');
+            const countEl = document.getElementById('add-session-history-count');
+            if (!block || !list) return;
+            const renewals = (Array.isArray(member && member.renewals) ? member.renewals : [])
+                .slice()
+                .sort((a, b) => (parseInt(b.startNo, 10) || 0) - (parseInt(a.startNo, 10) || 0));
+            block.classList.remove('hidden');
+            if (countEl) countEl.innerText = `${renewals.length}건`;
+            if (!renewals.length) {
+                list.innerHTML = `<div class="px-3.5 py-3 text-[11px] font-bold text-stone-400">아직 재등록 이력이 없습니다.</div>`;
+                return;
+            }
+            list.innerHTML = renewals.map(renewal => {
+                const payment = getRenewalPayment(member, renewal.id);
+                const stats = getRenewalLessonStats(member, renewal.id);
+                const paidCount = stats.paidCount || Math.max(0, parseInt(renewal.count, 10) || 0);
+                const serviceCount = stats.serviceCount || Math.max(0, parseInt(renewal.serviceSessions, 10) || 0);
+                const serviceText = serviceCount > 0 ? ` · 서비스 ${serviceCount}회` : '';
+                const paymentDate = payment && payment.date ? formatDisplayDate(payment.date) || payment.date : '';
+                const renewalDate = renewal.date ? formatDisplayDate(renewal.date) || renewal.date : '-';
+                const amountText = payment
+                    ? `${formatWon(payment.amount)}${Number(payment.membershipAmount) > 0 ? ` · 회원권 ${formatWon(payment.membershipAmount)}` : ''}`
+                    : '결제 정보 없음';
+                return `
+                    <div class="px-3.5 py-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-xs font-black text-stone-800 truncate">재등록일 ${escapeHtml(renewalDate)}</p>
+                                <p class="mt-1 text-[11px] font-bold text-stone-600">유료 ${paidCount}회${serviceText} · 완료 ${stats.completed}회</p>
+                                <p class="mt-0.5 text-[10px] font-bold text-stone-400">${paymentDate ? `결제일 ${escapeHtml(paymentDate)} · ` : ''}${escapeHtml(amountText)}</p>
+                            </div>
+                            <button type="button" onclick="window.editRenewalHistory('${escapeHtml(String(renewal.id || ''))}')" class="shrink-0 min-h-[34px] px-2.5 rounded-lg bg-white border border-stone-200 text-[10px] font-black text-stone-700 active-scale">
+                                <i class="fa-solid fa-pen mr-1 text-amber-500"></i>수정
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function findRenewalInsertIndex(member, renewalId, serviceSession) {
+            const lessons = Array.isArray(member && member.lessons) ? member.lessons : [];
+            const indexes = lessons
+                .map((lesson, index) => String(lesson.renewalId || '') === String(renewalId || '') ? index : -1)
+                .filter(index => index >= 0);
+            if (!indexes.length) return lessons.length;
+            if (serviceSession) return Math.max(...indexes) + 1;
+            const firstServiceIndex = lessons.findIndex(lesson => String(lesson.renewalId || '') === String(renewalId || '') && isServiceLesson(lesson));
+            return firstServiceIndex >= 0 ? firstServiceIndex : Math.max(...indexes) + 1;
+        }
+
+        function removeRenewalLessonSlots(member, renewalId, serviceSession, removeCount) {
+            const indexes = [];
+            const lessons = Array.isArray(member && member.lessons) ? member.lessons : [];
+            for (let i = lessons.length - 1; i >= 0 && indexes.length < removeCount; i--) {
+                const lesson = lessons[i];
+                if (String(lesson.renewalId || '') !== String(renewalId || '')) continue;
+                if (isServiceLesson(lesson) !== !!serviceSession) continue;
+                if (isCompletedLesson(lesson)) continue;
+                indexes.push(i);
+            }
+            if (indexes.length < removeCount) return false;
+            indexes.forEach(index => lessons.splice(index, 1));
+            return true;
+        }
+
+        function resizeRenewalLessonGroup(member, renewalId, targetPaid, targetService, paymentId, renewalDate) {
+            const stats = getRenewalLessonStats(member, renewalId);
+            if (!stats.lessons.length) return { ok: false, message: '수정할 재등록 회차를 찾지 못했습니다.' };
+            if (targetPaid < stats.paidCompleted) return { ok: false, message: `유료 서명 완료 ${stats.paidCompleted}회보다 적게 줄일 수 없습니다.` };
+            if (targetService < stats.serviceCompleted) return { ok: false, message: `서비스 서명 완료 ${stats.serviceCompleted}회보다 적게 줄일 수 없습니다.` };
+
+            const paidDiff = targetPaid - stats.paidCount;
+            const serviceDiff = targetService - stats.serviceCount;
+            if (paidDiff < 0 && !removeRenewalLessonSlots(member, renewalId, false, Math.abs(paidDiff))) {
+                return { ok: false, message: '정리할 수 있는 유료 미서명 회차가 부족합니다.' };
+            }
+            if (serviceDiff < 0 && !removeRenewalLessonSlots(member, renewalId, true, Math.abs(serviceDiff))) {
+                return { ok: false, message: '정리할 수 있는 서비스 미서명 회차가 부족합니다.' };
+            }
+            if (paidDiff > 0) {
+                const insertIndex = findRenewalInsertIndex(member, renewalId, false);
+                const additions = Array.from({ length: paidDiff }, () => ({
+                    no: 0,
+                    date: '',
+                    trainer: '',
+                    signature: '',
+                    renewalId,
+                    renewalDate,
+                    paymentId,
+                    serviceSession: false
+                }));
+                member.lessons.splice(insertIndex, 0, ...additions);
+            }
+            if (serviceDiff > 0) {
+                const insertIndex = findRenewalInsertIndex(member, renewalId, true);
+                const additions = Array.from({ length: serviceDiff }, () => ({
+                    no: 0,
+                    date: '',
+                    trainer: '',
+                    signature: '',
+                    renewalId,
+                    renewalDate,
+                    paymentId,
+                    serviceSession: true
+                }));
+                member.lessons.splice(insertIndex, 0, ...additions);
+            }
+            (member.lessons || []).forEach((lesson, index) => {
+                lesson.no = index + 1;
+                if (String(lesson.renewalId || '') === String(renewalId || '')) {
+                    lesson.renewalDate = renewalDate;
+                    lesson.paymentId = paymentId;
+                    lesson.serviceSession = lesson.serviceSession === true;
+                }
+            });
+            member.totalSessions = member.lessons.length;
+            return { ok: true, paidDiff, serviceDiff };
+        }
+
+        window.editRenewalHistory = function(renewalId) {
+            const member = window.members.find(x => x.id === window.activeMemberId);
+            const renewal = member && (member.renewals || []).find(item => String(item.id || '') === String(renewalId || ''));
+            if (!member || !renewal) return showToast('수정할 재등록 이력을 찾지 못했습니다.');
+            const payment = getRenewalPayment(member, renewal.id);
+            const stats = getRenewalLessonStats(member, renewal.id);
+            document.getElementById('add-sessions-count').value = String(stats.paidCount || renewal.count || 1);
+            document.getElementById('add-session-date').value = normalizeDateInputValue(renewal.date, formatDate(new Date()));
+            document.getElementById('add-payment-date').value = normalizeDateInputValue(payment && payment.date, normalizeDateInputValue(renewal.paymentDate, normalizeDateInputValue(renewal.date)));
+            document.getElementById('add-payment-amount').value = payment && Number(payment.amount) > 0 ? String(Math.round(Number(payment.amount))) : '';
+            document.getElementById('add-membership-amount').value = payment && Number(payment.membershipAmount) > 0 ? String(Math.round(Number(payment.membershipAmount))) : '';
+            setAddServiceSessionInputVisible(stats.serviceCount > 0, stats.serviceCount);
+            setAddSessionFormMode('edit', renewal.id);
+            window.updateRenewalUnitPricePreview();
+            document.getElementById('add-sessions-count').focus();
+        }
+
+        window.cancelRenewalEdit = function() {
+            const member = window.members.find(x => x.id === window.activeMemberId);
+            resetAddSessionForm();
+            renderAddSessionRenewalHistory(member);
+            showToast('재등록 수정 모드를 취소했습니다.');
+        }
+
+        window.openAddSessionModal = function() {
+            const member = window.members.find(x => x.id === window.activeMemberId);
+            resetAddSessionForm();
+            renderAddSessionRenewalHistory(member);
             const m = document.getElementById('modal-add-session');
             m.classList.remove('hidden'); setTimeout(() => m.classList.remove('opacity-0'), 10);
         }
@@ -7302,7 +7510,85 @@
             const m = document.getElementById('modal-add-session');
             m.classList.add('opacity-0'); setTimeout(() => m.classList.add('hidden'), 300);
         }
+        window.saveEditedRenewal = function() {
+            const member = window.members.find(x => x.id === window.activeMemberId);
+            const renewalId = window.editingRenewalId;
+            const renewal = member && (member.renewals || []).find(item => String(item.id || '') === String(renewalId || ''));
+            if (!member || !renewal) return showToast('수정할 재등록 이력을 찾지 못했습니다.');
+            const count = parseInt(document.getElementById('add-sessions-count').value, 10) || 0;
+            const serviceCount = getAddServiceSessionCount();
+            const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
+            const paymentDate = document.getElementById('add-payment-date').value || renewalDate;
+            const paymentAmount = parseCurrencyInput(document.getElementById('add-payment-amount').value);
+            const membershipAmount = parseCurrencyInput(document.getElementById('add-membership-amount').value);
+            if (count < 1) return showToast('유료 세션 횟수를 확인해주세요.');
+            if (serviceCount < 0) return showToast('서비스 세션 횟수를 확인해주세요.');
+            if (paymentAmount <= 0) return showToast('재등록 PT 매출을 입력해주세요!');
+
+            const stats = getRenewalLessonStats(member, renewalId);
+            const removing = count < stats.paidCount || serviceCount < stats.serviceCount;
+            if (removing) {
+                const removePaid = Math.max(0, stats.paidCount - count);
+                const removeService = Math.max(0, stats.serviceCount - serviceCount);
+                const ok = confirm(`재등록 이력을 수정하면서 미서명 회차 ${removePaid + removeService}개를 정리할까요?\n서명 완료된 회차는 유지됩니다.`);
+                if (!ok) return;
+            }
+
+            let payment = getRenewalPayment(member, renewalId);
+            const paymentId = payment && payment.id ? payment.id : (renewal.paymentId || renewalId);
+            const resizeResult = resizeRenewalLessonGroup(member, renewalId, count, serviceCount, paymentId, renewalDate);
+            if (!resizeResult.ok) return showToast(resizeResult.message);
+
+            if (!payment) {
+                payment = buildMemberPayment({
+                    id: paymentId,
+                    type: 'renewal',
+                    date: paymentDate,
+                    amount: paymentAmount,
+                    membershipAmount,
+                    sessions: count,
+                    serviceSessions: serviceCount,
+                    renewalId,
+                    startNo: renewal.startNo || 1,
+                    count
+                });
+                member.payments = Array.isArray(member.payments) ? member.payments : [];
+                member.payments.push(payment);
+            } else {
+                Object.assign(payment, buildMemberPayment({
+                    id: payment.id || paymentId,
+                    type: 'renewal',
+                    date: paymentDate,
+                    amount: paymentAmount,
+                    membershipAmount,
+                    sessions: count,
+                    serviceSessions: serviceCount,
+                    renewalId,
+                    startNo: renewal.startNo || 1,
+                    count
+                }));
+            }
+            Object.assign(renewal, {
+                date: renewalDate,
+                count,
+                serviceSessions: serviceCount,
+                paymentId: payment.id || paymentId,
+                paymentDate,
+                paymentAmount,
+                membershipAmount,
+                unitPrice: payment.unitPrice
+            });
+            rebuildRenewalSummaries(member);
+            localSaveMember(member);
+            populateMemberDetail(member);
+            window.renderMemberLessons();
+            renderAddSessionRenewalHistory(member);
+            resetAddSessionForm();
+            showToast('재등록 이력을 수정했습니다.');
+        }
+
         window.executeAddSession = function() {
+            if (window.addSessionFormMode === 'edit') return window.saveEditedRenewal();
             const count = parseInt(document.getElementById('add-sessions-count').value) || 0;
             const serviceCount = getAddServiceSessionCount();
             const renewalDate = document.getElementById('add-session-date').value || formatDate(new Date());
@@ -7675,6 +7961,7 @@
                 if (!payment || !payment.renewalId) return;
                 const renewal = (m.renewals || []).find(r => String(r.id || '') === String(payment.renewalId || ''));
                 if (!renewal) return;
+                payment.startNo = Math.max(1, parseInt(renewal.startNo, 10) || parseInt(payment.startNo, 10) || 1);
                 payment.serviceSessions = Math.max(0, parseInt(renewal.serviceSessions, 10) || 0);
                 payment.sessions = Math.max(0, parseInt(payment.sessions, 10) || parseInt(renewal.count, 10) || 0);
                 payment.count = Math.max(0, parseInt(payment.count, 10) || parseInt(renewal.count, 10) || 0);
