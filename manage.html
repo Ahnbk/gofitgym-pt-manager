@@ -1544,6 +1544,12 @@
                 <button onclick="window.toggleActionMemberHold()" id="member-action-hold-btn" class="w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale">
                     <i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동
                 </button>
+                <button onclick="window.openMemberTerminationModal()" id="member-action-terminate-btn" class="hidden w-full py-3 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-hand-holding-dollar mr-1.5"></i>환불 종료 처리
+                </button>
+                <button onclick="window.cancelActionMemberTermination()" id="member-action-cancel-termination-btn" class="hidden w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black active-scale">
+                    <i class="fa-solid fa-rotate-left mr-1.5"></i>환불 종료 취소
+                </button>
                 <button onclick="window.closeMemberActionMenu()" class="w-full py-3 bg-stone-100 text-stone-600 rounded-xl text-xs font-black active-scale">
                     취소
                 </button>
@@ -1587,6 +1593,42 @@
             <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
                 <button onclick="window.closeMemberHoldChoiceModal()" class="flex-1 py-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
                 <button onclick="window.executeMemberHoldChoice()" class="flex-1 py-3 bg-amber-500 text-stone-950 font-black rounded-xl text-xs shadow-md active-scale">이동</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 0-0-3. Member Refund Termination Modal -->
+    <div id="modal-member-termination" role="dialog" aria-modal="true" aria-label="회원 환불 종료 처리" class="fixed inset-0 bg-stone-900/75 backdrop-blur-sm flex items-end md:items-center justify-center p-4 modal-safe-area z-[77] hidden opacity-0 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="bg-stone-900 text-stone-100 p-4 flex justify-between items-center">
+                <div class="min-w-0">
+                    <h3 id="termination-title" class="font-black text-red-400 text-base truncate">환불 종료 처리</h3>
+                    <p class="text-[11px] text-stone-400 mt-1">미사용 회차를 환불 처리하고 완료 탭으로 이동합니다.</p>
+                </div>
+                <button onclick="window.closeMemberTerminationModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label for="termination-date" class="block text-xs text-stone-600 font-black mb-1.5">종료일 *</label>
+                    <input type="date" id="termination-date" class="w-full min-h-[44px] text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-red-400 font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-2" aria-label="환불 처리 예정 횟수">
+                    <div class="rounded-xl bg-stone-50 border border-stone-200 p-3 text-center">
+                        <p class="text-[10px] font-bold text-stone-500">유료 잔여</p>
+                        <p id="termination-paid-count" class="mt-1 text-lg font-black text-stone-900">0회</p>
+                    </div>
+                    <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
+                        <p class="text-[10px] font-bold text-amber-700">서비스 잔여</p>
+                        <p id="termination-service-count" class="mt-1 text-lg font-black text-amber-700">0회</p>
+                    </div>
+                </div>
+                <div class="rounded-xl bg-red-50 border border-red-100 p-3 text-[11px] leading-relaxed font-bold text-red-700">
+                    서명 완료 기록은 유지됩니다. 기존 예약은 자동으로 삭제되지 않으므로 필요한 예약은 스케줄에서 별도로 취소해주세요.
+                </div>
+            </div>
+            <div class="p-4 bg-stone-50 flex space-x-2 border-t border-stone-100">
+                <button onclick="window.closeMemberTerminationModal()" class="flex-1 min-h-[44px] bg-stone-200 text-stone-700 font-bold rounded-xl text-xs active-scale">취소</button>
+                <button onclick="window.executeMemberTermination()" class="flex-1 min-h-[44px] bg-red-600 text-white font-black rounded-xl text-xs shadow-md active-scale">환불 종료</button>
             </div>
         </div>
     </div>
@@ -2200,8 +2242,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v154';
-        const APP_DISPLAY_VERSION = '1.54';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v155';
+        const APP_DISPLAY_VERSION = '1.55';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3850,6 +3892,21 @@
                         if (typeof m.transferTeacher !== 'string') m.transferTeacher = '';
                     }
                 }
+                m.terminationHistory = Array.isArray(m.terminationHistory)
+                    ? m.terminationHistory.filter(item => item && typeof item === 'object')
+                    : [];
+                if (m.termination && typeof m.termination === 'object') {
+                    m.termination = {
+                        ...m.termination,
+                        id: String(m.termination.id || `termination_${m.id || 'member'}_${m.termination.date || 'unknown'}`),
+                        date: String(m.termination.date || ''),
+                        processedAt: String(m.termination.processedAt || ''),
+                        refundedPaidSessions: Math.max(0, parseInt(m.termination.refundedPaidSessions, 10) || 0),
+                        refundedServiceSessions: Math.max(0, parseInt(m.termination.refundedServiceSessions, 10) || 0)
+                    };
+                } else {
+                    delete m.termination;
+                }
                 if (isArchivedMember(m)) {
                     m.archived = true;
                     m.status = 'archived';
@@ -3873,6 +3930,14 @@
                     if (typeof lesson.signature === 'undefined') lesson.signature = '';
                     if (typeof lesson.paymentId === 'undefined') lesson.paymentId = '';
                     lesson.serviceSession = lesson.serviceSession === true;
+                    lesson.refunded = lesson.refunded === true;
+                    if (lesson.refunded) {
+                        lesson.refundDate = String(lesson.refundDate || '');
+                        lesson.terminationId = String(lesson.terminationId || '');
+                    } else {
+                        delete lesson.refundDate;
+                        delete lesson.terminationId;
+                    }
                     if (lesson.signature === 'LEGACY_DONE') lesson.legacyCompleted = true;
                 });
                 m.totalSessions = m.lessons.length;
@@ -3914,12 +3979,12 @@
 
         function getSessionShareStats(m) {
             const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
-            const total = Number((m && m.totalSessions) || lessons.length || 0);
+            const total = getProgressLessonTotal(m);
             const completed = lessons.filter(isCompletedLesson).length;
             return {
                 completed,
                 total,
-                remaining: Math.max(0, total - completed)
+                remaining: lessons.filter(lesson => !isCompletedLesson(lesson) && !isRefundedLesson(lesson)).length
             };
         }
 
@@ -3939,13 +4004,29 @@
             return !!(lesson && lesson.serviceSession === true);
         }
 
+        function isRefundedLesson(lesson) {
+            return !!(lesson && lesson.refunded === true);
+        }
+
+        function isMemberRefundTerminated(m) {
+            return !!(m && m.termination && typeof m.termination === 'object');
+        }
+
+        function getProgressLessonTotal(m) {
+            const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
+            if (lessons.length) return lessons.filter(lesson => !isRefundedLesson(lesson)).length;
+            return Math.max(0, parseInt(m && m.totalSessions, 10) || 0);
+        }
+
         function isArchivedMember(m) {
             return !!(m && (m.archived === true || m.status === 'archived'));
         }
 
         function isMemberCompleted(m) {
             if (isArchivedMember(m)) return true;
-            return m.totalSessions > 0 && getCompletedCount(m) >= m.totalSessions;
+            if (isMemberRefundTerminated(m)) return true;
+            const progressTotal = getProgressLessonTotal(m);
+            return progressTotal > 0 && getCompletedCount(m) >= progressTotal;
         }
 
         function isMemberOnHold(m) {
@@ -6464,14 +6545,19 @@
             const holdDetail = getMemberHoldDetail(m);
             const completed = isMemberCompleted(m);
             const archived = isArchivedMember(m);
+            const terminated = isMemberRefundTerminated(m);
+            const remainingBreakdown = getRemainingLessonBreakdown(m);
             const comp = getCompletedCount(m);
+            const progressTotal = getProgressLessonTotal(m);
             const todaySchedules = getTodaySchedulesForMember(m);
             document.getElementById('member-action-title').innerText = m.name;
             document.getElementById('member-action-subtitle').innerText = archived
                 ? `보관됨 · ${comp}/${m.totalSessions || 0}회 완료`
+                : terminated
+                ? `환불 종료 · 종료일 ${formatDisplayDate(m.termination.date) || '-'} · 유료 ${m.termination.refundedPaidSessions || 0}회 / 서비스 ${m.termination.refundedServiceSessions || 0}회`
                 : hold
-                ? `${holdLabel} 중${holdDetail ? ` · ${holdDetail}` : ''} · ${comp}/${m.totalSessions || 0}회 완료`
-                : `${completed ? '완료' : '진행중'} · ${comp}/${m.totalSessions || 0}회 완료`;
+                ? `${holdLabel} 중${holdDetail ? ` · ${holdDetail}` : ''} · ${comp}/${progressTotal}회 완료`
+                : `${completed ? '완료' : '진행중'} · ${comp}/${progressTotal}회 완료`;
             const detailBtn = document.getElementById('member-action-detail-btn');
             if (detailBtn) detailBtn.classList.toggle('hidden', archived);
             const cancelBtn = document.getElementById('member-action-cancel-schedule-btn');
@@ -6494,14 +6580,18 @@
             const restoreArchiveBtn = document.getElementById('member-action-restore-archive-btn');
             if (restoreArchiveBtn) restoreArchiveBtn.classList.toggle('hidden', !archived);
             const holdBtn = document.getElementById('member-action-hold-btn');
-            holdBtn.classList.toggle('hidden', archived);
+            holdBtn.classList.toggle('hidden', archived || terminated);
             holdBtn.className = hold
                 ? 'w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black active-scale'
                 : 'w-full py-3 bg-amber-500 text-stone-950 rounded-xl text-xs font-black active-scale';
-            if (archived) holdBtn.classList.add('hidden');
+            if (archived || terminated) holdBtn.classList.add('hidden');
             holdBtn.innerHTML = hold
                 ? '<i class="fa-solid fa-play mr-1.5"></i>진행중으로 복귀'
                 : '<i class="fa-solid fa-pause mr-1.5"></i>보류 / 인계로 이동';
+            const terminateBtn = document.getElementById('member-action-terminate-btn');
+            if (terminateBtn) terminateBtn.classList.toggle('hidden', archived || terminated || remainingBreakdown.total <= 0);
+            const cancelTerminationBtn = document.getElementById('member-action-cancel-termination-btn');
+            if (cancelTerminationBtn) cancelTerminationBtn.classList.toggle('hidden', archived || !terminated);
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
         }
@@ -6641,6 +6731,126 @@
             showToast(`${m.name} 회원을 ${getMemberHoldLabel(m)} 상태로 ${wasOnHold ? '변경' : '이동'}했습니다.`);
         }
 
+        window.openMemberTerminationModal = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m || isArchivedMember(m)) return;
+            if (isMemberRefundTerminated(m)) return showToast('이미 환불 종료 처리된 회원입니다.');
+            const breakdown = getRemainingLessonBreakdown(m);
+            if (breakdown.total <= 0) return showToast('환불 처리할 잔여 회차가 없습니다.');
+            document.getElementById('termination-title').innerText = `${m.name} 환불 종료`;
+            document.getElementById('termination-date').value = formatDate(new Date());
+            document.getElementById('termination-paid-count').innerText = `${breakdown.paid}회`;
+            document.getElementById('termination-service-count').innerText = `${breakdown.service}회`;
+            const modal = document.getElementById('modal-member-termination');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        window.closeMemberTerminationModal = function() {
+            const modal = document.getElementById('modal-member-termination');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        window.executeMemberTermination = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m || isArchivedMember(m)) return;
+            if (isMemberRefundTerminated(m)) return showToast('이미 환불 종료 처리된 회원입니다.');
+            const terminationDate = document.getElementById('termination-date').value;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(terminationDate)) return showToast('종료일을 선택해주세요.');
+
+            const refundableLessons = (m.lessons || []).filter(lesson => !isCompletedLesson(lesson) && !isRefundedLesson(lesson));
+            const refundedPaidSessions = refundableLessons.filter(lesson => !isServiceLesson(lesson)).length;
+            const refundedServiceSessions = refundableLessons.filter(isServiceLesson).length;
+            if (!refundableLessons.length) return showToast('환불 처리할 잔여 회차가 없습니다.');
+
+            const serviceText = refundedServiceSessions > 0 ? `, 서비스 ${refundedServiceSessions}회` : '';
+            const ok = confirm(`${m.name} 회원을 ${formatDisplayDate(terminationDate)}자로 환불 종료할까요?\n유료 ${refundedPaidSessions}회${serviceText}가 환불 처리됩니다.\n\n서명 기록은 유지되고 기존 예약은 자동 삭제되지 않습니다.`);
+            if (!ok) return;
+
+            const terminationId = `termination_${Date.now()}`;
+            const previousHold = isMemberOnHold(m) ? {
+                status: 'hold',
+                holdAt: m.holdAt || '',
+                holdType: m.holdType || 'hold',
+                transferDate: m.transferDate || '',
+                transferTeacher: m.transferTeacher || ''
+            } : null;
+            refundableLessons.forEach(lesson => {
+                lesson.refunded = true;
+                lesson.refundDate = terminationDate;
+                lesson.terminationId = terminationId;
+            });
+            m.termination = {
+                id: terminationId,
+                date: terminationDate,
+                processedAt: new Date().toISOString(),
+                refundedPaidSessions,
+                refundedServiceSessions,
+                previousHold
+            };
+            m.status = '';
+            delete m.holdAt;
+            delete m.holdType;
+            delete m.transferDate;
+            delete m.transferTeacher;
+            localSaveMember(m);
+            window.closeMemberTerminationModal();
+            window.switchMemberStatusTab('completed');
+            window.closeMemberActionMenu();
+            showToast(`${m.name} 회원을 환불 종료 처리했습니다.`);
+        }
+
+        window.cancelActionMemberTermination = function() {
+            const m = window.members.find(x => x.id === window.memberActionMemberId);
+            if (!m || !isMemberRefundTerminated(m)) return;
+            const termination = m.termination;
+            const paid = Math.max(0, parseInt(termination.refundedPaidSessions, 10) || 0);
+            const service = Math.max(0, parseInt(termination.refundedServiceSessions, 10) || 0);
+            const serviceText = service > 0 ? `, 서비스 ${service}회` : '';
+            const ok = confirm(`${m.name} 회원의 환불 종료를 취소할까요?\n유료 ${paid}회${serviceText}가 다시 잔여 회차로 복원됩니다.`);
+            if (!ok) return;
+
+            (m.lessons || []).forEach(lesson => {
+                if (String(lesson.terminationId || '') !== String(termination.id || '')) return;
+                lesson.refunded = false;
+                delete lesson.refundDate;
+                delete lesson.terminationId;
+            });
+            m.terminationHistory = Array.isArray(m.terminationHistory) ? m.terminationHistory : [];
+            m.terminationHistory.push({ ...termination, cancelledAt: new Date().toISOString() });
+            const previousHold = termination.previousHold;
+            delete m.termination;
+            if (previousHold && previousHold.status === 'hold') {
+                m.status = 'hold';
+                m.holdAt = previousHold.holdAt || new Date().toISOString();
+                m.holdType = previousHold.holdType === 'transfer' ? 'transfer' : 'hold';
+                if (m.holdType === 'transfer') {
+                    m.transferDate = previousHold.transferDate || '';
+                    m.transferTeacher = previousHold.transferTeacher || '';
+                }
+            } else {
+                m.status = '';
+            }
+            localSaveMember(m);
+            window.switchMemberStatusTab(isMemberOnHold(m) ? 'hold' : (isMemberCompleted(m) ? 'completed' : 'active'));
+            window.closeMemberActionMenu();
+            showToast(`${m.name} 회원의 환불 종료를 취소했습니다.`);
+        }
+
+        function reopenRefundTerminatedMember(m, reason = 'renewal') {
+            if (!isMemberRefundTerminated(m)) return false;
+            m.terminationHistory = Array.isArray(m.terminationHistory) ? m.terminationHistory : [];
+            m.terminationHistory.push({
+                ...m.termination,
+                reopenedAt: new Date().toISOString(),
+                reopenReason: reason
+            });
+            delete m.termination;
+            m.status = '';
+            return true;
+        }
+
         window.renderMemberList = function() {
             const searchInput = document.getElementById('member-search');
             const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -6709,10 +6919,12 @@
             filtered.forEach(m => {
                 // Check if signed and not just marked as 'LATER'
                 const comp = getCompletedCount(m);
-                const percent = Math.round((comp / m.totalSessions) * 100) || 0;
+                const progressTotal = getProgressLessonTotal(m);
+                const percent = Math.round((comp / progressTotal) * 100) || 0;
                 const completed = isMemberCompleted(m);
                 const hold = isMemberOnHold(m);
                 const archived = isArchivedMember(m);
+                const terminated = isMemberRefundTerminated(m);
                 const remainingBreakdown = getRemainingLessonBreakdown(m);
                 const remaining = remainingBreakdown.total;
                 const remainingLabel = formatRemainingLessonText(m, '잔여');
@@ -6738,17 +6950,20 @@
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
                     ? `<span class="shrink-0 whitespace-nowrap text-[10px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (archived ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="shrink-0 whitespace-nowrap text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
+                    : (archived ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (terminated ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-red-50 text-red-700 border border-red-200 font-black px-2 py-0.5 rounded-full">환불 종료</span>` : (completed ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="shrink-0 whitespace-nowrap text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${progressTotal}회</span>`)));
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
                 const archivedDetailText = archived && m.archivedSummary
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">보관일 ${formatDisplayDate(String(m.archivedSummary.archivedAt || '').slice(0, 10)) || '-'} · 운동일지 ${m.archivedSummary.workouts || 0}개</p>`
                     : '';
+                const terminationDetailText = terminated
+                    ? `<p class="text-[10px] text-red-600 font-bold mt-1">종료일 ${formatDisplayDate(m.termination.date) || '-'} · 환불 유료 ${m.termination.refundedPaidSessions || 0}회${m.termination.refundedServiceSessions > 0 ? ` · 서비스 ${m.termination.refundedServiceSessions}회` : ''}</p>`
+                    : '';
 
                 const card = document.createElement('button');
                 card.type = 'button';
-                card.className = `member-card w-full text-left bg-white rounded-2xl p-4 shadow-sm border ${archived ? 'border-stone-300 bg-stone-50' : (hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80'))} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
+                card.className = `member-card w-full text-left bg-white rounded-2xl p-4 shadow-sm border ${archived ? 'border-stone-300 bg-stone-50' : (terminated ? 'border-red-200 bg-red-50/30' : (hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80')))} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
                 card.setAttribute('aria-label', `${m.name} 회원 상세 열기, ${remainingLabel}`);
                 card.title = '회원 상세 열기 · 길게 눌러 추가 작업';
                 card.innerHTML = `
@@ -6761,6 +6976,7 @@
                             </div>
                             ${holdDetailText}
                             ${archivedDetailText}
+                            ${terminationDetailText}
                         </div>
                         <span class="shrink-0 self-start text-right ${remainingBadgeClass}">
                             <span class="whitespace-nowrap">잔여 ${remainingBreakdown.paid}회</span>
@@ -7094,7 +7310,7 @@
                 const removableIndexes = [];
                 for (let i = member.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
                     const lesson = member.lessons[i];
-                    if (isServiceLesson(lesson) || isCompletedLesson(lesson)) continue;
+                    if (isServiceLesson(lesson) || isCompletedLesson(lesson) || isRefundedLesson(lesson)) continue;
                     removableIndexes.push(i);
                 }
                 if (removableIndexes.length < removeCount) {
@@ -7119,6 +7335,7 @@
             (member.lessons || []).forEach(lesson => {
                 if (isServiceLesson(lesson)) return;
                 if (isSignedLesson(lesson)) return;
+                if (isRefundedLesson(lesson)) return;
                 if (lesson.signature === 'LATER') later.push(lesson);
                 else pending.push(lesson);
             });
@@ -7488,7 +7705,7 @@
                 const lesson = lessons[i];
                 if (String(lesson.renewalId || '') !== String(renewalId || '')) continue;
                 if (isServiceLesson(lesson) !== !!serviceSession) continue;
-                if (isCompletedLesson(lesson)) continue;
+                if (isCompletedLesson(lesson) || isRefundedLesson(lesson)) continue;
                 indexes.push(i);
             }
             if (indexes.length < removeCount) return false;
@@ -7685,6 +7902,7 @@
             if (count === 0 && paymentAmount > 0) return showToast("서비스 세션만 추가할 때 PT 매출은 0원으로 입력해주세요.");
             
             const m = window.members.find(x => x.id === window.activeMemberId);
+            const reopenedAfterTermination = reopenRefundTerminatedMember(m, 'renewal');
             const currentLen = m.lessons.length;
             const renewalId = 'renewal_' + Date.now();
             const paymentId = renewalId;
@@ -7712,6 +7930,7 @@
                 m.lessons.push({ no: currentLen + count + i + 1, date: '', trainer: '', signature: '', renewalId, renewalDate, paymentId, serviceSession: true });
             }
             m.totalSessions = m.lessons.length;
+            if (reopenedAfterTermination) window.memberStatusFilter = 'active';
             localSaveMember(m);
             window.renderMemberLessons();
             document.getElementById('detail-total-sessions').innerText = m.totalSessions;
@@ -7970,9 +8189,11 @@
         }
 
         function updateDetailProgress(m, comp) {
-            const total = m.totalSessions || 0;
+            const total = getProgressLessonTotal(m);
             const percent = total ? Math.round((comp / total) * 100) : 0;
-            document.getElementById('detail-session-progress').innerText = formatRemainingLessonText(m, '잔여 수업');
+            document.getElementById('detail-session-progress').innerText = isMemberRefundTerminated(m)
+                ? `환불 종료 · ${formatDisplayDate(m.termination.date) || '-'}`
+                : formatRemainingLessonText(m, '잔여 수업');
             document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
             document.getElementById('detail-progress-label').innerText = `${percent}%`;
             document.getElementById('detail-progress-summary').innerText = `${comp} / ${total}회 · ${percent}%`;
@@ -7992,7 +8213,7 @@
             const lessons = Array.isArray(m && m.lessons) ? m.lessons : [];
             const breakdown = { paid: 0, service: 0, total: 0 };
             lessons.forEach(lesson => {
-                if (isCompletedLesson(lesson)) return;
+                if (isCompletedLesson(lesson) || isRefundedLesson(lesson)) return;
                 if (isServiceLesson(lesson)) breakdown.service += 1;
                 else breakdown.paid += 1;
             });
@@ -8065,6 +8286,7 @@
             const input = document.getElementById('lesson-remaining-target');
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m) return;
+            if (isMemberRefundTerminated(m)) return showToast('환불 종료 회원은 재등록에서 새 세션을 추가해주세요.');
             const targetRemaining = parseInt(input && input.value, 10);
             if (!Number.isFinite(targetRemaining) || targetRemaining < 0) return showToast('잔여 수업 횟수를 0 이상으로 입력해주세요.');
 
@@ -8086,7 +8308,7 @@
                 const removableIndexes = [];
                 for (let i = m.lessons.length - 1; i >= 0 && removableIndexes.length < removeCount; i--) {
                     const lesson = m.lessons[i];
-                    if (isServiceLesson(lesson) || isCompletedLesson(lesson)) continue;
+                    if (isServiceLesson(lesson) || isCompletedLesson(lesson) || isRefundedLesson(lesson)) continue;
                     removableIndexes.push(i);
                 }
                 if (removableIndexes.length < removeCount) return showToast('정리할 수 있는 미서명 회차가 부족합니다.');
@@ -8149,7 +8371,7 @@
             const shouldCollapseSigned = comp >= 2;
             const hideSigned = shouldCollapseSigned && !window.signedLessonsExpanded;
             const lessons = Array.isArray(m.lessons) ? m.lessons : [];
-            const nextEmptyIndex = lessons.findIndex(l => !l.signature);
+            const nextEmptyIndex = lessons.findIndex(l => !l.signature && !isRefundedLesson(l));
             let renderedCount = 0;
 
             if (shouldCollapseSigned) {
@@ -8166,6 +8388,30 @@
                 `;
                 container.appendChild(toggleRow);
             }
+
+            const terminationRecords = (Array.isArray(m.terminationHistory) ? m.terminationHistory : [])
+                .map(record => ({ ...record, _active: false }));
+            if (isMemberRefundTerminated(m)) terminationRecords.push({ ...m.termination, _active: true });
+            terminationRecords
+                .sort((a, b) => String(b.processedAt || '').localeCompare(String(a.processedAt || '')))
+                .forEach(record => {
+                    const cancelled = !!record.cancelledAt;
+                    const reopened = !!record.reopenedAt;
+                    const title = record._active ? '환불 종료 처리' : (cancelled ? '환불 종료 취소' : (reopened ? '환불 종료 후 재등록' : '환불 종료 기록'));
+                    const paid = Math.max(0, parseInt(record.refundedPaidSessions, 10) || 0);
+                    const service = Math.max(0, parseInt(record.refundedServiceSessions, 10) || 0);
+                    const row = document.createElement('div');
+                    row.className = `flex items-center justify-between gap-3 px-4 py-3 border-b ${record._active ? 'bg-red-50 border-red-100 text-red-700' : 'bg-stone-50 border-stone-100 text-stone-600'}`;
+                    row.innerHTML = `
+                        <div class="min-w-0">
+                            <p class="text-xs font-black"><i class="fa-solid ${record._active ? 'fa-hand-holding-dollar' : 'fa-clock-rotate-left'} mr-1.5"></i>${title}</p>
+                            <p class="mt-1 text-[10px] font-bold">종료일 ${escapeHtml(formatDisplayDate(record.date) || '-')} · 환불 유료 ${paid}회${service > 0 ? ` · 서비스 ${service}회` : ''}</p>
+                        </div>
+                        <span class="shrink-0 text-[10px] font-black px-2 py-1 rounded-md ${record._active ? 'bg-red-100 text-red-700' : 'bg-white text-stone-500 border border-stone-200'}">${record._active ? '종료됨' : (cancelled ? '취소됨' : '과거 기록')}</span>
+                    `;
+                    container.appendChild(row);
+                    renderedCount += 1;
+                });
 
             const renderLessonRow = (l, i, mode = 'history') => {
                 const isSigned = isSignedLesson(l);
@@ -8235,6 +8481,7 @@
             };
 
             lessons.forEach((l, i) => {
+                if (isRefundedLesson(l)) return;
                 const isSigned = isSignedLesson(l);
                 const isLegacyCompleted = isLegacyCompletedLesson(l);
                 const isLater = l.signature === 'LATER';
@@ -8248,13 +8495,14 @@
 
             if (!renderedCount && remaining <= 0) {
                 const doneRow = document.createElement('div');
-                doneRow.className = 'flex items-center justify-between px-4 py-4 bg-emerald-50 text-emerald-700';
+                const terminated = isMemberRefundTerminated(m);
+                doneRow.className = `flex items-center justify-between px-4 py-4 ${terminated ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
                 doneRow.innerHTML = `
                     <div>
-                        <p class="text-sm font-black">모든 레슨 서명이 완료되었습니다.</p>
-                        <p class="text-[10px] font-bold text-emerald-600">필요하면 수정에서 잔여 수업을 다시 조정할 수 있습니다.</p>
+                        <p class="text-sm font-black">${terminated ? '환불 종료 처리되었습니다.' : '모든 레슨 서명이 완료되었습니다.'}</p>
+                        <p class="text-[10px] font-bold ${terminated ? 'text-red-600' : 'text-emerald-600'}">${terminated ? `종료일 ${escapeHtml(formatDisplayDate(m.termination.date) || '-')} · 재등록 시 새 회차로 다시 시작합니다.` : '필요하면 수정에서 잔여 수업을 다시 조정할 수 있습니다.'}</p>
                     </div>
-                    <i class="fa-solid fa-circle-check"></i>
+                    <i class="fa-solid ${terminated ? 'fa-hand-holding-dollar' : 'fa-circle-check'}"></i>
                 `;
                 container.appendChild(doneRow);
             }
@@ -8392,11 +8640,12 @@
         }
 
         window.openSignatureDrawingModal = function(index) {
+            const m = window.members.find(x => x.id === window.activeMemberId);
+            if (!m || !m.lessons || !m.lessons[index]) return showToast('서명할 회차를 찾지 못했습니다.');
+            const l = m.lessons[index];
+            if (isRefundedLesson(l)) return showToast('환불 처리된 회차는 서명할 수 없습니다.');
             window.currentEditingLessonIndex = index;
             document.getElementById('sign-modal-title').innerText = `${String(index+1).padStart(2,'0')}회차 레슨 서명`;
-            
-            const m = window.members.find(x => x.id === window.activeMemberId);
-            const l = m.lessons[index];
             const isSigned = isSignedLesson(l);
 
             const canvasWrap = document.getElementById('signature-canvas-wrapper');
@@ -8442,12 +8691,14 @@
 
         window.markSignLater = function() {
             const m = window.members.find(x => x.id === window.activeMemberId);
+            const lesson = m && m.lessons && m.lessons[window.currentEditingLessonIndex];
+            if (!lesson || isRefundedLesson(lesson)) return showToast('환불 처리된 회차는 변경할 수 없습니다.');
             const today = new Date();
-            m.lessons[window.currentEditingLessonIndex].signature = 'LATER';
-            if (!m.lessons[window.currentEditingLessonIndex].date) {
-                m.lessons[window.currentEditingLessonIndex].date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
+            lesson.signature = 'LATER';
+            if (!lesson.date) {
+                lesson.date = `${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
             }
-            m.lessons[window.currentEditingLessonIndex].trainer = getTrainerName();
+            lesson.trainer = getTrainerName();
             localSaveMember(m);
             window.renderMemberLessons();
             window.closeSignModal();
@@ -8502,6 +8753,7 @@
             const m = window.members.find(x => x.id === window.activeMemberId);
             if (!m || !m.lessons || !m.lessons[window.currentEditingLessonIndex]) return showToast('서명할 회차를 찾지 못했습니다.');
             const lesson = m.lessons[window.currentEditingLessonIndex];
+            if (isRefundedLesson(lesson)) return showToast('환불 처리된 회차는 서명할 수 없습니다.');
             const wasCompleted = isMemberCompleted(m);
             const wasLessonSigned = isCompletedLesson(lesson);
             const today = new Date();
