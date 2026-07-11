@@ -2200,8 +2200,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v153';
-        const APP_DISPLAY_VERSION = '1.53';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v154';
+        const APP_DISPLAY_VERSION = '1.54';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -6717,12 +6717,15 @@
                 const remaining = remainingBreakdown.total;
                 const remainingLabel = formatRemainingLessonText(m, '잔여');
                 
-                const timePrefix = m._todayTime ? `<span class="inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full mr-1.5 align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
+                const timePrefix = m._todayTime ? `<span class="shrink-0 inline-flex items-center bg-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full align-middle"><i class="fa-regular fa-clock mr-1"></i>${m._todayTime}</span>` : '';
                 const lowRemaining = !completed && !hold && remainingBreakdown.paid <= 3;
                 const progressBadgeClass = 'bg-stone-100 text-stone-500 font-bold';
                 const remainingBadgeClass = lowRemaining
-                    ? 'inline-flex items-center justify-center min-w-[34px] min-h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 py-1 rounded-full shadow-sm'
-                    : 'text-[11px] font-black text-stone-900';
+                    ? 'inline-flex flex-col items-end justify-center min-w-[54px] min-h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 py-1 rounded-lg shadow-sm leading-tight'
+                    : 'inline-flex flex-col items-end text-[11px] font-black text-stone-900 leading-tight';
+                const remainingServiceHtml = remainingBreakdown.service > 0
+                    ? `<span class="mt-1 text-[10px] ${lowRemaining ? 'text-stone-900' : 'text-amber-700'} whitespace-nowrap">서비스 ${remainingBreakdown.service}회</span>`
+                    : '';
                 const holdLabel = getMemberHoldLabel(m);
                 const holdDetail = getMemberHoldDetail(m);
                 const transferred = isMemberTransferred(m);
@@ -6734,8 +6737,8 @@
                     : 'border-stone-400 bg-stone-50';
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
-                    ? `<span class="text-[10px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (archived ? `<span class="text-[10px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
+                    ? `<span class="shrink-0 whitespace-nowrap text-[10px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
+                    : (archived ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="shrink-0 whitespace-nowrap text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="shrink-0 whitespace-nowrap text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
@@ -6749,16 +6752,20 @@
                 card.setAttribute('aria-label', `${m.name} 회원 상세 열기, ${remainingLabel}`);
                 card.title = '회원 상세 열기 · 길게 눌러 추가 작업';
                 card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <h3 class="text-base font-black text-stone-800">${timePrefix}${escapeHtml(m.name)}</h3>
+                    <div class="flex justify-between items-start gap-3 mb-2">
+                        <div class="min-w-0">
+                            <div class="min-w-0 flex items-center gap-2">
+                                ${timePrefix}
+                                <h3 class="min-w-0 truncate whitespace-nowrap text-base font-black text-stone-800">${escapeHtml(m.name)}</h3>
                                 ${statusBadge}
                             </div>
                             ${holdDetailText}
                             ${archivedDetailText}
                         </div>
-                        <span class="self-end ${remainingBadgeClass}">${remainingLabel}</span>
+                        <span class="shrink-0 self-start text-right ${remainingBadgeClass}">
+                            <span class="whitespace-nowrap">잔여 ${remainingBreakdown.paid}회</span>
+                            ${remainingServiceHtml}
+                        </span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
                         <div role="progressbar" aria-label="수업 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
