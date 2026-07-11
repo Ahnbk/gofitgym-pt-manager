@@ -221,8 +221,8 @@
         .cal-time-text { font-size: calc(9px + (2px * var(--cal-zoom))); }
 
         .header-control {
-            height: 30px;
-            min-height: 30px;
+            height: 38px;
+            min-height: 38px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -236,7 +236,7 @@
             line-height: 1;
         }
         .header-control-icon {
-            width: 30px;
+            width: 38px;
             padding-left: 0 !important;
             padding-right: 0 !important;
             overflow: hidden;
@@ -295,7 +295,7 @@
             min-height: 42px;
         }
         .header-cloud-row {
-            height: 30px;
+            height: 38px;
             align-self: flex-end;
             display: flex;
             align-items: center;
@@ -330,6 +330,15 @@
             }
             #header-cloud-sync-time {
                 max-width: 58px;
+            }
+            .app-header.is-schedule-view .header-brand {
+                flex: 0 0 auto;
+            }
+            .app-header.is-schedule-view .header-brand-copy {
+                display: none;
+            }
+            .app-header.is-schedule-view .header-home-button {
+                gap: 0;
             }
         }
 
@@ -478,6 +487,10 @@
         .touch-target {
             min-height: 44px;
             min-width: 44px;
+        }
+        .member-card:focus-visible {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
         }
         .modal-safe-area {
             padding-top: calc(1rem + var(--app-safe-top));
@@ -671,7 +684,7 @@
                 border-radius: 1rem;
             }
             #view-settlement .settlement-copy {
-                font-size: 0.68rem;
+                font-size: 0.72rem;
                 line-height: 1.35;
             }
             #view-settlement .settlement-statement-row {
@@ -686,13 +699,13 @@
                 width: 28px;
                 min-width: 28px;
                 height: 24px;
-                font-size: 9px;
+                font-size: 10px;
             }
             #view-settlement .settlement-statement-title {
-                font-size: 10.5px;
+                font-size: 11px;
             }
             #view-settlement .settlement-statement-note {
-                font-size: 8.5px;
+                font-size: 10px;
             }
             #view-settlement .settlement-statement-value {
                 font-size: 12.5px;
@@ -724,7 +737,7 @@
                 padding-right: 0.75rem;
             }
             #view-settlement .settlement-table {
-                font-size: 0.68rem;
+                font-size: 0.72rem;
             }
             #view-settlement .settlement-table th,
             #view-settlement .settlement-table td {
@@ -804,7 +817,7 @@
                 <button onclick="window.pushFullCloudSync(true)" id="header-cloud-sync-btn" class="hidden header-control header-control-icon text-[10px] font-black bg-amber-500 text-stone-950 rounded-lg active-scale" title="지금 동기화" aria-label="지금 동기화">
                     <i class="fa-solid fa-rotate"></i>
                 </button>
-                <span id="header-cloud-sync-time" class="hidden header-control max-w-[104px] sm:max-w-[150px] truncate text-[9px] font-bold text-stone-300 bg-stone-800/70 px-2 rounded-lg border border-stone-700"></span>
+                <span id="header-cloud-sync-time" class="hidden header-control max-w-[104px] sm:max-w-[150px] truncate text-[10px] font-bold text-stone-300 bg-stone-800/70 px-2 rounded-lg border border-stone-700"></span>
             </div>
             
             <div id="header-action-container" class="header-actions-row">
@@ -852,14 +865,14 @@
                     </div>
                 </div>
 
-                <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200">
-                    <button onclick="window.switchMemberStatusTab('active')" id="member-tab-active" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg bg-stone-900 text-white shadow transition-all">
+                <div class="flex bg-stone-100 p-1 rounded-xl border border-stone-200" aria-label="회원 상태 필터">
+                    <button onclick="window.switchMemberStatusTab('active')" id="member-tab-active" aria-pressed="true" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg bg-stone-900 text-white shadow transition-all">
                         진행중 <span id="member-tab-active-count" class="ml-1 text-amber-400">0</span>
                     </button>
-                    <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                    <button onclick="window.switchMemberStatusTab('completed')" id="member-tab-completed" aria-pressed="false" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
                         완료 <span id="member-tab-completed-count" class="ml-1 text-stone-400">0</span>
                     </button>
-                    <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
+                    <button onclick="window.switchMemberStatusTab('hold')" id="member-tab-hold" aria-pressed="false" class="flex-1 min-h-[44px] py-2.5 text-center font-black text-xs rounded-lg text-stone-500 transition-all">
                         보류 / 인계 <span id="member-tab-hold-count" class="ml-1 text-stone-400">0</span>
                     </button>
                 </div>
@@ -889,13 +902,13 @@
                 </div>
                 
                 <!-- Zoom & Info Controls -->
-                <div class="px-3 py-2 bg-stone-50 flex justify-between items-center border-b border-stone-300 shrink-0">
+                <div class="px-3 py-1 bg-stone-50 flex justify-between items-center border-b border-stone-300 shrink-0">
                     <span class="text-[10px] text-stone-700 font-bold"><i class="fa-solid fa-circle-info text-stone-500 mr-1"></i>빈 칸 터치시 예약</span>
                     
                     <div class="flex items-center space-x-1 bg-white p-1 rounded-lg border border-stone-300">
-                        <button onclick="window.zoomCalendar(-0.3)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 축소"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
+                        <button onclick="window.zoomCalendar(-0.3)" class="min-w-[40px] min-h-[40px] flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 축소"><i class="fa-solid fa-magnifying-glass-minus text-xs"></i></button>
                         <span id="zoom-level-text" class="text-[10px] font-bold text-stone-700 w-8 text-center">100%</span>
-                        <button onclick="window.zoomCalendar(0.3)" class="touch-target flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 확대"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
+                        <button onclick="window.zoomCalendar(0.3)" class="min-w-[40px] min-h-[40px] flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-stone-100 rounded active-scale" aria-label="달력 확대"><i class="fa-solid fa-magnifying-glass-plus text-xs"></i></button>
                     </div>
                 </div>
                 <div id="calendar-move-bar" class="hidden px-3 py-2 bg-emerald-50 border-b border-emerald-200 shrink-0">
@@ -1151,15 +1164,18 @@
                         <button onclick="window.openConsultationModal()" id="detail-consultation-btn" class="min-h-[38px] px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center">
                             <i class="fa-solid fa-clipboard-question text-amber-500 mr-1.5"></i>상담기록
                         </button>
-                        <button onclick="window.confirmDeleteActiveMember()" class="min-h-[38px] px-2.5 py-2 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 rounded-xl text-xs font-bold active-scale transition-colors">
+                        <button onclick="window.confirmDeleteActiveMember()" aria-label="회원 삭제" title="회원 삭제" class="min-w-[40px] min-h-[40px] px-2.5 py-2 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 rounded-xl text-xs font-bold active-scale transition-colors flex items-center justify-center">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
                 </div>
 
                 <div class="pt-2 border-t border-stone-100">
-                    <button onclick="window.toggleDetailProgress()" class="w-full flex items-center justify-between text-left">
-                        <span class="block text-[11px] text-stone-500 font-black">전체 완료율</span>
+                    <button onclick="window.toggleDetailProgress()" id="detail-progress-toggle" aria-expanded="false" aria-controls="detail-progress-panel" class="w-full min-h-[38px] flex items-center justify-between text-left">
+                        <span class="flex items-center gap-2 min-w-0">
+                            <span class="block text-xs text-stone-500 font-black">전체 완료율</span>
+                            <span id="detail-progress-summary" class="text-xs font-black text-stone-800">0 / 0회 · 0%</span>
+                        </span>
                         <i id="detail-progress-icon" class="fa-solid fa-chevron-down text-stone-400 text-xs transition-transform"></i>
                     </button>
                     <div id="detail-progress-panel" class="hidden mt-3">
@@ -1175,29 +1191,29 @@
             </div>
 
             <!-- Tab Switcher -->
-            <div class="flex bg-stone-200 p-1 rounded-xl">
-                <button onclick="window.switchDetailTab('lessons')" id="tab-lessons-btn" class="flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200">
+            <div class="flex bg-stone-200 p-1 rounded-xl" role="tablist" aria-label="회원 기록 보기">
+                <button onclick="window.switchDetailTab('lessons')" id="tab-lessons-btn" role="tab" aria-selected="true" aria-controls="tab-lessons" class="flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200">
                     <i class="fa-solid fa-signature mr-1.5 text-amber-500"></i>레슨 체크 서명
                 </button>
-                <button onclick="window.switchDetailTab('workout')" id="tab-workout-btn" class="flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200">
+                <button onclick="window.switchDetailTab('workout')" id="tab-workout-btn" role="tab" aria-selected="false" aria-controls="tab-workout" class="flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200">
                     <i class="fa-solid fa-dumbbell mr-1.5 text-stone-400"></i>운동일지
                 </button>
             </div>
 
             <!-- Tab Content 1 -->
-            <div id="tab-lessons" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
+            <div id="tab-lessons" role="tabpanel" aria-labelledby="tab-lessons-btn" class="bg-white rounded-2xl shadow-sm border border-stone-200/80 overflow-hidden">
                 <div class="bg-stone-50 px-4 py-3 border-b border-stone-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <div class="flex flex-wrap items-center gap-2 min-w-0">
                         <span class="font-bold text-sm text-stone-700">레슨 세션 타임라인</span>
-                        <button onclick="window.toggleLessonEditMode()" id="lesson-edit-btn" class="px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale">
+                        <button onclick="window.toggleLessonEditMode()" id="lesson-edit-btn" class="min-h-[36px] px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[11px] font-black active-scale">
                             <i class="fa-solid fa-pen-to-square mr-1"></i>수정
                         </button>
-                        <button onclick="window.cancelLessonEditMode()" id="lesson-edit-cancel-btn" class="hidden px-2 py-1 rounded-md bg-stone-100 text-stone-500 border border-stone-200 text-[10px] font-black active-scale">
+                        <button onclick="window.cancelLessonEditMode()" id="lesson-edit-cancel-btn" class="hidden min-h-[36px] px-2 py-1 rounded-md bg-stone-100 text-stone-500 border border-stone-200 text-[11px] font-black active-scale">
                             <i class="fa-solid fa-xmark mr-1"></i>취소
                         </button>
                         <div id="lesson-add-tools" class="hidden items-center gap-1">
-                            <input type="number" id="lesson-remaining-target" value="0" min="0" onkeydown="if(event.key === 'Enter') window.applyRemainingLessonsFromEdit()" aria-label="잔여 수업 목표 횟수" class="w-14 px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[10px] font-black text-stone-800 outline-none focus:border-amber-500">
-                            <button onclick="window.applyRemainingLessonsFromEdit()" class="px-2 py-1 rounded-md bg-stone-900 text-white text-[10px] font-black active-scale">
+                            <input type="number" id="lesson-remaining-target" value="0" min="0" onkeydown="if(event.key === 'Enter') window.applyRemainingLessonsFromEdit()" aria-label="잔여 수업 목표 횟수" class="w-14 min-h-[36px] px-2 py-1 rounded-md border border-stone-300 bg-white text-center text-[11px] font-black text-stone-800 outline-none focus:border-amber-500">
+                            <button onclick="window.applyRemainingLessonsFromEdit()" class="min-h-[36px] px-2 py-1 rounded-md bg-stone-900 text-white text-[11px] font-black active-scale">
                                 <i class="fa-solid fa-sliders mr-1 text-amber-500"></i>잔여수업 수정
                             </button>
                         </div>
@@ -1208,11 +1224,11 @@
             </div>
 
             <!-- Tab Content 2 -->
-            <div id="tab-workout" class="space-y-3 hidden">
+            <div id="tab-workout" role="tabpanel" aria-labelledby="tab-workout-btn" class="space-y-3 hidden">
                 <div class="bg-white rounded-2xl px-3 py-2 shadow-sm border border-stone-200/80 flex flex-wrap justify-between items-center gap-2">
                     <div id="workout-sort-controls" class="inline-flex min-h-[38px] rounded-xl bg-stone-100 p-1 border border-stone-200">
-                        <button onclick="window.setWorkoutSortOrder('desc')" id="workout-sort-desc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">최신순</button>
-                        <button onclick="window.setWorkoutSortOrder('asc')" id="workout-sort-asc" class="px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale">오래된순</button>
+                        <button onclick="window.setWorkoutSortOrder('desc')" id="workout-sort-desc" class="min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-black active-scale">최신순</button>
+                        <button onclick="window.setWorkoutSortOrder('asc')" id="workout-sort-asc" class="min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-black active-scale">오래된순</button>
                     </div>
                     <div class="flex flex-wrap gap-2 sm:justify-end">
                         <button onclick="window.openShareModal()" class="min-h-[38px] px-3 py-2 bg-white text-stone-700 border border-stone-200 rounded-xl text-[11px] font-black active-scale shadow-sm flex items-center">
@@ -1235,17 +1251,17 @@
     <!-- 3. BOTTOM NAVIGATION -->
     <nav class="app-bottom-nav fixed bottom-0 w-full bg-white border-t border-stone-200 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <div class="max-w-lg mx-auto flex justify-around p-2 h-full items-center">
-            <button onclick="window.switchMainView('dashboard')" id="nav-dashboard" class="flex-1 flex flex-col items-center py-2 text-amber-600 hover:text-stone-600 transition-colors">
+            <button onclick="window.switchMainView('dashboard')" id="nav-dashboard" aria-current="page" class="flex-1 flex flex-col items-center py-2 text-amber-600 hover:text-stone-600 transition-colors">
                 <i class="fa-solid fa-users text-lg mb-1"></i>
-                <span class="text-[10px] font-bold">회원 관리 (CRM)</span>
+                <span class="text-[11px] font-bold">회원 관리</span>
             </button>
             <button onclick="window.switchMainView('schedule')" id="nav-schedule" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
                 <i class="fa-regular fa-calendar-days text-lg mb-1"></i>
-                <span class="text-[10px] font-bold">스케줄 예약 관리</span>
+                <span class="text-[11px] font-bold">스케줄</span>
             </button>
             <button onclick="window.requestSettlementAccess()" id="nav-settlement" class="flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors">
                 <i class="fa-solid fa-file-invoice-dollar text-lg mb-1"></i>
-                <span class="text-[10px] font-bold">정산</span>
+                <span class="text-[11px] font-bold">정산</span>
             </button>
         </div>
     </nav>
@@ -1786,47 +1802,59 @@
                 </div>
                 <button onclick="window.closeConsultationModal()" aria-label="닫기" class="modal-close-btn text-stone-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div class="p-5 space-y-3 overflow-y-auto">
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">아침 기상시간 및 취침시간</label>
-                    <input type="text" id="consult-sleep" placeholder="예: 07:00 기상 / 23:30 취침" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">식사시간 기록</label>
-                    <textarea id="consult-meals" rows="2" placeholder="예: 아침 08:00 / 점심 12:30 / 저녁 19:00" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">음주빈도</label>
-                    <input type="text" id="consult-alcohol" placeholder="예: 월 0회 / 주 0회" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">원하는 운동목표</label>
-                    <textarea id="consult-goal" rows="2" placeholder="예: 체중감량, 근력증가, 통증 개선, 체형교정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">일과 운동 외의 활동</label>
-                    <textarea id="consult-activity" rows="2" placeholder="예: 직업 특성, 오래 앉아있는 시간, 취미활동" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">최근 병원진료를 받았거나 받을 예정이 있는지</label>
-                    <input type="text" id="consult-hospital" placeholder="예: 없음 / 있음 / 예정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">진료를 받았다면 어떤 것 때문인지</label>
-                    <textarea id="consult-hospital-reason" rows="2" placeholder="예: 허리 통증, 무릎 통증, 어깨 불편감" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">간단한 운동테스트 결과</label>
-                    <textarea id="consult-test" rows="2" placeholder="예: 균형, 가동성, 통증 반응, 기본 체력" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">쪼그려앉기 / 만세해보기</label>
-                    <textarea id="consult-squat-overhead" rows="2" placeholder="쪼그려앉기:&#10;만세해보기:" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-stone-500 font-black mb-1.5">기타 사항</label>
-                    <textarea id="consult-etc" rows="3" placeholder="기타 상담 내용이나 주의사항" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
-                </div>
+            <div class="p-5 space-y-5 overflow-y-auto">
+                <section class="space-y-3" aria-labelledby="consult-section-lifestyle">
+                    <h4 id="consult-section-lifestyle" class="text-xs font-black text-amber-700">생활 패턴</h4>
+                    <div>
+                        <label for="consult-sleep" class="block text-xs text-stone-600 font-black mb-1.5">아침 기상시간 및 취침시간</label>
+                        <input type="text" id="consult-sleep" placeholder="예: 07:00 기상 / 23:30 취침" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label for="consult-meals" class="block text-xs text-stone-600 font-black mb-1.5">식사시간 기록</label>
+                        <textarea id="consult-meals" rows="2" placeholder="예: 아침 08:00 / 점심 12:30 / 저녁 19:00" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label for="consult-alcohol" class="block text-xs text-stone-600 font-black mb-1.5">음주빈도</label>
+                        <input type="text" id="consult-alcohol" placeholder="예: 월 0회 / 주 0회" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                </section>
+                <section class="space-y-3 pt-4 border-t border-stone-200" aria-labelledby="consult-section-goal">
+                    <h4 id="consult-section-goal" class="text-xs font-black text-amber-700">목표 및 활동</h4>
+                    <div>
+                        <label for="consult-goal" class="block text-xs text-stone-600 font-black mb-1.5">원하는 운동목표</label>
+                        <textarea id="consult-goal" rows="2" placeholder="예: 체중감량, 근력증가, 통증 개선, 체형교정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label for="consult-activity" class="block text-xs text-stone-600 font-black mb-1.5">일과 운동 외의 활동</label>
+                        <textarea id="consult-activity" rows="2" placeholder="예: 직업 특성, 오래 앉아있는 시간, 취미활동" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                </section>
+                <section class="space-y-3 pt-4 border-t border-stone-200" aria-labelledby="consult-section-health">
+                    <h4 id="consult-section-health" class="text-xs font-black text-amber-700">건강 및 움직임</h4>
+                    <div>
+                        <label for="consult-hospital" class="block text-xs text-stone-600 font-black mb-1.5">최근 병원진료를 받았거나 받을 예정이 있는지</label>
+                        <input type="text" id="consult-hospital" placeholder="예: 없음 / 있음 / 예정" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium">
+                    </div>
+                    <div>
+                        <label for="consult-hospital-reason" class="block text-xs text-stone-600 font-black mb-1.5">진료를 받았다면 어떤 것 때문인지</label>
+                        <textarea id="consult-hospital-reason" rows="2" placeholder="예: 허리 통증, 무릎 통증, 어깨 불편감" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label for="consult-test" class="block text-xs text-stone-600 font-black mb-1.5">간단한 운동테스트 결과</label>
+                        <textarea id="consult-test" rows="2" placeholder="예: 균형, 가동성, 통증 반응, 기본 체력" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label for="consult-squat-overhead" class="block text-xs text-stone-600 font-black mb-1.5">쪼그려앉기 / 만세해보기</label>
+                        <textarea id="consult-squat-overhead" rows="2" placeholder="쪼그려앉기:&#10;만세해보기:" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                </section>
+                <section class="space-y-3 pt-4 border-t border-stone-200" aria-labelledby="consult-section-etc">
+                    <h4 id="consult-section-etc" class="text-xs font-black text-amber-700">기타</h4>
+                    <div>
+                        <label for="consult-etc" class="block text-xs text-stone-600 font-black mb-1.5">기타 사항</label>
+                        <textarea id="consult-etc" rows="3" placeholder="기타 상담 내용이나 주의사항" class="consult-field w-full text-sm bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-amber-500 font-medium resize-none"></textarea>
+                    </div>
+                </section>
                 <p class="text-[11px] leading-relaxed text-stone-500 font-bold">
                     저장하면 이 회원 데이터에 함께 보관되며 백업과 클라우드 동기화 대상에 포함됩니다.
                 </p>
@@ -2172,8 +2200,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v152';
-        const APP_DISPLAY_VERSION = '1.52';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v153';
+        const APP_DISPLAY_VERSION = '1.53';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -3111,6 +3139,9 @@
                             ? new Date(window.cloudLastSyncedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
                             : `최근 ${formatBackupTimestamp(window.cloudLastSyncedAt)}`)
                         : (window.innerWidth < 480 ? '-' : '최근 동기화 없음');
+                    headerSyncTime.title = window.cloudLastSyncedAt
+                        ? `최근 동기화 ${formatBackupTimestamp(window.cloudLastSyncedAt)}`
+                        : '최근 동기화 없음';
                 }
             }
             if (profileStatus) {
@@ -4846,6 +4877,8 @@
         function renderHeaderActions(view = 'dashboard') {
             const container = document.getElementById('header-action-container');
             if (!container) return;
+            const appHeader = document.querySelector('.app-header');
+            if (appHeader) appHeader.classList.toggle('is-schedule-view', view === 'schedule');
             const trainerSwitcher = getTrainerSwitcherHtml();
             if (view === 'schedule') {
                 container.innerHTML = `<button onclick="window.goToToday()" class="header-control border border-stone-600 hover:bg-stone-800 text-stone-300 px-3 rounded-xl text-xs font-bold transition-all active-scale">오늘 이동</button>${trainerSwitcher}`;
@@ -6346,6 +6379,7 @@
             document.getElementById('nav-dashboard').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
             document.getElementById('nav-schedule').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
             document.getElementById('nav-settlement').className = "flex-1 flex flex-col items-center py-2 text-stone-400 hover:text-stone-600 transition-colors";
+            ['nav-dashboard', 'nav-schedule', 'nav-settlement'].forEach(id => document.getElementById(id).removeAttribute('aria-current'));
             document.getElementById('main-scroll-area').classList.remove('overflow-y-auto');
 
             if (view === 'dashboard') {
@@ -6353,6 +6387,7 @@
                 document.getElementById('view-dashboard').classList.remove('hidden');
                 document.getElementById('header-subtitle').innerText = `${getTrainerName()} Trainer`;
                 document.getElementById('nav-dashboard').classList.replace('text-stone-400', 'text-amber-600');
+                document.getElementById('nav-dashboard').setAttribute('aria-current', 'page');
                 renderHeaderActions('dashboard');
                 renderDashboardSearch();
                 window.renderMemberList();
@@ -6360,13 +6395,16 @@
                 document.getElementById('view-schedule').classList.remove('hidden');
                 document.getElementById('header-subtitle').innerText = 'Class Schedule';
                 document.getElementById('nav-schedule').classList.replace('text-stone-400', 'text-amber-600');
+                document.getElementById('nav-schedule').setAttribute('aria-current', 'page');
                 renderHeaderActions('schedule');
+                window.calendarFocusDateAfterRender = true;
                 window.initCalendar();
             } else if (view === 'settlement') {
                 document.getElementById('main-scroll-area').classList.add('overflow-y-auto');
                 document.getElementById('view-settlement').classList.remove('hidden');
                 document.getElementById('header-subtitle').innerText = `${getTrainerName()} Settlement`;
                 document.getElementById('nav-settlement').classList.replace('text-stone-400', 'text-amber-600');
+                document.getElementById('nav-settlement').setAttribute('aria-current', 'page');
                 renderHeaderActions('settlement');
                 window.renderSettlementView();
             }
@@ -6627,6 +6665,7 @@
             const activeCount = filtered.filter(m => !isMemberOnHold(m) && !isMemberCompleted(m)).length;
             const completedCount = filtered.filter(m => !isMemberOnHold(m) && isMemberCompleted(m)).length;
             const holdCount = filtered.filter(m => isMemberOnHold(m)).length;
+            const managedCount = activeCount + completedCount + holdCount;
             document.getElementById('member-tab-active-count').innerText = activeCount;
             document.getElementById('member-tab-completed-count').innerText = completedCount;
             document.getElementById('member-tab-hold-count').innerText = holdCount;
@@ -6650,6 +6689,9 @@
                 completedBtn.className += " text-stone-500";
                 holdBtn.className += " text-stone-500";
             }
+            activeBtn.setAttribute('aria-pressed', window.memberStatusFilter === 'active' ? 'true' : 'false');
+            completedBtn.setAttribute('aria-pressed', window.memberStatusFilter === 'completed' ? 'true' : 'false');
+            holdBtn.setAttribute('aria-pressed', window.memberStatusFilter === 'hold' ? 'true' : 'false');
 
             filtered = filtered.filter(m => {
                 if (window.memberStatusFilter === 'hold') return isMemberOnHold(m);
@@ -6680,7 +6722,7 @@
                 const progressBadgeClass = 'bg-stone-100 text-stone-500 font-bold';
                 const remainingBadgeClass = lowRemaining
                     ? 'inline-flex items-center justify-center min-w-[34px] min-h-7 bg-amber-500 text-stone-950 text-[11px] font-black px-2 py-1 rounded-full shadow-sm'
-                    : 'text-[10px] font-black text-stone-900';
+                    : 'text-[11px] font-black text-stone-900';
                 const holdLabel = getMemberHoldLabel(m);
                 const holdDetail = getMemberHoldDetail(m);
                 const transferred = isMemberTransferred(m);
@@ -6692,8 +6734,8 @@
                     : 'border-stone-400 bg-stone-50';
                 const holdProgressClass = transferred ? 'bg-sky-500' : 'bg-amber-500';
                 const statusBadge = hold
-                    ? `<span class="text-[9px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
-                    : (archived ? `<span class="text-[9px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="text-[9px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
+                    ? `<span class="text-[10px] ${holdBadgeClass} font-black px-2 py-0.5 rounded-full">${holdLabel}</span>`
+                    : (archived ? `<span class="text-[10px] bg-stone-900 text-amber-400 font-black px-2 py-0.5 rounded-full">보관됨</span>` : (completed ? `<span class="text-[10px] bg-emerald-50 text-emerald-600 font-black px-2 py-0.5 rounded-full">완료</span>` : `<span class="text-sm ${progressBadgeClass} px-2 py-0.5 rounded-full">${comp}/${m.totalSessions || 0}회</span>`));
                 const holdDetailText = hold && holdDetail
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">${escapeHtml(holdDetail)}</p>`
                     : '';
@@ -6701,13 +6743,16 @@
                     ? `<p class="text-[10px] text-stone-500 font-bold mt-1">보관일 ${formatDisplayDate(String(m.archivedSummary.archivedAt || '').slice(0, 10)) || '-'} · 운동일지 ${m.archivedSummary.workouts || 0}개</p>`
                     : '';
 
-                const card = document.createElement('div');
-                card.className = `bg-white rounded-2xl p-4 shadow-sm border ${archived ? 'border-stone-300 bg-stone-50' : (hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80'))} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = `member-card w-full text-left bg-white rounded-2xl p-4 shadow-sm border ${archived ? 'border-stone-300 bg-stone-50' : (hold ? holdCardClass : (m._todayTime ? 'border-amber-400' : 'border-stone-200/80'))} hover:border-amber-500 cursor-pointer active-scale transition-all flex flex-col justify-between select-none touch-manipulation`;
+                card.setAttribute('aria-label', `${m.name} 회원 상세 열기, ${remainingLabel}`);
+                card.title = '회원 상세 열기 · 길게 눌러 추가 작업';
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <div class="flex items-center space-x-2">
-                                <h3 class="text-base font-black text-stone-800">${timePrefix}${m.name}</h3>
+                                <h3 class="text-base font-black text-stone-800">${timePrefix}${escapeHtml(m.name)}</h3>
                                 ${statusBadge}
                             </div>
                             ${holdDetailText}
@@ -6716,7 +6761,7 @@
                         <span class="self-end ${remainingBadgeClass}">${remainingLabel}</span>
                     </div>
                     <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden mt-1">
-                        <div class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                        <div role="progressbar" aria-label="수업 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" class="${hold ? holdProgressClass : 'bg-amber-500'} h-full rounded-full transition-all duration-500" style="width: ${percent}%"></div>
                     </div>
                 `;
                 bindMemberCardPress(card, m.id);
@@ -6733,7 +6778,7 @@
             }
 
             document.getElementById('stat-today-schedules').innerText = `${todayScheduleCount}건`;
-            document.getElementById('stat-total-members').innerText = `${filtered.length}명`;
+            document.getElementById('stat-total-members').innerText = `${managedCount}명`;
             document.getElementById('stat-week-schedules').innerText = `${weekScheduleCount}건`;
         }
 
@@ -7721,8 +7766,8 @@
             if (!btn) return;
             const hasRecord = hasConsultationRecord(m);
             btn.className = hasRecord
-                ? 'px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
-                : 'px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
+                ? 'min-h-[38px] px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
+                : 'min-h-[38px] px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
             btn.innerHTML = hasRecord
                 ? '<i class="fa-solid fa-clipboard-check text-amber-500 mr-1.5"></i>상담기록 있음'
                 : '<i class="fa-solid fa-clipboard-question text-amber-500 mr-1.5"></i>상담기록';
@@ -7772,8 +7817,8 @@
             if (!btn) return;
             const hasMemo = !!(m && String(m.memo || '').trim());
             btn.className = hasMemo
-                ? 'px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
-                : 'px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
+                ? 'min-h-[38px] px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-black active-scale shadow-sm flex items-center'
+                : 'min-h-[38px] px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-black active-scale shadow-sm flex items-center';
             btn.innerHTML = hasMemo
                 ? '<i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모 있음'
                 : '<i class="fa-solid fa-note-sticky text-amber-500 mr-1.5"></i>메모';
@@ -7854,15 +7899,19 @@
                 bl.className = "flex-1 py-3 text-center font-bold text-sm text-stone-600 rounded-lg transition-all duration-200";
                 bw.className = "flex-1 py-3 text-center font-bold text-sm rounded-lg bg-stone-900 text-white shadow transition-all duration-200";
             }
+            bl.setAttribute('aria-selected', tab === 'lessons' ? 'true' : 'false');
+            bw.setAttribute('aria-selected', tab === 'workout' ? 'true' : 'false');
         }
 
         window.setDetailProgressExpanded = function(expanded) {
             window.detailProgressExpanded = expanded;
             const panel = document.getElementById('detail-progress-panel');
             const icon = document.getElementById('detail-progress-icon');
+            const toggle = document.getElementById('detail-progress-toggle');
             if (!panel || !icon) return;
             panel.classList.toggle('hidden', !expanded);
             icon.classList.toggle('rotate-180', expanded);
+            if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         }
 
         window.toggleDetailProgress = function() {
@@ -7874,8 +7923,8 @@
             const btn = document.getElementById('lesson-edit-btn');
             if (btn) {
                 btn.className = editing
-                    ? "px-2 py-1 rounded-md bg-amber-500 text-stone-950 text-[10px] font-black active-scale"
-                    : "px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[10px] font-black active-scale";
+                    ? "min-h-[36px] px-2 py-1 rounded-md bg-amber-500 text-stone-950 text-[11px] font-black active-scale"
+                    : "min-h-[36px] px-2 py-1 rounded-md bg-stone-200 text-stone-600 text-[11px] font-black active-scale";
                 btn.innerHTML = editing
                     ? '<i class="fa-solid fa-check mr-1"></i>완료'
                     : '<i class="fa-solid fa-pen-to-square mr-1"></i>수정';
@@ -7919,6 +7968,7 @@
             document.getElementById('detail-session-progress').innerText = formatRemainingLessonText(m, '잔여 수업');
             document.getElementById('detail-progress-count').innerText = `${comp} / ${total}회 완료`;
             document.getElementById('detail-progress-label').innerText = `${percent}%`;
+            document.getElementById('detail-progress-summary').innerText = `${comp} / ${total}회 · ${percent}%`;
             document.getElementById('detail-progress-bar').style.width = `${percent}%`;
             const remainingInput = document.getElementById('lesson-remaining-target');
             if (window.lessonEditMode && remainingInput) remainingInput.value = getPaidRemainingLessonCount(m);
@@ -8103,7 +8153,7 @@
                 toggleRow.innerHTML = `
                     <div>
                         <p class="text-xs font-black text-amber-700">완료 기록 ${comp}회 ${hideSigned ? '접힘' : '펼침'}</p>
-                        <p class="text-[9px] font-bold text-amber-600">${hideSigned ? '최근 서명 기록을 접어두고 다음 서명만 보여줍니다.' : '터치하면 완료 기록을 다시 접습니다.'}</p>
+                        <p class="text-[10px] font-bold text-amber-600">${hideSigned ? '최근 서명 기록을 접어두고 다음 서명만 보여줍니다.' : '터치하면 완료 기록을 다시 접습니다.'}</p>
                     </div>
                     <i class="fa-solid ${hideSigned ? 'fa-chevron-down' : 'fa-chevron-up'} text-amber-600 text-xs"></i>
                 `;
@@ -8161,7 +8211,7 @@
                         </div>`
                     : `<div>
                             <p class="text-sm font-bold text-stone-800">${escapeHtml(statusText)}${renewalBadge}${serviceBadge}</p>
-                            <p class="text-[9px] text-stone-400">${escapeHtml(subText)}</p>
+                            <p class="text-[10px] text-stone-500">${escapeHtml(subText)}</p>
                         </div>`;
                 
                 row.innerHTML = `
@@ -8501,8 +8551,8 @@
             if (!desc || !asc) return;
             const active = 'bg-stone-900 text-white shadow-sm';
             const idle = 'text-stone-500';
-            desc.className = `px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale ${window.workoutSortOrder === 'desc' ? active : idle}`;
-            asc.className = `px-2.5 py-1.5 rounded-lg text-[10px] font-black active-scale ${window.workoutSortOrder === 'asc' ? active : idle}`;
+            desc.className = `min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-black active-scale ${window.workoutSortOrder === 'desc' ? active : idle}`;
+            asc.className = `min-h-[36px] px-2.5 py-1.5 rounded-lg text-[11px] font-black active-scale ${window.workoutSortOrder === 'asc' ? active : idle}`;
         }
 
         function getWorkoutCardPreview(content) {
@@ -10257,7 +10307,24 @@
             if (animated) return animateCalendarWeekChange(offset);
             applyWeekOffset(offset);
         }
-        window.goToToday = function() { window.currentDate = new Date(); window.initCalendar(); }
+        function focusCalendarDateColumn(date) {
+            const area = document.getElementById('calendar-scroll-area');
+            if (!area || area.scrollWidth <= area.clientWidth) return;
+            const styles = getComputedStyle(document.documentElement);
+            const timeColumnWidth = parseFloat(styles.getPropertyValue('--cal-time-col')) || 50;
+            const dayColumnWidth = Math.max(1, (area.scrollWidth - timeColumnWidth) / 7);
+            const dayIndex = Math.max(0, Math.min(6, date.getDay()));
+            const columnCenter = timeColumnWidth + ((dayIndex + 0.5) * dayColumnWidth);
+            const viewportCenter = timeColumnWidth + ((area.clientWidth - timeColumnWidth) / 2);
+            const maxScroll = Math.max(0, area.scrollWidth - area.clientWidth);
+            area.scrollLeft = Math.max(0, Math.min(maxScroll, columnCenter - viewportCenter));
+        }
+
+        window.goToToday = function() {
+            window.currentDate = new Date();
+            window.calendarFocusDateAfterRender = true;
+            window.initCalendar();
+        }
 
         window.initCalendar = function() {
             setupCalendarGestures();
@@ -10351,6 +10418,13 @@
                     cell.appendChild(b);
                 }
             });
+            if (window.calendarFocusDateAfterRender) {
+                const focusDate = new Date(window.currentDate);
+                requestAnimationFrame(() => {
+                    focusCalendarDateColumn(focusDate);
+                    window.calendarFocusDateAfterRender = false;
+                });
+            }
         }
 
         // ================= SCHEDULE LOGIC =================
