@@ -2242,8 +2242,8 @@
         var googleCalendarBulkSyncState = { active: false, done: false };
         const PDF_PAGE_WIDTH = 794;
         const PDF_PAGE_HEIGHT = 1123;
-        const APP_CACHE_VERSION = 'gofitgym-pt-v155';
-        const APP_DISPLAY_VERSION = '1.55';
+        const APP_CACHE_VERSION = 'gofitgym-pt-v156';
+        const APP_DISPLAY_VERSION = '1.56';
         const FIREBASE_CONFIG = {
             projectId: 'ptmanager-1552d',
             appId: '1:615657179263:web:89830b25ed76468b90174a',
@@ -10697,10 +10697,12 @@
             document.getElementById('sched-title').value = evt ? evt.title : '';
 
             const daySchedules = window.schedules.filter(s => s.date === dt);
-            let memberItems = window.members.map(mem => {
-                const sched = daySchedules.find(s => s.title.includes(mem.name));
-                return { name: mem.name, time: sched ? sched.time : null };
-            });
+            let memberItems = window.members
+                .filter(mem => !isMemberOnHold(mem) && !isMemberCompleted(mem))
+                .map(mem => {
+                    const sched = daySchedules.find(s => s.title.includes(mem.name));
+                    return { name: mem.name, time: sched ? sched.time : null };
+                });
 
             memberItems.sort((a, b) => {
                 if (a.time && b.time) return a.time.localeCompare(b.time); 
